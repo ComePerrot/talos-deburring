@@ -6,3 +6,4 @@ logs*
 archives*
 __pycache__
 *.sif*
+build
