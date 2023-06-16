@@ -5,7 +5,7 @@ from stable_baselines3 import SAC
 
 from .envs.env_talos_deburring import EnvTalosDeburring
 
-training_name = "2023-06-01_test_1"
+training_name = "2023-06-16_test_2"
 
 log_dir = Path("logs")
 model_path = log_dir / training_name / f"{training_name[:-2]}.zip"
@@ -21,7 +21,7 @@ envDisplay = EnvTalosDeburring(
     params["environment"],
     GUI=True,
 )
-envDisplay.maxTime = 1000
+envDisplay.maxTime = 10000
 obs, info = envDisplay.reset()
 while True:
     action, _ = model.predict(obs, deterministic=True)

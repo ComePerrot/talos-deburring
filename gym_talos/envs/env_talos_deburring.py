@@ -61,12 +61,50 @@ class EnvTalosDeburring(gym.Env):
         self.minHeight = params_env["minHeight"]
 
         #   Target
-        self.targetPos = params_env["targetPosition"]
+        self.targetType = params_env["targetType"]
+        self.targetPos = self._init_target(params_env)
 
         #   Reward parameters
         self.weight_target = params_env["w_target_pos"]
         self.weight_command = params_env["w_control_reg"]
         self.weight_truncation = params_env["w_penalization_truncation"]
+
+    def _init_target(self, param_env):
+        if self.targetType.lower() == "fixed":
+            target_pos = param_env["targetPosition"]
+        elif self.targetType.lower() == "reachable":
+            phi   = np.random.uniform(0, 2 * np.pi)
+            theta = np.arccos(np.random.uniform(-1, 1))
+            u     = np.random.uniform(0, 1)
+            target_pos = [param_env["shoulderPosition"][0] + 
+                          u * np.sin(theta) * np.cos(phi), 
+                          param_env["shoulderPosition"][1] +
+                          u * np.sin(theta) * np.sin(phi), 
+                          param_env["shoulderPosition"][2] +
+                          u * np.cos(theta)]
+        elif self.targetType.lower() == "box":
+            size_low = param_env["targetSizeLow"]
+            size_high = param_env["targetSizeHigh"]
+            target_pos = [param_env["shoulderPosition"][0] +
+                            np.random.uniform(size_low[0], size_high[0]),
+                            param_env["shoulderPosition"][1] +
+                            np.random.uniform(size_low[1], size_high[1]),
+                            param_env["shoulderPosition"][2] +
+                            np.random.uniform(size_low[2], size_high[2])]
+        elif self.targetType.lower() == "sphere":
+            phi   = np.random.uniform(0, 2 * np.pi)
+            theta = np.arccos(np.random.uniform(-1, 1))
+            radius = param_env["targetRadius"]
+            u     = np.random.uniform(0, radius)
+            target_pos = [param_env["shoulderPosition"][0] +
+                            u * np.sin(theta) * np.cos(phi),
+                            param_env["shoulderPosition"][1] +
+                            u * np.sin(theta) * np.sin(phi),
+                            param_env["shoulderPosition"][2] +
+                            u * np.cos(theta)]
+        else:
+            raise ValueError("Unknown target type")
+        return target_pos
 
     def _init_env_variables(self, action_dimension, observation_dimension):
         """Initialize internal variables of the environment
@@ -171,9 +209,9 @@ class EnvTalosDeburring(gym.Env):
         observation = self._getObservation(x_measured)
         terminated = self._checkTermination(x_measured)
         truncated = self._checkTruncation(x_measured)
-        reward = self._getReward(torques, x_measured, terminated, truncated)
+        reward, infos = self._getReward(torques, x_measured, terminated, truncated)
 
-        return observation, reward, terminated, truncated, {}
+        return observation, reward, terminated, truncated, infos
 
     def _getObservation(self, x_measured):
         """Formats observations
@@ -221,12 +259,12 @@ class EnvTalosDeburring(gym.Env):
         reward_toolPosition = -np.linalg.norm(
             self.pinWrapper.get_end_effector_pos() - self.targetPos,
         )
-
         return (
             self.weight_target * reward_toolPosition
             + self.weight_command * reward_command
             + self.weight_truncation * reward_alive
-        )
+        ), {
+        }
 
     def _checkTermination(self, x_measured):
         """Check the termination conditions.

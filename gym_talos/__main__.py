@@ -60,6 +60,10 @@ log_dir = "./logs/"
 number_environments = params_training["environment_quantity"]
 total_timesteps = params_training["total_timesteps"]
 verbose = params_training["verbose"]
+learning_rate = params_training["learning_rate"]
+train_freq = params_training["train_freq"]
+learning_starts = params_training["learning_starts"]
+log_interval = params_training["log_interval"]
 
 torch.set_num_threads(1)
 
@@ -81,6 +85,9 @@ model = SAC(
     env_training,
     verbose=verbose,
     tensorboard_log=log_dir,
+    learning_rate=learning_rate,
+    train_freq=train_freq,
+    learning_starts=learning_starts,
     device="cpu",
 )
 
@@ -88,10 +95,14 @@ model = SAC(
 model.learn(
     total_timesteps=total_timesteps,
     tb_log_name=training_name,
+    log_interval=log_interval,
 )
-
+target_pos = env_training.targetPos
 env_training.close()
 
 # Save agent and config file
 model.save(model.logger.dir + "/" + training_name)
+f = open(model.logger.dir + "/" + training_name + ".txt", "a")
+f.write("Position: " + str(target_pos) + "\n")
+f.close()
 shutil.copy(config_filename, model.logger.dir + "/" + training_name + ".yaml")
