@@ -1,11 +1,13 @@
 training:
   name: "test"
   environment_quantity: 1 # Number of environments used to collect data
-  total_timesteps: 2000 # Total number of training timesteps
-  learning_rate: 0.001 # Learning rate of the algorithm
+  total_timesteps: 3000 # Total number of training timesteps
+  learning_rate: 0.0003 # Learning rate of the algorithm
   log_interval: 10 # Number of timesteps between logging events
   learning_starts: 100 # Number of timesteps before starting to learn
   train_freq: 1 # Update the model every train_freq steps. Set to None to disable the interval update
+  gamma: 0.99 # Discount factor
+  n_sampled_goal: 4 # Number of sampled goals to optimize the distance to
   verbose: True
 
 environment:
@@ -18,16 +20,18 @@ environment:
   # Target
   # targetType can be "fixed" or "reachable" or "box" or "sphere" around the shoulder
   targetType: "reachable"
-  targetPosition: [0.2, 0.6, 0.7]
+  # targetPosition: [0.1482729,  0.46236133, 0.68072397]
+  targetPosition: [0.24, 0.875, 0.7834647]
   targetSizeLow: [-0.1, -0.1, -0.1]
   targetSizeHigh: [0.1, 0.1, 0.1] 
   targetRadius: 1
-  shoulderPosition: [0.8,0.6,1.1]
+  shoulderPosition: [0.00156854,0.1575,1.3234647]
+      
 
   # Reward parameters
-  w_target_pos: 5
-  w_control_reg: 0
-  w_penalization_truncation: 0.2
+  w_target_pos: 10
+  w_control_reg: 0.0
+  w_penalization_truncation: 7
 
 robot_designer:
   URDF: "/talos_data/robots/talos_reduced.urdf"

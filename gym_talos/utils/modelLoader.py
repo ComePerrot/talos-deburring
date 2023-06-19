@@ -17,13 +17,17 @@ class TalosDesigner:
             self.rmodelComplete = pin.buildModelFromUrdf(self.URDF_path)
 
         self.rdataComplete = self.rmodelComplete.createData()
-
         self._refineModel(self.rmodelComplete, SRDF)
         self._addLimits()
 
         self._addTool(toolPosition)
+        self._addshoulder()
 
         self._buildReducedModel(controlledJoints)
+        # self.shoulderId = self.rmodelComplete.getFrameId("arm_left_1_link")
+        # self.elbowId = self.rmodelComplete.getFrameId("arm_left_2_link")
+        # self.wristId = self.rmodelComplete.getFrameId("arm_left_3_link")
+
 
     def _refineModel(self, model, SRDF):
         """Load additional information from SRDF file
@@ -65,6 +69,21 @@ class TalosDesigner:
         )
 
         self.endEffectorId = self.rmodelComplete.getFrameId("driller")
+
+    def _addshoulder(self):
+        placement_tool = pin.SE3.Identity()
+        placement_tool.translation[0] = 0.
+        placement_tool.translation[1] = 0.
+        placement_tool.translation[2] = 0.
+
+        self.rmodelComplete.addBodyFrame(
+            "shoulder",
+            self.rmodelComplete.getJointId("arm_left_1_joint"),
+            placement_tool,
+            self.rmodelComplete.getFrameId("arm_left_1_link"),
+        )
+
+        self.shoulderId = self.rmodelComplete.getFrameId("shoulder")
 
     def _buildReducedModel(self, controlledJointsName):
         """Build a reduce model for which only selected joints are controlled
@@ -113,6 +132,10 @@ class TalosDesigner:
             False,
         )
         self.oMtool = self.rdata.oMf[self.endEffectorId]
+        self.oMshoulder = self.rdata.oMf[self.shoulderId]
 
     def get_end_effector_pos(self):
         return self.oMtool.translation
+
+    def get_shoulder_pos(self):
+        return self.oMshoulder.translation

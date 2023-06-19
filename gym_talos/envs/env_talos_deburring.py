@@ -20,7 +20,7 @@ class EnvTalosDeburring(gym.Env):
             GUI: set to true to activate display. Defaults to False.
         """
         self._init_parameters(params_env)
-
+    
         # Robot Designer
         self.pinWrapper = TalosDesigner(
             URDF=params_designer["URDF"],
@@ -30,7 +30,6 @@ class EnvTalosDeburring(gym.Env):
         )
 
         self.rmodel = self.pinWrapper.rmodel
-
         # Simulator
         self.simulator = TalosDeburringSimulator(
             URDF=self.pinWrapper.URDF_path,
@@ -41,7 +40,7 @@ class EnvTalosDeburring(gym.Env):
         )
 
         action_dimension = self.rmodel.nq
-        observation_dimension = len(self.simulator.getRobotState())
+        observation_dimension = len(self.simulator.getRobotState()) + len(self.targetPos) # len of the joint angles and velocities, the target position and the end effector position
         self._init_env_variables(action_dimension, observation_dimension)
 
     def _init_parameters(self, params_env):
@@ -61,6 +60,7 @@ class EnvTalosDeburring(gym.Env):
         self.minHeight = params_env["minHeight"]
 
         #   Target
+        self.params_env = params_env
         self.targetType = params_env["targetType"]
         self.targetPos = self._init_target(params_env)
 
@@ -70,6 +70,14 @@ class EnvTalosDeburring(gym.Env):
         self.weight_truncation = params_env["w_penalization_truncation"]
 
     def _init_target(self, param_env):
+        """Initialize the target position
+
+        Args:
+            param_env: kwargs for the environment
+
+        Returns:
+            target_pos: target position
+        """
         if self.targetType.lower() == "fixed":
             target_pos = param_env["targetPosition"]
         elif self.targetType.lower() == "reachable":
@@ -132,9 +140,8 @@ class EnvTalosDeburring(gym.Env):
             dtype=np.float32,
         )
 
-        observation_dim = observation_dimension
+        observation_dim = observation_dimension # Having the required size of the observation space
         if self.normalizeObs:
-            observation_dim = len(self.simulator.getRobotState())
             self.observation_space = gym.spaces.Box(
                 low=-1,
                 high=1,
@@ -142,7 +149,6 @@ class EnvTalosDeburring(gym.Env):
                 dtype=np.float64,
             )
         else:
-            observation_dim = len(self.simulator.getRobotState())
             self.observation_space = gym.spaces.Box(
                 low=-5,
                 high=5,
@@ -173,11 +179,11 @@ class EnvTalosDeburring(gym.Env):
         """
         self.timer = 0
         self.simulator.reset()
-
+        self.targetPos = self._init_target(self.params_env) # Reset target position
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured)
 
-        return self._getObservation(x_measured), {}
+        return self._getObservation(x_measured), {"targetPos": self.targetPos}                                    
 
     def step(self, action):
         """Execute a step of the environment
@@ -197,6 +203,8 @@ class EnvTalosDeburring(gym.Env):
             Boolean indicating this rollout is done
         """
         self.timer += 1
+        if self.timer == 1:
+            self.initialPos = self.pinWrapper.get_end_effector_pos()
         torques = self._scaleAction(action)
 
         for _ in range(self.numSimulationSteps):
@@ -206,11 +214,10 @@ class EnvTalosDeburring(gym.Env):
 
         self.pinWrapper.update_reduced_model(x_measured)
 
-        observation = self._getObservation(x_measured)
+        observation = self._getObservation(x_measured) # position and velocity of the joints and the final goal
         terminated = self._checkTermination(x_measured)
         truncated = self._checkTruncation(x_measured)
         reward, infos = self._getReward(torques, x_measured, terminated, truncated)
-
         return observation, reward, terminated, truncated, infos
 
     def _getObservation(self, x_measured):
@@ -228,7 +235,8 @@ class EnvTalosDeburring(gym.Env):
             observation = self._obsNormalizer(x_measured)
         else:
             observation = x_measured
-        return np.float32(observation)
+        # return np.float32(observation)
+        return np.float32(np.append(observation, (self.targetPos - self.pinWrapper.get_shoulder_pos())))
 
     def _getReward(self, torques, x_measured, terminated, truncated):
         """Compute step reward
@@ -252,15 +260,33 @@ class EnvTalosDeburring(gym.Env):
             reward_alive = 0
         else:
             reward_alive = 1
-
+        len_faster = np.linalg.norm(
+            self.initialPos - self.targetPos
+        ) * 0.87 ** self.timer
         # command regularization
         reward_command = -np.linalg.norm(torques)
         # target distance
         reward_toolPosition = -np.linalg.norm(
-            self.pinWrapper.get_end_effector_pos() - self.targetPos,
-        )
+            self.pinWrapper.get_end_effector_pos() - self.targetPos
+        ) # + len_faster
+        additional_reward = 0
+        if np.linalg.norm(self.pinWrapper.get_end_effector_pos() - self.targetPos) < 0.2:
+            additional_reward += 2000
+        if np.linalg.norm(self.pinWrapper.get_end_effector_pos() - self.targetPos) < 0.07:
+            additional_reward += 4000
+        print("here")
+        print(len_faster)
+        print("len to object", self.weight_target * np.linalg.norm(self.pinWrapper.get_end_effector_pos() - self.targetPos))
+        print("reward_toolPosition", self.pinWrapper.get_end_effector_pos())
+        print("reward_toolPosition", self.targetPos)
+        print(
+            additional_reward +
+            self.weight_target * ( 1 - np.exp(reward_toolPosition))
+            + self.weight_command * reward_command
+            + self.weight_truncation * reward_alive)
         return (
-            self.weight_target * reward_toolPosition
+            additional_reward +
+            + self.weight_target * reward_toolPosition
             + self.weight_command * reward_command
             + self.weight_truncation * reward_alive
         ), {

@@ -5,7 +5,7 @@ import shutil
 
 import torch
 import yaml
-from stable_baselines3 import SAC
+from stable_baselines3 import SAC, HerReplayBuffer
 from stable_baselines3.common.env_util import SubprocVecEnv
 from stable_baselines3.common.monitor import Monitor
 
@@ -64,6 +64,8 @@ learning_rate = params_training["learning_rate"]
 train_freq = params_training["train_freq"]
 learning_starts = params_training["learning_starts"]
 log_interval = params_training["log_interval"]
+n_sampled_goal = params_training["n_sampled_goal"]
+gamma = params_training["gamma"]
 
 torch.set_num_threads(1)
 
@@ -78,12 +80,19 @@ else:
         number_environments
         * [lambda: Monitor(EnvTalosDeburring(params_designer, params_env, GUI=False))],
     )
+target_pos = env_training.targetPos
 
 # Create Agent
 model = SAC(
     "MlpPolicy",
     env_training,
+    # replay_buffer_class=HerReplayBuffer,
+    # replay_buffer_kwargs=dict(
+    #   n_sampled_goal=n_sampled_goal,
+    #   goal_selection_strategy="future",
+    # ),
     verbose=verbose,
+    gamma=gamma,
     tensorboard_log=log_dir,
     learning_rate=learning_rate,
     train_freq=train_freq,
@@ -97,7 +106,23 @@ model.learn(
     tb_log_name=training_name,
     log_interval=log_interval,
 )
-target_pos = env_training.targetPos
+# model.save("her_sac_env_talos_deburring")
+# model = SAC.load("her_sac_highway", env=env_training)
+
+
+# obs, info = env_training.reset()
+
+# # Evaluate the agent
+# episode_reward = 0
+# for _ in range(1000):
+#     action, _ = model.predict(obs, deterministic=True)
+#     obs, reward, terminated, truncated, info = env_training.step(action)
+#     episode_reward += reward
+#     if terminated or truncated or info.get("is_success", False):
+#         print("Reward:", episode_reward, "Success?", info.get("is_success", False))
+#         episode_reward = 0.0
+#         obs, info = env_training.reset()
+
 env_training.close()
 
 # Save agent and config file
