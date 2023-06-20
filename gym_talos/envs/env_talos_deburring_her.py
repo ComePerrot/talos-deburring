@@ -141,20 +141,51 @@ class EnvTalosDeburring(gym.Env):
         )
 
         observation_dim = observation_dimension # Having the required size of the observation space
+        self.observation_space = gym.spaces.Dict()
         if self.normalizeObs:
-            self.observation_space = gym.spaces.Box(
-                low=-1,
-                high=1,
-                shape=(observation_dim,),
-                dtype=np.float64,
-            )
+            for i in range(observation_dim // 2 - 3):
+                self.observation_space.spaces["q{}".format(i)] = gym.spaces.Box(
+                    low=-1,
+                    high=1,
+                    shape=(1,),
+                    dtype=np.float64,
+                )
+            for i in range(observation_dim // 2 - 3):
+                self.observation_space.spaces["vq{}".format(i)] = gym.spaces.Box(
+                    low=-1,
+                    high=1,
+                    shape=(1,),
+                    dtype=np.float64,
+                )
+            for i in range(3):
+                self.observation_space.spaces["target{}".format(i)] = gym.spaces.Box(
+                    low=-10,
+                    high=10,
+                    shape=(1,),
+                    dtype=np.float64,
+                )
         else:
-            self.observation_space = gym.spaces.Box(
-                low=-5,
-                high=5,
-                shape=(observation_dim,),
-                dtype=np.float64,
-            )
+            for i in range(observation_dim // 2 - 3):
+                self.observation_space.spaces["q{}".format(i)] = gym.spaces.Box(
+                    low=-5,
+                    high=5,
+                    shape=(1,),
+                    dtype=np.float64,
+                )
+            for i in range(observation_dim // 2 - 3):
+                self.observation_space.spaces["vq{}".format(i)] = gym.spaces.Box(
+                    low=-5,
+                    high=5,
+                    shape=(1,),
+                    dtype=np.float64,
+                )
+            for i in range(3):
+                self.observation_space.spaces["target{}".format(i)] = gym.spaces.Box(
+                    low=-10,
+                    high=10,
+                    shape=(1,),
+                    dtype=np.float64,
+                )
 
     def close(self):
         """Properly shuts down the environment.
@@ -233,10 +264,14 @@ class EnvTalosDeburring(gym.Env):
         """
         if self.normalizeObs:
             observation = self._obsNormalizer(x_measured)
-        else:
-            observation = x_measured
-        # return np.float32(observation)
-        return np.float32(np.append(observation, (self.targetPos - self.pinWrapper.get_shoulder_pos())))
+            for i in range(len(observation)// 2):
+                self.observation_space.spaces["q{}".format(i)] = np.array(observation[i])
+            for i in range(len(observation)  // 2):
+                self.observation_space.spaces["vq{}".format(i)] = np.array(observation[i + len(observation)  // 2])
+            dt_to_target = self.targetPos - self.pinWrapper.get_shoulder_pos()
+            for i in range(3):
+                self.observation_space.spaces["target{}".format(i)] = dt_to_target[i]
+        return "need to check then return the observation"
 
     def _getRewardHER(self, torques, x_measured, terminated, truncated):
         """Compute step reward

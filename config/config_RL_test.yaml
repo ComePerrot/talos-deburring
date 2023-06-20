@@ -1,11 +1,11 @@
 training:
-  name: "test"
+  name: "fixed"
   environment_quantity: 1 # Number of environments used to collect data
-  total_timesteps: 3000 # Total number of training timesteps
+  total_timesteps: 2000 # Total number of training timesteps
   learning_rate: 0.0003 # Learning rate of the algorithm
   log_interval: 10 # Number of timesteps between logging events
   learning_starts: 100 # Number of timesteps before starting to learn
-  train_freq: 1 # Update the model every train_freq steps. Set to None to disable the interval update
+  train_freq: 2 # Update the model every train_freq steps. Set to None to disable the interval update
   gamma: 0.99 # Discount factor
   n_sampled_goal: 4 # Number of sampled goals to optimize the distance to
   verbose: True
@@ -14,14 +14,15 @@ environment:
   numSimulationSteps: 10
   timeStepSimulation: 1e-3
   normalizeObs: True
+
   # Stop conditions
   maxTime: 10 # Maximum epoch time in seconds
   minHeight: 0.8 # if 0 no check is performed on the height of the robot
   # Target
   # targetType can be "fixed" or "reachable" or "box" or "sphere" around the shoulder
-  targetType: "reachable"
+  targetType: "fixed"
   # targetPosition: [0.1482729,  0.46236133, 0.68072397]
-  targetPosition: [0.24, 0.875, 0.7834647]
+  targetPosition: [0.24, 0.56, 0.6834647]
   targetSizeLow: [-0.1, -0.1, -0.1]
   targetSizeHigh: [0.1, 0.1, 0.1] 
   targetRadius: 1
@@ -30,10 +31,11 @@ environment:
 
   # Reward parameters
   w_target_pos: 10
-  w_control_reg: 0.0
-  w_penalization_truncation: 7
+  w_control_reg: 0.2
+  w_penalization_truncation: 3
 
 robot_designer:
+  # URDF: "/talos_data/robots/talos_full_v2.urdf"
   URDF: "/talos_data/robots/talos_reduced.urdf"
   SRDF: "/talos_data/srdf/talos.srdf"
   controlledJoints:
@@ -57,9 +59,9 @@ robot_designer:
       arm_left_2_joint,
       arm_left_3_joint,
       arm_left_4_joint,
-      # arm_left_5_joint,
-      # arm_left_6_joint,
-      # arm_left_7_joint,
+      arm_left_5_joint,
+      arm_left_6_joint,
+      arm_left_7_joint,
       # arm_right_1_joint,
       # arm_right_2_joint,
       # arm_right_3_joint,
