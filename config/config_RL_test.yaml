@@ -13,7 +13,7 @@ training:
 environment:
   numSimulationSteps: 10
   timeStepSimulation: 1e-3
-  normalizeObs: True
+  normalizeObs: False
 
   # Stop conditions
   maxTime: 10 # Maximum epoch time in seconds
@@ -28,7 +28,6 @@ environment:
   targetRadius: 1
   shoulderPosition: [0.00156854,0.1575,1.3234647]
       
-
   # Reward parameters
   w_target_pos: 10
   w_control_reg: 0.2

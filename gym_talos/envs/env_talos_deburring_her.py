@@ -6,7 +6,7 @@ from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
 from ..utils.modelLoader import TalosDesigner
 
 
-class EnvTalosDeburring(gym.Env):
+class EnvTalosDeburringHer(gym.Env):
     def __init__(self, params_designer, params_env, GUI=False) -> None:
         """Defines the EnvTalosDeburring class
 
@@ -40,7 +40,7 @@ class EnvTalosDeburring(gym.Env):
         )
 
         action_dimension = self.rmodel.nq
-        observation_dimension = len(self.simulator.getRobotState()) + len(self.targetPos) # len of the joint angles and velocities, the target position and the end effector position
+        observation_dimension = len(self.simulator.getRobotState())
         self._init_env_variables(action_dimension, observation_dimension)
 
     def _init_parameters(self, params_env):
@@ -140,50 +140,28 @@ class EnvTalosDeburring(gym.Env):
             dtype=np.float32,
         )
 
-        observation_dim = observation_dimension # Having the required size of the observation space
+        # Having the required size of the observation space
         self.observation_space = gym.spaces.Dict()
         if self.normalizeObs:
-            for i in range(observation_dim // 2 - 3):
-                self.observation_space.spaces["q{}".format(i)] = gym.spaces.Box(
-                    low=-1,
-                    high=1,
-                    shape=(1,),
-                    dtype=np.float64,
-                )
-            for i in range(observation_dim // 2 - 3):
-                self.observation_space.spaces["vq{}".format(i)] = gym.spaces.Box(
-                    low=-1,
-                    high=1,
-                    shape=(1,),
-                    dtype=np.float64,
-                )
-            for i in range(3):
-                self.observation_space.spaces["target{}".format(i)] = gym.spaces.Box(
-                    low=-10,
-                    high=10,
-                    shape=(1,),
-                    dtype=np.float64,
-                )
+            limit = 1
         else:
-            for i in range(observation_dim // 2 - 3):
-                self.observation_space.spaces["q{}".format(i)] = gym.spaces.Box(
-                    low=-5,
-                    high=5,
-                    shape=(1,),
+            limit = 10
+        self.observation_space.spaces["observation"] = gym.spaces.Box(
+                    low=-limit,
+                    high=limit,
+                    shape=(observation_dimension,),
                     dtype=np.float64,
                 )
-            for i in range(observation_dim // 2 - 3):
-                self.observation_space.spaces["vq{}".format(i)] = gym.spaces.Box(
-                    low=-5,
-                    high=5,
-                    shape=(1,),
+        self.observation_space.spaces["achieved_goal"] = gym.spaces.Box(
+                    low=-limit,
+                    high=limit,
+                    shape=(len(self.targetPos),),
                     dtype=np.float64,
                 )
-            for i in range(3):
-                self.observation_space.spaces["target{}".format(i)] = gym.spaces.Box(
-                    low=-10,
-                    high=10,
-                    shape=(1,),
+        self.observation_space.spaces["desired_goal"] = gym.spaces.Box(
+                    low=-limit,
+                    high=limit,
+                    shape=(len(self.targetPos),),
                     dtype=np.float64,
                 )
 
@@ -194,6 +172,21 @@ class EnvTalosDeburring(gym.Env):
         """
         self.simulator.end()
 
+    # def reset(self, seed: Optional[int] = None):
+    #     super().reset(seed=seed)
+    #     # Enforce that each GoalEnv uses a Goal-compatible observation space.
+    #     if not isinstance(self.observation_space, gym.spaces.Dict):
+    #         raise error.Error(
+    #             "GoalEnv requires an observation space of type gym.spaces.Dict"
+    #         )
+    #     for key in ["observation", "achieved_goal", "desired_goal"]:
+    #         if key not in self.observation_space.spaces:
+    #             raise error.Error(
+    #                 'GoalEnv requires the "{}" key to be part of the observation dictionary.'.format(
+    #                     key
+    #                 )
+    #             )
+            
     def reset(self, *, seed=None, options=None):
         """Reset the environment
 
@@ -214,7 +207,7 @@ class EnvTalosDeburring(gym.Env):
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured)
 
-        return self._getObservation(x_measured), {"targetPos": self.targetPos}                                    
+        return self._getObservation(x_measured), {}                                    
 
     def step(self, action):
         """Execute a step of the environment
@@ -246,6 +239,9 @@ class EnvTalosDeburring(gym.Env):
         self.pinWrapper.update_reduced_model(x_measured)
 
         observation = self._getObservation(x_measured) # position and velocity of the joints and the final goal
+        ob = observation["observation"]
+        desired_goal = observation["desired_goal"]
+        achieved_goal = observation["achieved_goal"]
         terminated = self._checkTermination(x_measured)
         truncated = self._checkTruncation(x_measured)
         reward, infos = self._getReward(torques, x_measured, terminated, truncated)
@@ -262,16 +258,15 @@ class EnvTalosDeburring(gym.Env):
         Returns:
             Fromated observations
         """
+        final_obs = gym.spaces.Dict()
         if self.normalizeObs:
             observation = self._obsNormalizer(x_measured)
-            for i in range(len(observation)// 2):
-                self.observation_space.spaces["q{}".format(i)] = np.array(observation[i])
-            for i in range(len(observation)  // 2):
-                self.observation_space.spaces["vq{}".format(i)] = np.array(observation[i + len(observation)  // 2])
-            dt_to_target = self.targetPos - self.pinWrapper.get_shoulder_pos()
-            for i in range(3):
-                self.observation_space.spaces["target{}".format(i)] = dt_to_target[i]
-        return "need to check then return the observation"
+        else:
+            observation = x_measured
+        final_obs.spaces["observation"] = np.array(observation)
+        final_obs.spaces["achieved_goal"] = np.array(self.pinWrapper.get_end_effector_pos())
+        final_obs.spaces["desired_goal"] = np.array(self.targetPos)
+        return final_obs
 
     def _getRewardHER(self, torques, x_measured, terminated, truncated):
         """Compute step reward
@@ -418,3 +413,64 @@ class EnvTalosDeburring(gym.Env):
             normalized observation
         """
         return (x_measured - self.avgObs) / self.diffObs
+
+    def compute_reward(self, achieved_goal, desired_goal, info):
+        """Compute the step reward. This externalizes the reward function and makes
+        it dependent on a desired goal and the one that was achieved. If you wish to include
+        additional rewards that are independent of the goal, you can include the necessary values
+        to derive it in 'info' and compute it accordingly.
+
+        Args:
+            achieved_goal (object): the goal that was achieved during execution
+            desired_goal (object): the desired goal that we asked the agent to attempt to achieve
+            info (dict): an info dictionary with additional information
+
+        Returns:
+            float: The reward that corresponds to the provided achieved goal w.r.t. to the desired
+            goal. Note that the following should always hold true:
+
+                ob, reward, terminated, truncated, info = env.step()
+                assert reward == env.compute_reward(ob['achieved_goal'], ob['desired_goal'], info)
+        """
+        raise NotImplementedError
+    
+    def compute_terminated(self, achieved_goal, desired_goal, info):
+        """Compute the step termination. Allows to customize the termination states depending on the
+        desired and the achieved goal. If you wish to determine termination states independent of the goal,
+        you can include necessary values to derive it in 'info' and compute it accordingly. The envirtonment reaches
+        a termination state when this state leads to an episode ending in an episodic task thus breaking .
+        More information can be found in: https://farama.org/New-Step-API#theory
+
+        Termination states are
+
+        Args:
+            achieved_goal (object): the goal that was achieved during execution
+            desired_goal (object): the desired goal that we asked the agent to attempt to achieve
+            info (dict): an info dictionary with additional information
+
+        Returns:
+            bool: The termination state that corresponds to the provided achieved goal w.r.t. to the desired
+            goal. Note that the following should always hold true:
+
+                ob, reward, terminated, truncated, info = env.step()
+                assert terminated == env.compute_terminated(ob['achieved_goal'], ob['desired_goal'], info)
+        """
+        raise NotImplementedError
+    
+    def compute_truncated(self, achieved_goal, desired_goal, info):
+        """Compute the step truncation. Allows to customize the truncated states depending on the
+        desired and the achieved goal. If you wish to determine truncated states independent of the goal,
+        you can include necessary values to derive it in 'info' and compute it accordingly. Truncated states
+        are those that are out of the scope of the Markov Decision Process (MDP) such as time constraints in a
+        continuing task. More information can be found in: https://farama.org/New-Step-API#theory
+
+        Args:
+            achieved_goal (object): the goal that was achieved during execution
+            desired_goal (object): the desired goal that we asked the agent to attempt to achieve
+            info (dict): an info dictionary with additional information
+
+        Returns:
+            bool: The truncated state that corresponds to the provided achieved goal w.r.t. to the desired
+            goal. Note that the following should always hold true:
+        """
+        raise NotImplementedError
