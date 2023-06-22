@@ -238,14 +238,11 @@ class EnvTalosDeburringHer(gym.Env):
 
         self.pinWrapper.update_reduced_model(x_measured)
 
-        observation = self._getObservation(x_measured) # position and velocity of the joints and the final goal
-        ob = observation["observation"]
-        desired_goal = observation["desired_goal"]
-        achieved_goal = observation["achieved_goal"]
+        ob = self._getObservation(x_measured) # position and velocity of the joints and the final goal
         terminated = self._checkTermination(x_measured)
         truncated = self._checkTruncation(x_measured)
-        reward, infos = self._getReward(torques, x_measured, terminated, truncated)
-        return observation, reward, terminated, truncated, infos
+        reward, infos = self._reward(torques, ob, truncated)
+        return ob, reward, terminated, truncated, infos
 
     def _getObservation(self, x_measured):
         """Formats observations
@@ -265,30 +262,12 @@ class EnvTalosDeburringHer(gym.Env):
             observation = x_measured
         final_obs.spaces["observation"] = np.array(observation)
         final_obs.spaces["achieved_goal"] = np.array(self.pinWrapper.get_end_effector_pos())
+        # print("achieved_goal", final_obs.spaces["achieved_goal"])
         final_obs.spaces["desired_goal"] = np.array(self.targetPos)
+        # print("desired_goal", final_obs.spaces["desired_goal"])
         return final_obs
-
-    def _getRewardHER(self, torques, x_measured, terminated, truncated):
-        """Compute step reward
-
-        The reward is composed of:
-            - A bonus when the environment is still alive (no constraint has been
-              infriged)
-            - A cost proportional to the norm of the torques
-            - A cost proportional to the distance of the end-effector to the target
-
-        Args:
-            torques: torque vector
-            x_measured: observation array obtained from the simulator
-            terminated: termination bool
-            truncated: truncation bool
-
-        Returns: 
-            Scalar reward
-        """
-        return 1 if np.linalg.norm(self.pinWrapper.get_end_effector_pos() - self.targetPos) < 0.2 else 0, {}
     
-    def _getReward(self, torques, x_measured, terminated, truncated):
+    def _reward(self, torques, ob, truncated):
         """Compute step reward
 
         The reward is composed of:
@@ -299,30 +278,17 @@ class EnvTalosDeburringHer(gym.Env):
 
         Args:
             torques: torque vector
-            x_measured: observation array obtained from the simulator
+            ob: observation array obtained from the simulator
             terminated: termination bool
             truncated: truncation bool
 
         Returns:
             Scalar reward
         """
-        if truncated:
-            reward_alive = 0
-        else:
-            reward_alive = 1
-        # command regularization
-        reward_command = -np.linalg.norm(torques)
-        # target distance
-        reward_toolPosition = -np.linalg.norm(
-            self.pinWrapper.get_end_effector_pos() - self.targetPos
-        ) # + len_faster
-        
-        return (
-            self.weight_target * reward_toolPosition
-            + self.weight_command * reward_command
-            + self.weight_truncation * reward_alive
-        ), {
-        }
+        reward = self.weight_target * self.compute_reward(ob['achieved_goal'], ob['desired_goal'], {}, p=1)
+        reward += self.weight_truncation if not truncated else 0
+        reward += self.weight_command * -np.linalg.norm(torques)
+        return reward, {}
 
     def _checkTermination(self, x_measured):
         """Check the termination conditions.
@@ -414,63 +380,16 @@ class EnvTalosDeburringHer(gym.Env):
         """
         return (x_measured - self.avgObs) / self.diffObs
 
-    def compute_reward(self, achieved_goal, desired_goal, info):
-        """Compute the step reward. This externalizes the reward function and makes
-        it dependent on a desired goal and the one that was achieved. If you wish to include
-        additional rewards that are independent of the goal, you can include the necessary values
-        to derive it in 'info' and compute it accordingly.
-
-        Args:
-            achieved_goal (object): the goal that was achieved during execution
-            desired_goal (object): the desired goal that we asked the agent to attempt to achieve
-            info (dict): an info dictionary with additional information
-
-        Returns:
-            float: The reward that corresponds to the provided achieved goal w.r.t. to the desired
-            goal. Note that the following should always hold true:
-
-                ob, reward, terminated, truncated, info = env.step()
-                assert reward == env.compute_reward(ob['achieved_goal'], ob['desired_goal'], info)
+    def compute_reward(self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: dict, p: float = 0.5) -> float:
         """
-        raise NotImplementedError
-    
-    def compute_terminated(self, achieved_goal, desired_goal, info):
-        """Compute the step termination. Allows to customize the termination states depending on the
-        desired and the achieved goal. If you wish to determine termination states independent of the goal,
-        you can include necessary values to derive it in 'info' and compute it accordingly. The envirtonment reaches
-        a termination state when this state leads to an episode ending in an episodic task thus breaking .
-        More information can be found in: https://farama.org/New-Step-API#theory
+        Proximity to the goal is rewarded
 
-        Termination states are
+        We use a weighted p-norm
 
-        Args:
-            achieved_goal (object): the goal that was achieved during execution
-            desired_goal (object): the desired goal that we asked the agent to attempt to achieve
-            info (dict): an info dictionary with additional information
-
-        Returns:
-            bool: The termination state that corresponds to the provided achieved goal w.r.t. to the desired
-            goal. Note that the following should always hold true:
-
-                ob, reward, terminated, truncated, info = env.step()
-                assert terminated == env.compute_terminated(ob['achieved_goal'], ob['desired_goal'], info)
+        :param achieved_goal: the goal that was achieved
+        :param desired_goal: the goal that was desired
+        :param dict info: any supplementary information
+        :param p: the Lp^p norm used in the reward. Use p<1 to have high kurtosis for rewards in [0, 1]
+        :return: the corresponding reward
         """
-        raise NotImplementedError
-    
-    def compute_truncated(self, achieved_goal, desired_goal, info):
-        """Compute the step truncation. Allows to customize the truncated states depending on the
-        desired and the achieved goal. If you wish to determine truncated states independent of the goal,
-        you can include necessary values to derive it in 'info' and compute it accordingly. Truncated states
-        are those that are out of the scope of the Markov Decision Process (MDP) such as time constraints in a
-        continuing task. More information can be found in: https://farama.org/New-Step-API#theory
-
-        Args:
-            achieved_goal (object): the goal that was achieved during execution
-            desired_goal (object): the desired goal that we asked the agent to attempt to achieve
-            info (dict): an info dictionary with additional information
-
-        Returns:
-            bool: The truncated state that corresponds to the provided achieved goal w.r.t. to the desired
-            goal. Note that the following should always hold true:
-        """
-        raise NotImplementedError
+        return np.sum(-np.power(np.abs(achieved_goal - desired_goal), p), axis=-1)
