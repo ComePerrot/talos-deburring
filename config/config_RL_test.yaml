@@ -8,7 +8,7 @@ training:
   train_freq: 1 # Update the model every train_freq steps. Set to None to disable the interval update
   gamma: 0.95 # Discount factor
   batch_size: 1024 # Minibatch size for each gradient update
-  n_sampled_goal: 4 # Number of sampled goals to optimize the distance to
+  n_sampled_goal: 1 # Number of sampled goals to optimize the distance to
   buffer_size: 1e6 # Size of the replay buffer
   tau: 0.005 # Target network update rate
   verbose: True

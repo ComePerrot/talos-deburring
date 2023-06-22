@@ -2,6 +2,8 @@ import argparse
 import datetime
 import pathlib
 import shutil
+import signal
+import time
 
 import torch
 import yaml
@@ -68,10 +70,14 @@ verbose = params_training["verbose"]
 gamma = params_training["gamma"]
 batch_size = params_training["batch_size"]
 learning_rate = params_training["learning_rate"]
-buffer_size = params_training["buffer_size"]
+buffer_size = int(float(params_training["buffer_size"]))
 tau = params_training["tau"]
+log_interval = params_training["log_interval"]
+n_sampled_goal = params_training["n_sampled_goal"]
 
 torch.set_num_threads(1)
+
+
 
 ##############
 #  TRAINING  #
@@ -94,7 +100,7 @@ model = model_class(
     env_training,
     replay_buffer_class=HerReplayBuffer,
     replay_buffer_kwargs=dict(
-        n_sampled_goal=4,
+        n_sampled_goal=n_sampled_goal,
         goal_selection_strategy=goal_selection_strategy,
     ),
     verbose=verbose,
@@ -105,11 +111,20 @@ model = model_class(
     gamma=gamma, batch_size=batch_size, tau=tau,
     policy_kwargs=dict(net_arch=[512, 512, 512])
 )
+
+def handler(signum, frame):
+    print("Saving model")
+    model.save(model.logger.dir + "/" + training_name)
+    shutil.copy(config_filename, model.logger.dir + "/" + training_name + ".yaml")
+    exit(1)
+    
+signal.signal(signal.SIGINT, handler)
 # 
 # Train Agent
 model.learn(
     total_timesteps=total_timesteps,
     tb_log_name=training_name,
+    log_interval=log_interval
 )
 
 # Initialize the model
@@ -136,5 +151,6 @@ model.learn(
 env_training.close()
 
 # Save agent and config file
+
 model.save(model.logger.dir + "/" + training_name)
 shutil.copy(config_filename, model.logger.dir + "/" + training_name + ".yaml")
