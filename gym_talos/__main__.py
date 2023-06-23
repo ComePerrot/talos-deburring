@@ -14,9 +14,14 @@ from stable_baselines3 import HerReplayBuffer, SAC
 
 from .envs.env_talos_deburring import EnvTalosDeburring
 from .envs.env_talos_deburring_her import EnvTalosDeburringHer
+
 ################
 # Main HER SAC #
 ################
+
+# Need to add also for the goal the speed of the ARM probably, cause need to stop the movement at the right time
+# However with HER program, the issue is that it would mean that every time we need to stop the movement at the right time
+# And so replay buffers arent good for that since the movement is stopped earlier than the goal, so with speed ? 
 
 ################
 #  PARAMETERS  #
@@ -127,26 +132,20 @@ model.learn(
     log_interval=log_interval
 )
 
-# Initialize the model
+print("Saving model")
+model.save("./her_bit_env")
 
+# HER must be loaded with the env
+model = model_class.load("./her_bit_env", env=env_training)
 
-# Train the model
-# print("Training model")
-# model.learn(total_timesteps=total_timesteps,
-#             tb_log_name=training_name)
-
-# print("Saving model")
-# model.save("./her_bit_env")
-
-# # HER must be loaded with the env
-# model = model_class.load("./her_bit_env", env=env_training)
-
-# obs, info = env_training.reset()
-# for _ in range(100):
-#     action, _ = model.predict(obs, deterministic=True)
-#     obs, reward, terminated, truncated, _ = env_training.step(action)
-#     if terminated or truncated:
-#         obs, info = env_training.reset()
+obs, info = env_training.reset()
+for _ in range(1000):
+    action, _ = model.predict(obs, deterministic=True)
+    obs, reward, terminated, truncated, _ = env_training.step(action)
+    print("Reward: ", reward)
+    print("Obs: ", obs)
+    if terminated or truncated:
+        obs, info = env_training.reset()
 
 env_training.close()
 

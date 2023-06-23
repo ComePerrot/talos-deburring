@@ -35,6 +35,8 @@ class EnvTalosDeburringHer(gym.Env):
             URDF=self.pinWrapper.URDF_path,
             rmodelComplete=self.pinWrapper.rmodelComplete,
             controlledJointsIDs=self.pinWrapper.controlledJointsID,
+            target_position=self.targetPos,
+            enableGravity=True,
             enableGUI=GUI,
             dt=self.timeStepSimulation,
         )
@@ -171,21 +173,6 @@ class EnvTalosDeburringHer(gym.Env):
         Closes the simulator windows.
         """
         self.simulator.end()
-
-    # def reset(self, seed: Optional[int] = None):
-    #     super().reset(seed=seed)
-    #     # Enforce that each GoalEnv uses a Goal-compatible observation space.
-    #     if not isinstance(self.observation_space, gym.spaces.Dict):
-    #         raise error.Error(
-    #             "GoalEnv requires an observation space of type gym.spaces.Dict"
-    #         )
-    #     for key in ["observation", "achieved_goal", "desired_goal"]:
-    #         if key not in self.observation_space.spaces:
-    #             raise error.Error(
-    #                 'GoalEnv requires the "{}" key to be part of the observation dictionary.'.format(
-    #                     key
-    #                 )
-    #             )
             
     def reset(self, *, seed=None, options=None):
         """Reset the environment
@@ -202,11 +189,11 @@ class EnvTalosDeburringHer(gym.Env):
             Observation of the initial state.
         """
         self.timer = 0
-        self.simulator.reset()
         self.targetPos = self._init_target(self.params_env) # Reset target position
+        self.simulator.reset()
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured)
-
+        print("Reset done", self._getObservation(x_measured))
         return self._getObservation(x_measured), {}                                    
 
     def step(self, action):
@@ -217,7 +204,6 @@ class EnvTalosDeburringHer(gym.Env):
         The model of the robot is updated using the observation taken from the
         environment.
         The termination and condition are checked and the reward is computed.
-
         Args:
             action: Normalized action vector
 
@@ -262,9 +248,7 @@ class EnvTalosDeburringHer(gym.Env):
             observation = x_measured
         final_obs.spaces["observation"] = np.array(observation)
         final_obs.spaces["achieved_goal"] = np.array(self.pinWrapper.get_end_effector_pos())
-        # print("achieved_goal", final_obs.spaces["achieved_goal"])
         final_obs.spaces["desired_goal"] = np.array(self.targetPos)
-        # print("desired_goal", final_obs.spaces["desired_goal"])
         return final_obs
     
     def _reward(self, torques, ob, truncated):
@@ -289,6 +273,26 @@ class EnvTalosDeburringHer(gym.Env):
         reward += self.weight_truncation if not truncated else 0
         reward += self.weight_command * -np.linalg.norm(torques)
         return reward, {}
+    
+    def _HERreward(self, torques, ob, truncated):
+        """Compute step reward
+
+        The reward is composed of:
+            - A bonus when the environment is still alive (no constraint has been
+              infriged)
+            - A cost proportional to the norm of the torques
+            - A cost proportional to the distance of the end-effector to the target
+
+        Args:
+            torques: torque vector
+            ob: observation array obtained from the simulator
+            terminated: termination bool
+            truncated: truncation bool
+
+        Returns:
+            Scalar reward
+        """
+        return self.compute_reward(ob['achieved_goal'], ob['desired_goal'], {}, p=1), {}
 
     def _checkTermination(self, x_measured):
         """Check the termination conditions.
@@ -329,14 +333,14 @@ class EnvTalosDeburringHer(gym.Env):
 
         # Limits
         truncation_limits_position = (
-            x_measured[: self.rmodel.nq] > self.rmodel.upperPositionLimit
-        ).any() or (x_measured[: self.rmodel.nq] < self.rmodel.lowerPositionLimit).any()
+            x_measured[: self.rmodel.nq] > 2 * self.rmodel.upperPositionLimit
+        ).any() or (x_measured[: self.rmodel.nq] < 2 * self.rmodel.lowerPositionLimit).any()
         truncation_limits_speed = (
-            x_measured[-self.rmodel.nv :] > self.rmodel.velocityLimit
+            x_measured[-self.rmodel.nv :] > 6 * self.rmodel.velocityLimit
         ).any()
         truncation_limits = truncation_limits_position or truncation_limits_speed
 
-        # Explicitely casting from numpy.bool_ to bool
+        # Explicitely casting from numpy.bool_ to boolE
         return bool(truncation_balance or truncation_limits)
 
     def _scaleAction(self, action):
@@ -379,7 +383,7 @@ class EnvTalosDeburringHer(gym.Env):
             normalized observation
         """
         return (x_measured - self.avgObs) / self.diffObs
-
+    
     def compute_reward(self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: dict, p: float = 0.5) -> float:
         """
         Proximity to the goal is rewarded

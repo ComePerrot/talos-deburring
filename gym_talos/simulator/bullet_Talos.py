@@ -9,6 +9,7 @@ class TalosDeburringSimulator:
         URDF,
         rmodelComplete,
         controlledJointsIDs,
+        target_position,
         enableGUI=False,
         enableGravity=True,
         dt=1e-3,
@@ -16,18 +17,22 @@ class TalosDeburringSimulator:
         self._setupBullet(enableGUI, enableGravity, dt)
 
         self._setupRobot(URDF, rmodelComplete, controlledJointsIDs)
+        self._createTargetVisual(target_position)
+
 
     def _setupBullet(self, enableGUI, enableGravity, dt):
         # Start the client for PyBullet
         if enableGUI:
-            self.physicsClient = p.connect(p.GUI)
+            self.physicsClient = p.connect(p.SHARED_MEMORY)
+            if (self.physicsClient < 0):
+                self.physicsClient = p.connect(p.GUI)
             p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         else:
             self.physicsClient = p.connect(p.DIRECT)
 
         # Set gravity (enabled by default)
         if enableGravity:
-            p.setGravity(0, 0, -9.81)
+            p.setGravity(0, 0, -1.81)
         else:
             p.setGravity(0, 0, 0)
 
@@ -125,10 +130,10 @@ class TalosDeburringSimulator:
         """Create visual representation of the target to track
 
         The visual will not appear unless the physics client is set to
-        SHARED_MEMMORY
+        SHARED_MEMORY
         :param target Position of the target in the world
         """
-        RADIUS = 0.01
+        RADIUS = 0.1
         LENGTH = 0.02
         blueBox = p.createVisualShape(
             shapeType=p.GEOM_CAPSULE,
