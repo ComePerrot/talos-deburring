@@ -21,7 +21,7 @@ class TalosDesigner:
         self._addLimits()
 
         self._addTool(toolPosition)
-        self._addshoulder()
+        # self._addshoulder()
 
         self._buildReducedModel(controlledJoints)
         # self.shoulderId = self.rmodelComplete.getFrameId("arm_left_1_link")
@@ -46,10 +46,13 @@ class TalosDesigner:
 
         pin.loadReferenceConfigurations(model, modelPath + SRDF, False)
 
+
+    # Modif to check: Why only the seven first joints are limited?
     def _addLimits(self):
         """Add free flyers joint limits"""
-        self.rmodelComplete.upperPositionLimit[:7] = 1
-        self.rmodelComplete.lowerPositionLimit[:7] = -1
+        print("Hey i am here ")
+        self.rmodelComplete.upperPositionLimit[:11] = 1
+        self.rmodelComplete.lowerPositionLimit[:11] = -1
 
     def _addTool(self, toolPosition):
         """Add frame corresponding to the tool
@@ -57,7 +60,7 @@ class TalosDesigner:
         :param toolPosition Position of the tool frame in parent frame
         """
         placement_tool = pin.SE3.Identity()
-        placement_tool.translation[0] = toolPosition[0]
+        placement_tool.translation[0] = toolPosition[0] 
         placement_tool.translation[1] = toolPosition[1]
         placement_tool.translation[2] = toolPosition[2]
 
@@ -69,19 +72,6 @@ class TalosDesigner:
         )
 
         self.endEffectorId = self.rmodelComplete.getFrameId("driller")
-
-    def _addshoulder(self):
-        placement_tool = pin.SE3.Identity()
-        placement_tool.translation[0] = 0.
-        placement_tool.translation[1] = 0.
-        placement_tool.translation[2] = 0.
-
-        self.rmodelComplete.addBodyFrame(
-            "shoulder",
-            self.rmodelComplete.getJointId("arm_left_1_joint"),
-            placement_tool,
-            self.rmodelComplete.getFrameId("arm_left_1_link"),
-        )
 
         self.shoulderId = self.rmodelComplete.getFrameId("shoulder")
 
@@ -132,10 +122,6 @@ class TalosDesigner:
             False,
         )
         self.oMtool = self.rdata.oMf[self.endEffectorId]
-        self.oMshoulder = self.rdata.oMf[self.shoulderId]
 
     def get_end_effector_pos(self):
         return self.oMtool.translation
-
-    def get_shoulder_pos(self):
-        return self.oMshoulder.translation

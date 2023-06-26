@@ -79,6 +79,7 @@ buffer_size = int(float(params_training["buffer_size"]))
 tau = params_training["tau"]
 log_interval = params_training["log_interval"]
 n_sampled_goal = params_training["n_sampled_goal"]
+learning_starts = params_training["learning_starts"]
 
 torch.set_num_threads(1)
 
@@ -96,7 +97,6 @@ else:
         * [lambda: Monitor(EnvTalosDeburringHer(params_designer, params_env, GUI=False))],
     )
 
-print("Creating model")
 model_class = SAC  # works also with SAC, DDPG and TD3
 
 goal_selection_strategy = "future" # equivalent to GoalSelectionStrategy.FUTURE
@@ -109,6 +109,7 @@ model = model_class(
         goal_selection_strategy=goal_selection_strategy,
     ),
     verbose=verbose,
+    learning_starts=learning_starts,
     tensorboard_log=log_dir,
     device="cpu",
     buffer_size=buffer_size,
@@ -118,7 +119,6 @@ model = model_class(
 )
 
 def handler(signum, frame):
-    print("Saving model")
     model.save(model.logger.dir + "/" + training_name)
     shutil.copy(config_filename, model.logger.dir + "/" + training_name + ".yaml")
     exit(1)
@@ -126,30 +126,26 @@ def handler(signum, frame):
 signal.signal(signal.SIGINT, handler)
 # 
 # Train Agent
+
+
 model.learn(
     total_timesteps=total_timesteps,
     tb_log_name=training_name,
     log_interval=log_interval
 )
 
-print("Saving model")
-model.save("./her_bit_env")
-
-# HER must be loaded with the env
-model = model_class.load("./her_bit_env", env=env_training)
-
-obs, info = env_training.reset()
-for _ in range(1000):
-    action, _ = model.predict(obs, deterministic=True)
-    obs, reward, terminated, truncated, _ = env_training.step(action)
-    print("Reward: ", reward)
-    print("Obs: ", obs)
-    if terminated or truncated:
-        obs, info = env_training.reset()
-
-env_training.close()
-
-# Save agent and config file
-
 model.save(model.logger.dir + "/" + training_name)
 shutil.copy(config_filename, model.logger.dir + "/" + training_name + ".yaml")
+
+
+# HER must be loaded with the env
+# model = model_class.load(model.logger.dir + "/" + training_name, env=env_training)
+
+# obs, info = env_training.reset()
+# for _ in range(1000):
+#     action, _ = model.predict(obs, deterministic=True)
+#     obs, reward, terminated, truncated, _ = env_training.step(action)
+#     if terminated or truncated:
+#         obs, info = env_training.reset()
+
+env_training.close()

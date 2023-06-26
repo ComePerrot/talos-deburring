@@ -6,7 +6,7 @@ from stable_baselines3 import SAC
 from .envs.env_talos_deburring import EnvTalosDeburring
 from .envs.env_talos_deburring_her import EnvTalosDeburringHer
 
-training_name = "2023-06-23_var_8"
+training_name = "2023-06-26_spherical_var_6"
 
 log_dir = Path("logs")
 model_path = log_dir / training_name / f"{training_name[:-2]}.zip"
@@ -22,14 +22,25 @@ envDisplay = EnvTalosDeburringHer(
 
 model = SAC.load(model_path, env=envDisplay)
 
-
-envDisplay.maxTime = 10000
-obs, info = envDisplay.reset()
+envDisplay.maxTime = 500
 
 while True:
-    action, _ = model.predict(obs, deterministic=True)
-    obs, reward, terminated, truncated, _ = envDisplay.step(action)
-    print("Reward: ", reward)
-    print("Obs: ", obs)
-    if terminated or truncated:
-        obs, info = envDisplay.reset()
+    obs, info = envDisplay.reset()
+    done = False
+    i = 0
+    while (not done):
+        i += 1
+        # print("Iteration: ", i)
+        action, _ = model.predict(obs, deterministic=True)
+        obs, reward, terminated, truncated, _ = envDisplay.step(action)
+        if terminated or truncated or i > 500:
+            # print("Iteration: ", i)
+            # print("Reward: ", reward)
+            # if terminated:
+            #     print("Terminated")
+            # if truncated:
+            #     print("Truncated")
+            # if i > 500:
+            #     print("Max iterations reached")
+            done = True
+envDisplay.close()

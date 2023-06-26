@@ -9,15 +9,13 @@ class TalosDeburringSimulator:
         URDF,
         rmodelComplete,
         controlledJointsIDs,
-        target_position,
         enableGUI=False,
         enableGravity=True,
         dt=1e-3,
     ):
+        self.target_MPC = None
         self._setupBullet(enableGUI, enableGravity, dt)
-
         self._setupRobot(URDF, rmodelComplete, controlledJointsIDs)
-        self._createTargetVisual(target_position)
 
 
     def _setupBullet(self, enableGUI, enableGravity, dt):
@@ -32,7 +30,7 @@ class TalosDeburringSimulator:
 
         # Set gravity (enabled by default)
         if enableGravity:
-            p.setGravity(0, 0, -1.81)
+            p.setGravity(0, 0, -9.81)
         else:
             p.setGravity(0, 0, 0)
 
@@ -134,7 +132,7 @@ class TalosDeburringSimulator:
         :param target Position of the target in the world
         """
         RADIUS = 0.1
-        LENGTH = 0.02
+        LENGTH = 0.0001
         blueBox = p.createVisualShape(
             shapeType=p.GEOM_CAPSULE,
             rgbaColor=[0, 0, 1, 1.0],
@@ -158,7 +156,6 @@ class TalosDeburringSimulator:
         xbullet = p.getJointStates(self.robotId, self.bullet_controlledJoints)
         q = [x[0] for x in xbullet]
         vq = [x[1] for x in xbullet]
-
         # Get basis pose
         pos, quat = p.getBasePositionAndOrientation(self.robotId)
         # Get basis vel
@@ -166,7 +163,6 @@ class TalosDeburringSimulator:
 
         # Concatenate into a single x vector
         x = np.concatenate([q, vq])
-
         # Magic transformation of the basis translation, as classical in Bullet.
         # x[:3] -= self.localInertiaPos
 
@@ -186,7 +182,7 @@ class TalosDeburringSimulator:
             forces=torques,
         )
 
-    def reset(self):
+    def reset(self, target_position):
         # Reset base
         p.resetBasePositionAndOrientation(
             self.robotId,
@@ -207,6 +203,11 @@ class TalosDeburringSimulator:
                 self.bulletJointsIdInPinOrder[i],
                 self.initial_joint_positions[i],
             )
+        try:
+            p.removeBody(self.target_MPC)
+        except:
+            pass
+        self._createTargetVisual(target_position)
 
     def end(self):
         """Ends connection with pybullet."""
