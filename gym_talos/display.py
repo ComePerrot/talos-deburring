@@ -6,7 +6,7 @@ from stable_baselines3 import SAC
 from .envs.env_talos_deburring import EnvTalosDeburring
 from .envs.env_talos_deburring_her import EnvTalosDeburringHer
 
-training_name = "2023-06-26_spherical_var_6"
+training_name = "2023-06-27_top_body_1"
 
 log_dir = Path("logs")
 model_path = log_dir / training_name / f"{training_name[:-2]}.zip"

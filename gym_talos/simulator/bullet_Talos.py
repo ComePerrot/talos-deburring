@@ -9,14 +9,16 @@ class TalosDeburringSimulator:
         URDF,
         rmodelComplete,
         controlledJointsIDs,
+        target,
         enableGUI=False,
         enableGravity=True,
         dt=1e-3,
     ):
-        self.target_MPC = None
+        
         self._setupBullet(enableGUI, enableGravity, dt)
         self._setupRobot(URDF, rmodelComplete, controlledJointsIDs)
-
+        self.createTargetVisual(target)
+        p.removeBody(self.target_MPC)
 
     def _setupBullet(self, enableGUI, enableGravity, dt):
         # Start the client for PyBullet
@@ -124,13 +126,17 @@ class TalosDeburringSimulator:
             forces=[0.0 for m in self.bullet_controlledJoints],
         )
 
-    def _createTargetVisual(self, target):
+    def createTargetVisual(self, target):
         """Create visual representation of the target to track
 
         The visual will not appear unless the physics client is set to
         SHARED_MEMORY
         :param target Position of the target in the world
         """
+        try:
+            p.removeBody(self.target_MPC)
+        except:
+            pass
         RADIUS = 0.1
         LENGTH = 0.0001
         blueBox = p.createVisualShape(
@@ -183,7 +189,9 @@ class TalosDeburringSimulator:
         )
 
     def reset(self, target_position):
+        """Reset robot to initial configuration"""
         # Reset base
+        self.createTargetVisual(target_position)
         p.resetBasePositionAndOrientation(
             self.robotId,
             self.initial_base_position,
@@ -203,11 +211,7 @@ class TalosDeburringSimulator:
                 self.bulletJointsIdInPinOrder[i],
                 self.initial_joint_positions[i],
             )
-        try:
-            p.removeBody(self.target_MPC)
-        except:
-            pass
-        self._createTargetVisual(target_position)
+        
 
     def end(self):
         """Ends connection with pybullet."""

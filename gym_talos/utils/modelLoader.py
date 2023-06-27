@@ -50,7 +50,6 @@ class TalosDesigner:
     # Modif to check: Why only the seven first joints are limited?
     def _addLimits(self):
         """Add free flyers joint limits"""
-        print("Hey i am here ")
         self.rmodelComplete.upperPositionLimit[:11] = 1
         self.rmodelComplete.lowerPositionLimit[:11] = -1
 

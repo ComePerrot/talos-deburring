@@ -1,11 +1,11 @@
 training:
-  name: "full_body"
+  name: "top_body"
   environment_quantity: 1 # Number of environments used to collect data
-  total_timesteps: 100000 # Total number of training timesteps
-  learning_rate: 0.003 # Learning rate of the algorithm
+  total_timesteps: 80000 # Total number of training timesteps
+  learning_rate: 0.001 # Learning rate of the algorithm
   log_interval: 10 # Number of timesteps between logging events
-  learning_starts: 10000 # Number of timesteps before starting to learn
-  train_freq: 1 # Update the model every train_freq steps. Set to None to disable the interval update
+  learning_starts: 1000 # Number of timesteps before starting to learn
+  train_freq: 2 # Update the model every train_freq steps. Set to None to disable the interval update
   gamma: 0.95 # Discount factor
   batch_size: 32 # Minibatch size for each gradient update
   n_sampled_goal: 1 # Number of sampled goals to optimize the distance to
@@ -19,7 +19,7 @@ environment:
 
   # Stop conditions
   maxTime: 30 # Maximum epoch time in seconds
-  minHeight: 0.6 # if 0 no check is performed on the height of the robot
+  minHeight: 0.6 # if 0 no check is performed on the height of thed robot
   # Target
   # targetType can be "fixed" or "reachable" or "box" or "sphere" around the shoulder
   targetType: "sphere"
@@ -32,8 +32,8 @@ environment:
   
   # Reward parameters
   w_target_pos: 10
-  w_control_reg: 0.2
-  w_penalization_truncation: 7
+  w_control_reg: 0.1
+  w_penalization_truncation: 5
 
 robot_designer:
   # URDF: "/talos_data/robots/talos_full_v2.urdf"
@@ -42,15 +42,15 @@ robot_designer:
   controlledJoints:
     [
       # root_joint,
-      leg_left_1_joint,
-      leg_left_2_joint,
-      leg_left_3_joint,
+      # leg_left_1_joint,
+      # leg_left_2_joint,
+      # leg_left_3_joint,
       # leg_left_4_joint,
       # leg_left_5_joint,
       # leg_left_6_joint,
-      leg_right_1_joint,
-      leg_right_2_joint,
-      leg_right_3_joint,
+      # leg_right_1_joint,
+      # leg_right_2_joint,
+      # leg_right_3_joint,
       # leg_right_4_joint,
       # leg_right_5_joint,
       # leg_right_6_joint,
@@ -63,12 +63,12 @@ robot_designer:
       arm_left_5_joint,
       arm_left_6_joint,
       arm_left_7_joint,
-      arm_right_1_joint,
-      arm_right_2_joint,
-      arm_right_3_joint,
-      arm_right_4_joint,
+      # arm_right_1_joint,
+      # arm_right_2_joint,
+      # arm_right_3_joint,
+      # arm_right_4_joint,
     ]
 
   # Initial position of the robot
-  toolPosition: [0.0, -0.02, -0.0825]
+  toolPosition: [0.0, 0.0, 0.0]
   # toolPosition: [0, -0.02, -0.0825]

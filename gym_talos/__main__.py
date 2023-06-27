@@ -119,6 +119,7 @@ model = model_class(
 )
 
 def handler(signum, frame):
+    print("Saving model as {}".format(model.logger.dir + "/" + training_name))
     model.save(model.logger.dir + "/" + training_name)
     shutil.copy(config_filename, model.logger.dir + "/" + training_name + ".yaml")
     exit(1)
@@ -133,19 +134,7 @@ model.learn(
     tb_log_name=training_name,
     log_interval=log_interval
 )
-
+print("Saving model as {}".format(model.logger.dir + "/" + training_name))
 model.save(model.logger.dir + "/" + training_name)
 shutil.copy(config_filename, model.logger.dir + "/" + training_name + ".yaml")
-
-
-# HER must be loaded with the env
-# model = model_class.load(model.logger.dir + "/" + training_name, env=env_training)
-
-# obs, info = env_training.reset()
-# for _ in range(1000):
-#     action, _ = model.predict(obs, deterministic=True)
-#     obs, reward, terminated, truncated, _ = env_training.step(action)
-#     if terminated or truncated:
-#         obs, info = env_training.reset()
-
 env_training.close()
