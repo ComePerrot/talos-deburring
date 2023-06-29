@@ -9,7 +9,6 @@ class TalosDeburringSimulator:
         URDF,
         rmodelComplete,
         controlledJointsIDs,
-        target,
         enableGUI=False,
         enableGravity=True,
         dt=1e-3,
@@ -17,8 +16,6 @@ class TalosDeburringSimulator:
         
         self._setupBullet(enableGUI, enableGravity, dt)
         self._setupRobot(URDF, rmodelComplete, controlledJointsIDs)
-        self.createTargetVisual(target)
-        p.removeBody(self.target_MPC)
 
     def _setupBullet(self, enableGUI, enableGravity, dt):
         # Start the client for PyBullet
@@ -155,6 +152,37 @@ class TalosDeburringSimulator:
             basePosition=[target[0], target[1], target[2]],
             useMaximalCoordinates=True,
         )
+    
+    def createCoMVisual(self):
+        """Create visual representation of the CoM
+
+        The visual will not appear unless the physics client is set to
+        SHARED_MEMORY
+        :param CoM Position of the CoM in the world
+        """
+        try:
+            p.removeBody(self.CoM_MPC)
+        except:
+            pass
+        RADIUS = 0.1
+        LENGTH = 0.0001
+        blueBox = p.createVisualShape(
+            shapeType=p.GEOM_CAPSULE,
+            rgbaColor=[1, 0, 0, 1.0],
+            visualFramePosition=[0.0, 0.0, 0.0],
+            radius=RADIUS,
+            length=LENGTH,
+            halfExtents=[0.0, 0.0, 0.0],
+        )
+
+        self.CoM_MPC = p.createMultiBody(
+            baseMass=0.0,
+            baseInertialFramePosition=[0, 0, 0],
+            baseVisualShapeIndex=blueBox,
+            basePosition=[self.CoM[0], self.CoM[1], self.CoM[2]],
+            useMaximalCoordinates=True,
+        )
+
 
     def getRobotState(self):
         """Get current state of the robot from pyBullet"""
@@ -162,6 +190,7 @@ class TalosDeburringSimulator:
         xbullet = p.getJointStates(self.robotId, self.bullet_controlledJoints)
         q = [x[0] for x in xbullet]
         vq = [x[1] for x in xbullet]
+
         # Get basis pose
         pos, quat = p.getBasePositionAndOrientation(self.robotId)
         # Get basis vel
@@ -178,6 +207,9 @@ class TalosDeburringSimulator:
         """Do one step of simulation"""
         self._applyTorques(torques)
         p.stepSimulation()
+        self.CoM = np.array([p.getBasePositionAndOrientation(self.robotId)[0][0], p.getBasePositionAndOrientation(self.robotId)[0][1], p.getBasePositionAndOrientation(self.robotId)[0][2]])
+        # print(p.getBasePositionAndOrientation(self.robotId)[0])
+        # self.createCoMVisual()
 
     def _applyTorques(self, torques):
         """Apply computed torques to the robot"""

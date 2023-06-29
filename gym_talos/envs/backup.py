@@ -69,12 +69,6 @@ class EnvTalosDeburringHer(gym.Env):
         self.weight_target = params_env["w_target_pos"]
         self.weight_command = params_env["w_control_reg"]
         self.weight_truncation = params_env["w_penalization_truncation"]
-        try:
-            self.limitPosScale = params_env["limitPosScale"]
-            self.limitVelScale = params_env["limitVelScale"]
-        except KeyError:
-            self.limitPosScale = 4
-            self.limitVelScale = 10
 
     def _init_target(self, param_env):
         """Initialize the target position
@@ -138,7 +132,7 @@ class EnvTalosDeburringHer(gym.Env):
             self._init_obsNormalizer()
 
         self.torqueScale = np.array(self.rmodel.effortLimit)
-        # print("Action space: ", action_dim)
+
         action_dim = action_dimension
         self.action_space = gym.spaces.Box(
             low=-1,
@@ -194,7 +188,6 @@ class EnvTalosDeburringHer(gym.Env):
             Observation of the initial state.
         """
         self.timer = 0
-        self.obj_reached = 0
         self.targetPos = self._init_target(self.params_env) # Reset target position
         self.simulator.reset(self.targetPos) # Reset simulator
         x_measured = self.simulator.getRobotState()
@@ -220,9 +213,6 @@ class EnvTalosDeburringHer(gym.Env):
         self.timer += 1
         if self.timer == 1:
             self.initialPos = self.pinWrapper.get_end_effector_pos()
-        if self.timer == self.time_before_switching:
-            self.targetPos = self._init_target(self.params_env)
-            self.simulator.createTargetVisual(self.targetPos)
         torques = self._scaleAction(action)
 
         for _ in range(self.numSimulationSteps):
@@ -232,14 +222,10 @@ class EnvTalosDeburringHer(gym.Env):
 
         self.pinWrapper.update_reduced_model(x_measured)
 
-        #Possibility to add torque to observation? 
         ob = self._getObservation(x_measured) # position and velocity of the joints and the final goal
         truncated = self._checkTruncation(x_measured)
         reward, infos = self._reward(torques, ob, truncated)
         terminated = self._checkTermination(infos)
-        if infos['is_success']:
-            self.time_before_switching = self.timer + 20
-            self.obj_reached += 1
         return ob, reward, terminated, truncated, infos
 
     def _getObservation(self, x_measured):
@@ -282,14 +268,10 @@ class EnvTalosDeburringHer(gym.Env):
             Scalar reward
         """
         pos_reward = self.compute_reward(ob['achieved_goal'], ob['desired_goal'], {}, p=1)
-        # print("pos_reward: ", pos_reward)
-        bool_check = np.abs(pos_reward) < 0.1
+        bool_check = pos_reward < 0.03
         infos = {}
         infos['is_success'] = bool_check
-        if bool_check:
-            print("Success!")
         reward = 2 * bool_check.astype(float)
-        reward += 2 * self.obj_reached
         reward += self.weight_target * pos_reward
         reward += self.weight_truncation if not truncated else 0
         reward += self.weight_command * -np.linalg.norm(torques)
@@ -330,25 +312,28 @@ class EnvTalosDeburringHer(gym.Env):
         """
         # Balance
         truncation_balance = (not (self.minHeight == 0)) and (
-            self.simulator.CoM[2] < self.minHeight
+            self.pinWrapper.CoM[2] < self.minHeight
         )
         # Limits
-        
+        # print("size of pos", self.rmodel.nq)
+        # print("size of vel", self.rmodel.nv)
+        # print("size of max", self.rmodel.upperPositionLimit)
+        # print("size of min", self.rmodel.lowerPositionLimit)
         truncation_limits_position = (
-            x_measured[: self.rmodel.nq] > self.limitPosScale * self.rmodel.upperPositionLimit
-        ).any() or (x_measured[: self.rmodel.nq] < self.limitPosScale * self.rmodel.lowerPositionLimit).any()
+            x_measured[: self.rmodel.nq] > 4 * self.rmodel.upperPositionLimit
+        ).any() or (x_measured[: self.rmodel.nq] < 4 * self.rmodel.lowerPositionLimit).any()
         truncation_limits_speed = (
-            np.abs(x_measured[-self.rmodel.nv :]) >  self.limitVelScale * self.rmodel.velocityLimit
+            x_measured[-self.rmodel.nv :] > 10 * self.rmodel.velocityLimit
         ).any()
         truncation_limits = truncation_limits_position or truncation_limits_speed
 
-        # Explicitely casting from numpy.bool_ to bool
-        # if truncation_limits_position:
-        #     print("Limit due to position: ", x_measured[: self.rmodel.nq], 1 * self.rmodel.lowerPositionLimit, 1 * self.rmodel.upperPositionLimit)
-        # if truncation_limits_speed:
-        #     print("Limit due to speed: ", x_measured[-self.rmodel.nv :], np.abs(x_measured[-self.rmodel.nv:]),  1 * self.rmodel.velocityLimit)
-        return truncation_limits or truncation_balance
-    
+        # Explicitely casting from numpy.bool_ to boolE
+        # if truncation_balance or truncation_limits:
+        #     print("Limit due to position: ", truncation_limits_position)
+        #     print("Limit due to speed: ", truncation_limits_speed)
+        #     print("Limit due to balance: ", truncation_balance)
+        return bool(truncation_balance or truncation_limits)
+
     def _scaleAction(self, action):
         """Scales normalized actions to obtain robot torques
 
@@ -402,5 +387,4 @@ class EnvTalosDeburringHer(gym.Env):
         :param p: the Lp^p norm used in the reward. Use p<1 to have high kurtosis for rewards in [0, 1]
         :return: the corresponding reward
         """
-        return np.sum(np.power(np.abs(achieved_goal - desired_goal), p), axis=-1)
-        return - np.exp(np.sum(np.power(np.abs(achieved_goal - desired_goal), p), axis=-1))
+        return np.sum(-np.power(np.abs(achieved_goal - desired_goal), p), axis=-1)

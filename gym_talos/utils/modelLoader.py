@@ -1,6 +1,8 @@
 import example_robot_data
 import numpy as np
 import pinocchio as pin
+pin.SE3.__repr__ = pin.SE3.__str__
+np.set_printoptions(precision=3, linewidth=300, suppress=True, threshold=10000)
 
 
 class TalosDesigner:
@@ -24,9 +26,6 @@ class TalosDesigner:
         # self._addshoulder()
 
         self._buildReducedModel(controlledJoints)
-        # self.shoulderId = self.rmodelComplete.getFrameId("arm_left_1_link")
-        # self.elbowId = self.rmodelComplete.getFrameId("arm_left_2_link")
-        # self.wristId = self.rmodelComplete.getFrameId("arm_left_3_link")
 
 
     def _refineModel(self, model, SRDF):
@@ -50,8 +49,8 @@ class TalosDesigner:
     # Modif to check: Why only the seven first joints are limited?
     def _addLimits(self):
         """Add free flyers joint limits"""
-        self.rmodelComplete.upperPositionLimit[:11] = 1
-        self.rmodelComplete.lowerPositionLimit[:11] = -1
+        self.rmodelComplete.upperPositionLimit[:9] = 1
+        self.rmodelComplete.lowerPositionLimit[:9] = -1
 
     def _addTool(self, toolPosition):
         """Add frame corresponding to the tool
@@ -71,8 +70,6 @@ class TalosDesigner:
         )
 
         self.endEffectorId = self.rmodelComplete.getFrameId("driller")
-
-        self.shoulderId = self.rmodelComplete.getFrameId("shoulder")
 
     def _buildReducedModel(self, controlledJointsName):
         """Build a reduce model for which only selected joints are controlled
@@ -111,16 +108,17 @@ class TalosDesigner:
         self.rmodel.defaultState = np.concatenate([self.q0, np.zeros(self.rmodel.nv)])
 
     def update_reduced_model(self, x_measured):
-        pin.forwardKinematics(self.rmodel, self.rdata, x_measured[: self.rmodel.nq])
+        # pin.framesForwardKinematics(self.rmodel, self.rdata, x_measured[: self.rmodel.nq])
+        pin.forwardKinematics(self.rmodel, self.rdata, x_measured[: self.rmodel.nq], x_measured[-self.rmodel.nv:])
         pin.updateFramePlacements(self.rmodel, self.rdata)
 
         self.CoM = pin.centerOfMass(
             self.rmodel,
             self.rdata,
-            x_measured[: self.rmodel.nq],
-            False,
+            x_measured[: self.rmodel.nq]
         )
         self.oMtool = self.rdata.oMf[self.endEffectorId]
+        
 
     def get_end_effector_pos(self):
         return self.oMtool.translation
