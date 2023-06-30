@@ -18,7 +18,6 @@ class TalosDesigner:
         else:
             self.rmodelComplete = pin.buildModelFromUrdf(self.URDF_path)
 
-        self.rdataComplete = self.rmodelComplete.createData()
         self._refineModel(self.rmodelComplete, SRDF)
         self._addLimits()
 
@@ -46,11 +45,10 @@ class TalosDesigner:
         pin.loadReferenceConfigurations(model, modelPath + SRDF, False)
 
 
-    # Modif to check: Why only the seven first joints are limited?
     def _addLimits(self):
         """Add free flyers joint limits"""
-        self.rmodelComplete.upperPositionLimit[:9] = 1
-        self.rmodelComplete.lowerPositionLimit[:9] = -1
+        self.rmodelComplete.upperPositionLimit[:7] = 1
+        self.rmodelComplete.lowerPositionLimit[:7] = -1
 
     def _addTool(self, toolPosition):
         """Add frame corresponding to the tool

@@ -87,11 +87,6 @@ target_pos = env_training.targetPos
 model = SAC(
     "MlpPolicy",
     env_training,
-    # replay_buffer_class=HerReplayBuffer,
-    # replay_buffer_kwargs=dict(
-    #   n_sampled_goal=n_sampled_goal,
-    #   goal_selection_strategy="future",
-    # ),
     verbose=verbose,
     gamma=gamma,
     tensorboard_log=log_dir,
@@ -107,22 +102,6 @@ model.learn(
     tb_log_name=training_name,
     log_interval=log_interval,
 )
-# model.save("her_sac_env_talos_deburring")
-# model = SAC.load("her_sac_highway", env=env_training)
-
-
-# obs, info = env_training.reset()
-
-# # Evaluate the agent
-# episode_reward = 0
-# for _ in range(1000):
-#     action, _ = model.predict(obs, deterministic=True)
-#     obs, reward, terminated, truncated, info = env_training.step(action)
-#     episode_reward += reward
-#     if terminated or truncated or info.get("is_success", False):
-#         print("Reward:", episode_reward, "Success?", info.get("is_success", False))
-#         episode_reward = 0.0
-#         obs, info = env_training.reset()
 
 env_training.close()
 

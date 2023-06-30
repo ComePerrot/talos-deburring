@@ -35,6 +35,7 @@ class EnvTalosDeburringHer(gym.Env):
             URDF=self.pinWrapper.URDF_path,
             rmodelComplete=self.pinWrapper.rmodelComplete,
             controlledJointsIDs=self.pinWrapper.controlledJointsID,
+            randomInit=self.random_init_robot,
             enableGravity=True,
             enableGUI=GUI,
             dt=self.timeStepSimulation,
@@ -69,12 +70,13 @@ class EnvTalosDeburringHer(gym.Env):
         self.weight_target = params_env["w_target_pos"]
         self.weight_command = params_env["w_control_reg"]
         self.weight_truncation = params_env["w_penalization_truncation"]
+        self.random_init_robot = params_env["randomInit"]
         try:
             self.limitPosScale = params_env["limitPosScale"]
             self.limitVelScale = params_env["limitVelScale"]
         except KeyError:
-            self.limitPosScale = 4
-            self.limitVelScale = 10
+            self.limitPosScale = 10
+            self.limitVelScale = 30
 
     def _init_target(self, param_env):
         """Initialize the target position
@@ -138,7 +140,6 @@ class EnvTalosDeburringHer(gym.Env):
             self._init_obsNormalizer()
 
         self.torqueScale = np.array(self.rmodel.effortLimit)
-        # print("Action space: ", action_dim)
         action_dim = action_dimension
         self.action_space = gym.spaces.Box(
             low=-1,
@@ -220,14 +221,10 @@ class EnvTalosDeburringHer(gym.Env):
         self.timer += 1
         if self.timer == 1:
             self.initialPos = self.pinWrapper.get_end_effector_pos()
-        if self.timer == self.time_before_switching:
-            self.targetPos = self._init_target(self.params_env)
-            self.simulator.createTargetVisual(self.targetPos)
         torques = self._scaleAction(action)
 
         for _ in range(self.numSimulationSteps):
             self.simulator.step(torques)
-
         x_measured = self.simulator.getRobotState()
 
         self.pinWrapper.update_reduced_model(x_measured)
@@ -238,7 +235,6 @@ class EnvTalosDeburringHer(gym.Env):
         reward, infos = self._reward(torques, ob, truncated)
         terminated = self._checkTermination(infos)
         if infos['is_success']:
-            self.time_before_switching = self.timer + 20
             self.obj_reached += 1
         return ob, reward, terminated, truncated, infos
 
@@ -282,14 +278,12 @@ class EnvTalosDeburringHer(gym.Env):
             Scalar reward
         """
         pos_reward = self.compute_reward(ob['achieved_goal'], ob['desired_goal'], {}, p=1)
-        # print("pos_reward: ", pos_reward)
         bool_check = np.abs(pos_reward) < 0.1
         infos = {}
         infos['is_success'] = bool_check
         if bool_check:
             print("Success!")
         reward = 2 * bool_check.astype(float)
-        reward += 2 * self.obj_reached
         reward += self.weight_target * pos_reward
         reward += self.weight_truncation if not truncated else 0
         reward += self.weight_command * -np.linalg.norm(torques)
@@ -342,11 +336,12 @@ class EnvTalosDeburringHer(gym.Env):
         ).any()
         truncation_limits = truncation_limits_position or truncation_limits_speed
 
-        # Explicitely casting from numpy.bool_ to bool
         # if truncation_limits_position:
         #     print("Limit due to position: ", x_measured[: self.rmodel.nq], 1 * self.rmodel.lowerPositionLimit, 1 * self.rmodel.upperPositionLimit)
         # if truncation_limits_speed:
         #     print("Limit due to speed: ", x_measured[-self.rmodel.nv :], np.abs(x_measured[-self.rmodel.nv:]),  1 * self.rmodel.velocityLimit)
+
+        # Explicitely casting from numpy.bool_ to bool
         return truncation_limits or truncation_balance
     
     def _scaleAction(self, action):
@@ -402,5 +397,4 @@ class EnvTalosDeburringHer(gym.Env):
         :param p: the Lp^p norm used in the reward. Use p<1 to have high kurtosis for rewards in [0, 1]
         :return: the corresponding reward
         """
-        return np.sum(np.power(np.abs(achieved_goal - desired_goal), p), axis=-1)
-        return - np.exp(np.sum(np.power(np.abs(achieved_goal - desired_goal), p), axis=-1))
+        return - np.sum(np.power(np.abs(achieved_goal - desired_goal), p), axis=-1)

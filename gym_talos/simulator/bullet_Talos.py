@@ -9,13 +9,13 @@ class TalosDeburringSimulator:
         URDF,
         rmodelComplete,
         controlledJointsIDs,
+        randomInit=False,
         enableGUI=False,
         enableGravity=True,
         dt=1e-3,
     ):
-        
         self._setupBullet(enableGUI, enableGravity, dt)
-        self._setupRobot(URDF, rmodelComplete, controlledJointsIDs)
+        self._setupRobot(URDF, rmodelComplete, controlledJointsIDs, randomInit)
 
     def _setupBullet(self, enableGUI, enableGravity, dt):
         # Start the client for PyBullet
@@ -40,12 +40,14 @@ class TalosDeburringSimulator:
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.loadURDF("plane.urdf")
 
-    def _setupRobot(self, URDF, rmodelComplete, controlledJointsIDs):
-        rmodelComplete.q0 = rmodelComplete.referenceConfigurations["half_sitting"]
-        self.q0 = rmodelComplete.q0
+    def _setupRobot(self, URDF, rmodelComplete, controlledJointsIDs, randomInit):
+        self.q0 = rmodelComplete.referenceConfigurations["half_sitting"]
         self.initial_base_position = list(self.q0[:3])
         self.initial_base_orientation = list(self.q0[3:7])
         self.initial_joint_positions = list(self.q0[7:])
+        self.lower_limits_joint = list(rmodelComplete.lowerPositionLimit[7:])
+        self.upper_limits_joint = list(rmodelComplete.upperPositionLimit[7:])
+        self.random_init = randomInit
 
         rmodelComplete.armature = (
             rmodelComplete.rotorInertia * rmodelComplete.rotorGearRatio**2
@@ -68,19 +70,16 @@ class TalosDeburringSimulator:
             self.initial_base_position[i] += self.localInertiaPos[i]
 
         self.names2bulletIndices = {
-            p.getJointInfo(1, i)[1].decode(): i for i in range(p.getNumJoints(1))
+            p.getJointInfo(self.robotId, i)[1].decode(): i for i in range(p.getNumJoints(self.robotId))
         }
-
         self.bulletJointsIdInPinOrder = [
-            self.names2bulletIndices[n] for n in rmodelComplete.names[2:]
+            self.names2bulletIndices[name] for name in rmodelComplete.names[2:]
         ]
-
         # Joints controlled with crocoddyl
         self.bullet_controlledJoints = [
             self.names2bulletIndices[rmodelComplete.names[i]]
             for i in controlledJointsIDs
         ]
-
         self._setInitialConfig()
         self._changeFriction(["leg_left_6_joint", "leg_right_6_joint"], 100, 30)
         self._setControlledJoints()
@@ -202,14 +201,29 @@ class TalosDeburringSimulator:
         # x[:3] -= self.localInertiaPos
 
         return x  # noqa: RET504
+    
+    def getRobotPos(self):
+        """Get current state of the robot from pyBullet"""
+        # Get basis pose
+        pos, quat = p.getBasePositionAndOrientation(self.robotId)
+        # Get basis vel
+        v, w = p.getBaseVelocity(self.robotId)
+
+        # Concatenate into a single x vector
+        x = np.concatenate([pos, quat])
+        # Magic transformation of the basis translation, as classical in Bullet.
+        # x[:3] -= self.localInertiaPos
+
+        return x  # noqa: RET504
 
     def step(self, torques):
         """Do one step of simulation"""
         self._applyTorques(torques)
         p.stepSimulation()
-        self.CoM = np.array([p.getBasePositionAndOrientation(self.robotId)[0][0], p.getBasePositionAndOrientation(self.robotId)[0][1], p.getBasePositionAndOrientation(self.robotId)[0][2]])
-        # print(p.getBasePositionAndOrientation(self.robotId)[0])
-        # self.createCoMVisual()
+        self.CoM = np.array([p.getBasePositionAndOrientation(self.robotId)[0][0],
+                             p.getBasePositionAndOrientation(self.robotId)[0][1], 
+                             p.getBasePositionAndOrientation(self.robotId)[0][2]
+                            ])
 
     def _applyTorques(self, torques):
         """Apply computed torques to the robot"""
@@ -220,7 +234,7 @@ class TalosDeburringSimulator:
             forces=torques,
         )
 
-    def reset(self, target_position):
+    def reset(self, target_position, seed=None):
         """Reset robot to initial configuration"""
         # Reset base
         self.createTargetVisual(target_position)
@@ -228,22 +242,31 @@ class TalosDeburringSimulator:
             self.robotId,
             self.initial_base_position,
             self.initial_base_orientation,
-            self.physicsClient,
+            # self.physicsClient,
         )
         p.resetBaseVelocity(
             self.robotId,
             [0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
-            self.physicsClient,
+            # self.physicsClient,
         )
         # Reset joints
         for i in range(len(self.initial_joint_positions)):
-            p.resetJointState(
-                self.robotId,
-                self.bulletJointsIdInPinOrder[i],
-                self.initial_joint_positions[i],
-            )
-        
+            if self.bulletJointsIdInPinOrder[i] in self.bullet_controlledJoints and self.random_init:
+                p.resetJointState(
+                    self.robotId,
+                    self.bulletJointsIdInPinOrder[i],
+                    np.random.uniform(
+                        low = (self.initial_joint_positions[i] + self.lower_limits_joint[i]) / 4,
+                        high = (self.upper_limits_joint[i] + self.initial_joint_positions[i]) / 4,
+                    ),
+                )
+            else:
+                p.resetJointState(
+                    self.robotId,
+                    self.bulletJointsIdInPinOrder[i],
+                    self.initial_joint_positions[i],
+                )
 
     def end(self):
         """Ends connection with pybullet."""

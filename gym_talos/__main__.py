@@ -118,12 +118,15 @@ model = model_class(
     policy_kwargs=dict(net_arch=[512, 512, 512])
 )
 
-def handler(signum, frame):
+def saver(config_filename, training_name, model):
     print("Saving model as {}".format(model.logger.dir + "/" + training_name))
     model.save(model.logger.dir + "/" + training_name)
     shutil.copy(config_filename, model.logger.dir + "/" + training_name + ".yaml")
+
+def handler(signum, frame):
+    saver(config_filename, training_name, model)
     exit(1)
-    
+
 signal.signal(signal.SIGINT, handler)
 # 
 # Train Agent
@@ -134,7 +137,6 @@ model.learn(
     tb_log_name=training_name,
     log_interval=log_interval
 )
-print("Saving model as {}".format(model.logger.dir + "/" + training_name))
-model.save(model.logger.dir + "/" + training_name)
-shutil.copy(config_filename, model.logger.dir + "/" + training_name + ".yaml")
+
+saver(config_filename, training_name, model)
 env_training.close()

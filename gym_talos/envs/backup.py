@@ -315,10 +315,6 @@ class EnvTalosDeburringHer(gym.Env):
             self.pinWrapper.CoM[2] < self.minHeight
         )
         # Limits
-        # print("size of pos", self.rmodel.nq)
-        # print("size of vel", self.rmodel.nv)
-        # print("size of max", self.rmodel.upperPositionLimit)
-        # print("size of min", self.rmodel.lowerPositionLimit)
         truncation_limits_position = (
             x_measured[: self.rmodel.nq] > 4 * self.rmodel.upperPositionLimit
         ).any() or (x_measured[: self.rmodel.nq] < 4 * self.rmodel.lowerPositionLimit).any()
@@ -328,10 +324,6 @@ class EnvTalosDeburringHer(gym.Env):
         truncation_limits = truncation_limits_position or truncation_limits_speed
 
         # Explicitely casting from numpy.bool_ to boolE
-        # if truncation_balance or truncation_limits:
-        #     print("Limit due to position: ", truncation_limits_position)
-        #     print("Limit due to speed: ", truncation_limits_speed)
-        #     print("Limit due to balance: ", truncation_balance)
         return bool(truncation_balance or truncation_limits)
 
     def _scaleAction(self, action):
