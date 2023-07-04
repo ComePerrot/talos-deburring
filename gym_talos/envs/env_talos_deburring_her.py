@@ -41,6 +41,14 @@ class EnvTalosDeburringHer(gym.Env):
             dt=self.timeStepSimulation,
         )
 
+        # Penalization for truncation of torsos 
+        self.order_positions = self.simulator.dict_pos
+        self.mat_dt_init = np.zeros(self.rmodel.nq)
+        if self.weight_joints_to_init is not None:
+            for key, value in self.weight_joints_to_init.items():
+                self.mat_dt_init[self.order_positions[key]] = value
+        self.mat_dt_init = np.diag(self.mat_dt_init)
+
         action_dimension = self.rmodel.nq
         observation_dimension = len(self.simulator.getRobotState())
         self._init_env_variables(action_dimension, observation_dimension)
@@ -100,6 +108,10 @@ class EnvTalosDeburringHer(gym.Env):
             self.threshold_success = params_env["thresholdSuccess"]
         except KeyError:
             self.threshold_success = 0.05
+        try:
+            self.weight_joints_to_init = params_env["w_joints_to_init"]
+        except KeyError:
+            self.weight_joints_to_init = None
 
     def _init_target(self, param_env):
         """Initialize the target position
@@ -250,7 +262,10 @@ class EnvTalosDeburringHer(gym.Env):
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured)
         ob = self._getObservation(x_measured) # position and velocity of the joints and the final goal
-
+        # print("ob", ob["observation"][:9])
+        # print("len ob", len(ob["observation"][:9]))
+        # print("initialpos", self.simulator.initial_pos)
+        # print("len initialpos", len(self.simulator.initial_pos))
         reward, infos = self._reward(torques, ob)
         self.on_target += 1 if infos["on_target"] else 0
         truncated = self._checkTruncation(x_measured)
@@ -304,10 +319,15 @@ class EnvTalosDeburringHer(gym.Env):
         bool_check = np.abs(pos_reward) < self.threshold_success
         infos = {}
         infos["on_target"] = bool_check
-        reward = bool_check.astype(float)
+        reward = 5 * bool_check.astype(float)
         reward += self.weight_target * pos_reward
         reward += self.weight_truncation
         reward += self.weight_command * -np.linalg.norm(torques)
+        reward -= np.sum((self.simulator.qC0 - 
+                          ob['observation'][:self.rmodel.nq]).T * 
+                         self.mat_dt_init * 
+                         (self.simulator.qC0 - 
+                          ob['observation'][:self.rmodel.nq]))
         return reward, infos
     
     def _checkTermination(self):
@@ -353,15 +373,6 @@ class EnvTalosDeburringHer(gym.Env):
             np.abs(x_measured[-self.rmodel.nv :]) >  self.limitVelScale * self.rmodel.velocityLimit
         ).any()
         truncation_limits = truncation_limits_position or truncation_limits_speed
-
-        # if truncation_balance:
-        #     print("Limit due to balance: ", self.simulator.CoM, self.lowerLimitPos, self.upperLimitPos)
-        # if truncation_limits_position:
-        #     print("Limit due to position: ", x_measured[: self.rmodel.nq], 1 * self.rmodel.lowerPositionLimit, 1 * self.rmodel.upperPositionLimit)
-        # if truncation_limits_speed:
-        #     print("Limit due to speed: ", x_measured[-self.rmodel.nv :], np.abs(x_measured[-self.rmodel.nv:]),  1 * self.rmodel.velocityLimit)
-
-        # Explicitely casting from numpy.bool_ to bool
         return truncation_limits or truncation_balance
     
     def _checkSuccess(self):

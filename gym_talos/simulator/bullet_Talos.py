@@ -72,7 +72,7 @@ class TalosDeburringSimulator:
         self.names2bulletIndices = {
             p.getJointInfo(self.robotId, i)[1].decode(): i for i in range(p.getNumJoints(self.robotId))
         }
-        self.bulletJointsIdInPinOrder = [
+        self.bulletJointsIdInPinOrder = [ 
             self.names2bulletIndices[name] for name in rmodelComplete.names[2:]
         ]
         # Joints controlled with crocoddyl
@@ -83,10 +83,10 @@ class TalosDeburringSimulator:
         self._setInitialConfig()
         self._changeFriction(["leg_left_6_joint", "leg_right_6_joint"], 100, 30)
         self._setControlledJoints()
+        self._init_joint_controlled(rmodelComplete)
 
     def _setInitialConfig(self):
         """Initialize robot configuration in pyBullet
-
         :param q0 Intial robot configuration
         """
         for i in range(len(self.initial_joint_positions)):
@@ -121,6 +121,15 @@ class TalosDeburringSimulator:
             controlMode=p.VELOCITY_CONTROL,
             forces=[0.0 for m in self.bullet_controlledJoints],
         )
+
+    def _init_joint_controlled(self, rmodelComplete):
+        self.qC0 = np.empty(len(self.bullet_controlledJoints))
+        self.dict_pos = {}
+        for i in range(len(self.bullet_controlledJoints)):
+            self.qC0[i] = p.getJointState(
+                self.robotId, self.bullet_controlledJoints[i]
+            )[0]
+            self.dict_pos[rmodelComplete.names[2 + self.bulletJointsIdInPinOrder.index(self.bullet_controlledJoints[i])]] = i
 
     def createTargetVisual(self, target):
         """Create visual representation of the target to track
@@ -253,20 +262,18 @@ class TalosDeburringSimulator:
         # Reset joints
         for i in range(len(self.initial_joint_positions)):
             if self.bulletJointsIdInPinOrder[i] in self.bullet_controlledJoints and self.random_init:
-                p.resetJointState(
-                    self.robotId,
-                    self.bulletJointsIdInPinOrder[i],
-                    np.random.uniform(
-                        low = 1/8 * (self.initial_joint_positions[i] + self.lower_limits_joint[i]),
-                        high = 1/8 * (self.upper_limits_joint[i] + self.initial_joint_positions[i]),
-                    ),
+                init_pos = np.random.uniform(
+                    low = 1/8 * (self.initial_joint_positions[i] + self.lower_limits_joint[i]),
+                    high = 1/8 * (self.upper_limits_joint[i] + self.initial_joint_positions[i]),
                 )
+                self.qC0[self.bullet_controlledJoints.index(self.bulletJointsIdInPinOrder[i])] = init_pos
             else:
-                p.resetJointState(
-                    self.robotId,
-                    self.bulletJointsIdInPinOrder[i],
-                    self.initial_joint_positions[i],
-                )
+                init_pos = self.initial_joint_positions[i]
+            p.resetJointState(
+                self.robotId,
+                self.bulletJointsIdInPinOrder[i],
+                init_pos,
+            )
 
     def end(self):
         """Ends connection with pybullet."""
