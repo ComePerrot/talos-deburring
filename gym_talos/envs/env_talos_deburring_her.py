@@ -19,7 +19,7 @@ class EnvTalosDeburringHer(gym.Env):
             params_env: kwargs for the environment
             GUI: set to true to activate display. Defaults to False.
         """
-        self._init_parameters(params_env)
+        self._init_parameters(params_env, GUI)
     
         # Robot Designer
         self.pinWrapper = TalosDesigner(
@@ -45,7 +45,7 @@ class EnvTalosDeburringHer(gym.Env):
         observation_dimension = len(self.simulator.getRobotState())
         self._init_env_variables(action_dimension, observation_dimension)
 
-    def _init_parameters(self, params_env):
+    def _init_parameters(self, params_env, GUI):
         """Load environment parameters from provided dictionnary
 
         Args:
@@ -70,13 +70,22 @@ class EnvTalosDeburringHer(gym.Env):
         self.weight_target = params_env["w_target_pos"]
         self.weight_command = params_env["w_control_reg"]
         self.weight_truncation = params_env["w_penalization_truncation"]
-        self.random_init_robot = params_env["randomInit"]
+        
+        self.GUI = GUI
         try:
+            self.random_init_robot = params_env["randomInit"]
             self.limitPosScale = params_env["limitPosScale"]
             self.limitVelScale = params_env["limitVelScale"]
+            self.torqueScaleCoeff = params_env["torqueScaleCoeff"]
+            self.lowerLimitPos = params_env["lowerLimitPos"]
+            self.upperLimitPos = params_env["upperLimitPos"]
         except KeyError:
+            self.random_init_robot = False
             self.limitPosScale = 10
             self.limitVelScale = 30
+            self.torqueScaleCoeff = 1
+            self.lowerLimitPos = [-0.5, -0.5, 0.9]
+            self.upperLimitPos = [0.5, 0.5, 1.5]
 
     def _init_target(self, param_env):
         """Initialize the target position
@@ -139,7 +148,7 @@ class EnvTalosDeburringHer(gym.Env):
         if self.normalizeObs:
             self._init_obsNormalizer()
 
-        self.torqueScale = np.array(self.rmodel.effortLimit)
+        self.torqueScale = self.torqueScaleCoeff * np.array(self.rmodel.effortLimit)
         action_dim = action_dimension
         self.action_space = gym.spaces.Box(
             low=-1,
@@ -228,8 +237,9 @@ class EnvTalosDeburringHer(gym.Env):
         x_measured = self.simulator.getRobotState()
 
         self.pinWrapper.update_reduced_model(x_measured)
-
-        #Possibility to add torque to observation? 
+        if self.GUI:
+            print(self.simulator.CoM)
+        # Possibility to add torque to observation? 
         ob = self._getObservation(x_measured) # position and velocity of the joints and the final goal
         truncated = self._checkTruncation(x_measured)
         reward, infos = self._reward(torques, ob, truncated)
@@ -281,9 +291,7 @@ class EnvTalosDeburringHer(gym.Env):
         bool_check = np.abs(pos_reward) < 0.1
         infos = {}
         infos['is_success'] = bool_check
-        if bool_check:
-            print("Success!")
-        reward = 2 * bool_check.astype(float)
+        reward = 4 * bool_check.astype(float)
         reward += self.weight_target * pos_reward
         reward += self.weight_truncation if not truncated else 0
         reward += self.weight_command * -np.linalg.norm(torques)
@@ -323,11 +331,9 @@ class EnvTalosDeburringHer(gym.Env):
             True if the environment has been truncated, False otherwise.
         """
         # Balance
-        truncation_balance = (not (self.minHeight == 0)) and (
-            self.simulator.CoM[2] < self.minHeight
-        )
+        truncation_balance =  (self.simulator.CoM < self.lowerLimitPos).any() or (self.simulator.CoM > self.upperLimitPos
+        ).any()
         # Limits
-        
         truncation_limits_position = (
             x_measured[: self.rmodel.nq] > self.limitPosScale * self.rmodel.upperPositionLimit
         ).any() or (x_measured[: self.rmodel.nq] < self.limitPosScale * self.rmodel.lowerPositionLimit).any()

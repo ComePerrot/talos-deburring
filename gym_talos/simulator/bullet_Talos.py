@@ -257,8 +257,8 @@ class TalosDeburringSimulator:
                     self.robotId,
                     self.bulletJointsIdInPinOrder[i],
                     np.random.uniform(
-                        low = (self.initial_joint_positions[i] + self.lower_limits_joint[i]) / 4,
-                        high = (self.upper_limits_joint[i] + self.initial_joint_positions[i]) / 4,
+                        low = 1/8 * (self.initial_joint_positions[i] + self.lower_limits_joint[i]),
+                        high = 1/8 * (self.upper_limits_joint[i] + self.initial_joint_positions[i]),
                     ),
                 )
             else:

@@ -3,7 +3,7 @@ import datetime
 import pathlib
 import shutil
 import signal
-import time
+import os
 
 import torch
 import yaml
@@ -68,6 +68,7 @@ else:
     training_name = current_date + "_" + params_training["name"]
 
 log_dir = "./logs/"
+temp_copy_file = "./logs/temp.yaml"
 
 number_environments = params_training["environment_quantity"]
 total_timesteps = params_training["total_timesteps"]
@@ -118,16 +119,19 @@ model = model_class(
     policy_kwargs=dict(net_arch=[512, 512, 512])
 )
 
-def saver(config_filename, training_name, model):
+def saver(temp_copy_file, training_name, model):
     print("Saving model as {}".format(model.logger.dir + "/" + training_name))
     model.save(model.logger.dir + "/" + training_name)
-    shutil.copy(config_filename, model.logger.dir + "/" + training_name + ".yaml")
+    shutil.copy(temp_copy_file, model.logger.dir + "/" + training_name + ".yaml")
+    os.remove(temp_copy_file)
 
 def handler(signum, frame):
-    saver(config_filename, training_name, model)
+    saver(temp_copy_file, training_name, model)
     exit(1)
 
 signal.signal(signal.SIGINT, handler)
+shutil.copy(config_filename, temp_copy_file)
+
 # 
 # Train Agent
 
@@ -138,5 +142,6 @@ model.learn(
     log_interval=log_interval
 )
 
-saver(config_filename, training_name, model)
+print(model.logger.dir)
+saver(temp_copy_file, training_name, model)
 env_training.close()

@@ -6,11 +6,13 @@ from stable_baselines3 import SAC
 from .envs.env_talos_deburring import EnvTalosDeburring
 from .envs.env_talos_deburring_her import EnvTalosDeburringHer
 
-training_name = "2023-06-30_with_rand_init_1"
+training_name = "2023-07-03_with_rand_init_1"
+train_name = "_".join(training_name.split("_")[:-1])
+
 
 log_dir = Path("logs")
-model_path = log_dir / training_name / f"{training_name[:-2]}.zip"
-config_path = log_dir / training_name / f"{training_name[:-2]}.yaml"
+model_path = log_dir / training_name / f"{train_name}.zip"
+config_path = log_dir / training_name / f"{train_name}.yaml"
 with config_path.open() as config_file:
     params = yaml.safe_load(config_file)
 
