@@ -133,7 +133,7 @@ class TalosDeburringSimulator:
             p.removeBody(self.target_MPC)
         except:
             pass
-        RADIUS = 0.1
+        RADIUS = 0.01
         LENGTH = 0.0001
         blueBox = p.createVisualShape(
             shapeType=p.GEOM_CAPSULE,

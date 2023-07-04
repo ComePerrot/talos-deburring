@@ -74,18 +74,32 @@ class EnvTalosDeburringHer(gym.Env):
         self.GUI = GUI
         try:
             self.random_init_robot = params_env["randomInit"]
-            self.limitPosScale = params_env["limitPosScale"]
-            self.limitVelScale = params_env["limitVelScale"]
-            self.torqueScaleCoeff = params_env["torqueScaleCoeff"]
-            self.lowerLimitPos = params_env["lowerLimitPos"]
-            self.upperLimitPos = params_env["upperLimitPos"]
         except KeyError:
             self.random_init_robot = False
+        try:
+            self.limitPosScale = params_env["limitPosScale"]
+        except KeyError:
             self.limitPosScale = 10
+        try:
+            self.limitVelScale = params_env["limitVelScale"]
+        except KeyError:
             self.limitVelScale = 30
+        try:
+            self.torqueScaleCoeff = params_env["torqueScaleCoeff"]
+        except KeyError:
             self.torqueScaleCoeff = 1
+        try:
+            self.lowerLimitPos = params_env["lowerLimitPos"]
+        except KeyError:
             self.lowerLimitPos = [-0.5, -0.5, 0.9]
+        try:
+            self.upperLimitPos = params_env["upperLimitPos"]
+        except KeyError:
             self.upperLimitPos = [0.5, 0.5, 1.5]
+        try:
+            self.threshold_success = params_env["thresholdSuccess"]
+        except KeyError:
+            self.threshold_success = 0.05
 
     def _init_target(self, param_env):
         """Initialize the target position
@@ -140,6 +154,7 @@ class EnvTalosDeburringHer(gym.Env):
             observation_dimension: Dimension of the observation space
         """
         self.timer = 0
+        self.on_target = 0
 
         self.maxStep = int(
             self.maxTime / (self.timeStepSimulation * self.numSimulationSteps),
@@ -204,7 +219,7 @@ class EnvTalosDeburringHer(gym.Env):
             Observation of the initial state.
         """
         self.timer = 0
-        self.obj_reached = 0
+        self.on_target = 0
         self.targetPos = self._init_target(self.params_env) # Reset target position
         self.simulator.reset(self.targetPos) # Reset simulator
         x_measured = self.simulator.getRobotState()
@@ -228,24 +243,22 @@ class EnvTalosDeburringHer(gym.Env):
             Boolean indicating this rollout is done
         """
         self.timer += 1
-        if self.timer == 1:
-            self.initialPos = self.pinWrapper.get_end_effector_pos()
         torques = self._scaleAction(action)
 
         for _ in range(self.numSimulationSteps):
             self.simulator.step(torques)
         x_measured = self.simulator.getRobotState()
-
         self.pinWrapper.update_reduced_model(x_measured)
-        if self.GUI:
-            print(self.simulator.CoM)
-        # Possibility to add torque to observation? 
         ob = self._getObservation(x_measured) # position and velocity of the joints and the final goal
+
+        reward, infos = self._reward(torques, ob)
+        self.on_target += 1 if infos["on_target"] else 0
         truncated = self._checkTruncation(x_measured)
-        reward, infos = self._reward(torques, ob, truncated)
-        terminated = self._checkTermination(infos)
-        if infos['is_success']:
-            self.obj_reached += 1
+        terminated = self._checkTermination()
+        if terminated or truncated:
+            infos["success"] = self._checkSuccess()
+            infos["done"] = True
+            infos["is_success"] = infos["success"]
         return ob, reward, terminated, truncated, infos
 
     def _getObservation(self, x_measured):
@@ -269,7 +282,7 @@ class EnvTalosDeburringHer(gym.Env):
         final_obs.spaces["desired_goal"] = np.array(self.targetPos)
         return final_obs
     
-    def _reward(self, torques, ob, truncated):
+    def _reward(self, torques, ob):
         """Compute step reward
 
         The reward is composed of:
@@ -288,16 +301,16 @@ class EnvTalosDeburringHer(gym.Env):
             Scalar reward
         """
         pos_reward = self.compute_reward(ob['achieved_goal'], ob['desired_goal'], {}, p=1)
-        bool_check = np.abs(pos_reward) < 0.1
+        bool_check = np.abs(pos_reward) < self.threshold_success
         infos = {}
-        infos['is_success'] = bool_check
-        reward = 4 * bool_check.astype(float)
+        infos["on_target"] = bool_check
+        reward = bool_check.astype(float)
         reward += self.weight_target * pos_reward
-        reward += self.weight_truncation if not truncated else 0
+        reward += self.weight_truncation
         reward += self.weight_command * -np.linalg.norm(torques)
         return reward, infos
     
-    def _checkTermination(self, infos):
+    def _checkTermination(self):
         """Check the termination conditions.
 
         Environment is terminated when the task has been successfully carried out.
@@ -309,8 +322,7 @@ class EnvTalosDeburringHer(gym.Env):
         Returns:
             True if the environment has been terminated, False otherwise
         """
-        infos['time'] = self.timer
-        return self.timer > (self.maxStep - 1) 
+        return self.timer > (self.maxStep - 1) or self.on_target > 30
 
     def _checkTruncation(self, x_measured):
         """Checks the truncation conditions.
@@ -342,6 +354,8 @@ class EnvTalosDeburringHer(gym.Env):
         ).any()
         truncation_limits = truncation_limits_position or truncation_limits_speed
 
+        # if truncation_balance:
+        #     print("Limit due to balance: ", self.simulator.CoM, self.lowerLimitPos, self.upperLimitPos)
         # if truncation_limits_position:
         #     print("Limit due to position: ", x_measured[: self.rmodel.nq], 1 * self.rmodel.lowerPositionLimit, 1 * self.rmodel.upperPositionLimit)
         # if truncation_limits_speed:
@@ -349,6 +363,20 @@ class EnvTalosDeburringHer(gym.Env):
 
         # Explicitely casting from numpy.bool_ to bool
         return truncation_limits or truncation_balance
+    
+    def _checkSuccess(self):
+        """Checks the success conditions.
+
+        Environment is successful when the task has been successfully carried out.
+        In our case it means that the end-effector is close enough to the target.
+
+        Args:
+            x_measured: observation array obtained from the simulator
+
+        Returns:
+            True if the environment has been successful, False otherwise.
+        """
+        return self.on_target > 30
     
     def _scaleAction(self, action):
         """Scales normalized actions to obtain robot torques
