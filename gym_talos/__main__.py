@@ -12,8 +12,8 @@ from stable_baselines3.common.env_util import SubprocVecEnv
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3 import HerReplayBuffer, SAC
 
-from .envs.env_talos_deburring import EnvTalosDeburring
 from .envs.env_talos_deburring_her import EnvTalosDeburringHer
+from .utils.tb_callback import AllCallbacks, TensorboardCallback
 
 ################
 # Main HER SAC #
@@ -90,12 +90,13 @@ torch.set_num_threads(1)
 #  TRAINING  #
 ##############
 # Create environment
+env_class = EnvTalosDeburringHer
 if number_environments == 1:
-    env_training = EnvTalosDeburringHer(params_designer, params_env, GUI=False)
+    env_training = env_class(params_designer, params_env, GUI=False)
 else:
     env_training = SubprocVecEnv(
         number_environments
-        * [lambda: Monitor(EnvTalosDeburringHer(params_designer, params_env, GUI=False))],
+        * [lambda: Monitor(env_class(params_designer, params_env, GUI=False))],
     )
 
 model_class = SAC  # works also with SAC, DDPG and TD3
@@ -139,7 +140,9 @@ shutil.copy(config_filename, temp_copy_file)
 model.learn(
     total_timesteps=total_timesteps,
     tb_log_name=training_name,
-    log_interval=log_interval
+    log_interval=log_interval,
+    callback=TensorboardCallback(verbose=verbose),
+    # callback=AllCallbacks(log_dir="./logs/", stats_window_size=100, check_freq=1000, verbose=verbose),
 )
 
 print(model.logger.dir)

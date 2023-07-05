@@ -109,6 +109,10 @@ class EnvTalosDeburringHer(gym.Env):
         except KeyError:
             self.threshold_success = 0.05
         try:
+            self.weight_target_reached = params_env["w_target_reached"]
+        except KeyError:
+            self.weight_target_reached = 5
+        try:
             self.weight_joints_to_init = params_env["w_joints_to_init"]
         except KeyError:
             self.weight_joints_to_init = None
@@ -236,7 +240,10 @@ class EnvTalosDeburringHer(gym.Env):
         self.simulator.reset(self.targetPos) # Reset simulator
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured)
-        return self._getObservation(x_measured), {}                                    
+        infos = {"dst": self.compute_reward(self.pinWrapper.get_end_effector_pos(), self.targetPos, {}, p=1),
+                "tor": 0, 
+                "init": 0}
+        return self._getObservation(x_measured), infos                                  
 
     def step(self, action):
         """Execute a step of the environment
@@ -262,18 +269,12 @@ class EnvTalosDeburringHer(gym.Env):
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured)
         ob = self._getObservation(x_measured) # position and velocity of the joints and the final goal
-        # print("ob", ob["observation"][:9])
-        # print("len ob", len(ob["observation"][:9]))
-        # print("initialpos", self.simulator.initial_pos)
-        # print("len initialpos", len(self.simulator.initial_pos))
-        reward, infos = self._reward(torques, ob)
-        self.on_target += 1 if infos["on_target"] else 0
         truncated = self._checkTruncation(x_measured)
+        reward, infos = self._reward(torques, ob, truncated)
+        self.on_target += 1 if infos["on_target"] else 0
         terminated = self._checkTermination()
         if terminated or truncated:
-            infos["success"] = self._checkSuccess()
-            infos["done"] = True
-            infos["is_success"] = infos["success"]
+            infos["is_success"] = self._checkSuccess()
         return ob, reward, terminated, truncated, infos
 
     def _getObservation(self, x_measured):
@@ -297,7 +298,7 @@ class EnvTalosDeburringHer(gym.Env):
         final_obs.spaces["desired_goal"] = np.array(self.targetPos)
         return final_obs
     
-    def _reward(self, torques, ob):
+    def _reward(self, torques, ob, truncated):
         """Compute step reward
 
         The reward is composed of:
@@ -316,18 +317,24 @@ class EnvTalosDeburringHer(gym.Env):
             Scalar reward
         """
         pos_reward = self.compute_reward(ob['achieved_goal'], ob['desired_goal'], {}, p=1)
-        bool_check = np.abs(pos_reward) < self.threshold_success
-        infos = {}
-        infos["on_target"] = bool_check
-        reward = 5 * bool_check.astype(float)
-        reward += self.weight_target * pos_reward
-        reward += self.weight_truncation
-        reward += self.weight_command * -np.linalg.norm(torques)
-        reward -= np.sum((self.simulator.qC0 - 
+        len_to_init = - np.sum((self.simulator.qC0 - 
                           ob['observation'][:self.rmodel.nq]).T * 
                          self.mat_dt_init * 
                          (self.simulator.qC0 - 
                           ob['observation'][:self.rmodel.nq]))
+        bool_check = np.abs(pos_reward) < self.threshold_success
+        reward = self.weight_target_reached * bool_check.astype(float)
+        reward += self.weight_target * pos_reward
+        reward += self.weight_truncation if not truncated else 0
+        reward += self.weight_command * -np.linalg.norm(torques)
+        reward += len_to_init
+        
+        # Infos for logs
+        infos = {}
+        infos["tor"] = np.linalg.norm(torques)
+        infos["dst"] = - pos_reward
+        infos["init"] = - len_to_init
+        infos["on_target"] = bool_check
         return reward, infos
     
     def _checkTermination(self):
@@ -442,4 +449,55 @@ class EnvTalosDeburringHer(gym.Env):
         :param p: the Lp^p norm used in the reward. Use p<1 to have high kurtosis for rewards in [0, 1]
         :return: the corresponding reward
         """
+
         return - np.sum(np.power(np.abs(achieved_goal - desired_goal), p), axis=-1)
+    
+
+
+
+class EnvTalosDeburringHerParse(EnvTalosDeburringHer):
+    def __init__(self, 
+                 params_designer, 
+                 params_env, 
+                 GUI=False):
+        super().__init__(params_designer, params_env, GUI)
+
+    def _reward(self, torques, ob, truncated):
+        """Compute step reward
+
+        The reward is composed of:
+            - A bonus when the environment is still alive (no constraint has been
+              infriged)
+            - A cost proportional to the norm of the torques
+            - A cost proportional to the distance of the end-effector to the target
+
+        Args:
+            torques: torque vector
+            ob: observation array obtained from the simulator
+            terminated: termination bool
+            truncated: truncation bool
+
+        Returns:
+            Scalar reward
+        """
+        pos_reward = self.compute_reward(ob['achieved_goal'], ob['desired_goal'], {})
+        len_to_init = - np.sum((self.simulator.qC0 - 
+                          ob['observation'][:self.rmodel.nq]).T * 
+                         self.mat_dt_init * 
+                         (self.simulator.qC0 - 
+                          ob['observation'][:self.rmodel.nq]))
+        reward += self.weight_target * pos_reward
+        reward += self.weight_truncation if not truncated else 0
+        reward += self.weight_command * -np.linalg.norm(torques)
+        reward += len_to_init
+        
+        # Infos for logs
+        infos = {}
+        infos["tor"] = np.linalg.norm(torques)
+        infos["dst"] = - pos_reward
+        infos["init"] = - len_to_init
+        infos["on_target"] = np.linalg.norm(ob['achieved_goal'] -  ob['desired_goal'], axis=-1) < self.threshold_success
+        return reward, infos
+
+    def compute_reward(self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: dict) -> float:
+        return - (np.linalg.norm(achieved_goal - desired_goal, axis=-1) < self.threshold_success).astype(float)

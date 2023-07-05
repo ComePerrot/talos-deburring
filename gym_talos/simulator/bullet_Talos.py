@@ -1,6 +1,7 @@
 import numpy as np
 import pybullet as p  # PyBullet simulator
 import pybullet_data
+import pinocchio as pin
 
 
 class TalosDeburringSimulator:
@@ -160,6 +161,49 @@ class TalosDeburringSimulator:
             basePosition=[target[0], target[1], target[2]],
             useMaximalCoordinates=True,
         )
+
+    def _createToolVisual(self, oMtool):
+        """Create visual representation of the robot end effector
+
+        The visual will not appear unless the physics client is set to
+        SHARED_MEMMORY
+
+        Arguments:
+            oMtool -- Position of the tool in the world
+        """
+        RADIUS = 0.01
+        LENGTH = 0.02
+        blueCapsule = p.createVisualShape(
+            shapeType=p.GEOM_CAPSULE,
+            rgbaColor=[0, 0, 1, 0.5],
+            visualFramePosition=[0.0, 0.0, 0.0],
+            radius=RADIUS,
+            length=LENGTH,
+            halfExtents=[0.0, 0.0, 0.0],
+        )
+        self.tool_pin = p.createMultiBody(
+            baseMass=0.0,
+            baseInertialFramePosition=[0, 0, 0],
+            baseVisualShapeIndex=blueCapsule,
+            basePosition=[0.0, 0.0, 0.0],
+            useMaximalCoordinates=True,
+        )
+
+        self._setObjectPosition(self.tool_pin, oMtool)
+
+    def _setObjectPosition(self, objectName, oMobject):
+        """Move an object to the given position
+
+        Arguments:
+            objectName -- Name of the object to move
+            oMobject -- Position of the object in the world
+        """
+
+        p.resetBasePositionAndOrientation(
+            objectName,
+            oMobject.translation,
+            pin.Quaternion(oMobject.rotation).coeffs(),
+        )
     
     def createCoMVisual(self):
         """Create visual representation of the CoM
@@ -246,7 +290,6 @@ class TalosDeburringSimulator:
     def reset(self, target_position, seed=None):
         """Reset robot to initial configuration"""
         # Reset base
-        self.createTargetVisual(target_position)
         p.resetBasePositionAndOrientation(
             self.robotId,
             self.initial_base_position,
@@ -274,6 +317,8 @@ class TalosDeburringSimulator:
                 self.bulletJointsIdInPinOrder[i],
                 init_pos,
             )
+        self.createTargetVisual(target_position)
+        
 
     def end(self):
         """Ends connection with pybullet."""
