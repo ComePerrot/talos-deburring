@@ -81,14 +81,13 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
         self.save_path = os.path.join(log_dir, "best_model")
         self.best_mean_reward = -np.inf
 
-    def _init_callback_save(self) -> None:
+    def _init_callback(self) -> None:
         # Create folder if needed
         if self.save_path is not None:
             os.makedirs(self.save_path, exist_ok=True)
 
-    def _on_step_save(self) -> bool:
+    def _on_step(self) -> bool:
         if self.n_calls % self.check_freq == 0:
-
           # Retrieve training reward
           x, y = ts2xy(load_results(self.log_dir), "timesteps")
           if len(x) > 0:
@@ -122,30 +121,29 @@ class AllCallbacks(BaseCallback):
         self._stats_window_size = stats_window_size
         self._custom_info_buffer = None
         self._episode_num = 0
-
+        self._ep_info_buffer = None
 
     def _init_callback_save(self) -> None:
         # Create folder if needed
-        if self.save_path is not None:
-            os.makedirs(self.save_path, exist_ok=True)
+        self.model.save(self.save_path)
 
     def _on_step_save(self) -> bool:
+        try:
+            self._update_info_buffer_save(self.locals['infos'][0]['episode'])
+        except:
+            pass
         if self.n_calls % self.check_freq == 0:
 
           # Retrieve training reward
-          x, y = ts2xy(load_results(self.log_dir), "timesteps")
-          if len(x) > 0:
+          if len(self._ep_info_buffer) > 0:
               # Mean training reward over the last 100 episodes
-              mean_reward = np.mean(y[-100:])
-              if self.verbose >= 1:
-                print(f"Num timesteps: {self.num_timesteps}")
-                print(f"Best mean reward: {self.best_mean_reward:.2f} - Last mean reward per episode: {mean_reward:.2f}")
-
+              mean_reward = safe_mean([ep_info for ep_info in self._ep_info_buffer])
               # New best model, you could save the agent here
               if mean_reward > self.best_mean_reward:
                   self.best_mean_reward = mean_reward
                   # Example for saving best model
                   if self.verbose >= 1:
+                    print(f"Best model found with mean of: {mean_reward:.2f}")
                     print(f"Saving new best model to {self.save_path}")
                   self.model.save(self.save_path)
     
@@ -185,6 +183,15 @@ class AllCallbacks(BaseCallback):
         temp_dict["to_reach"] = infos["dst"]
         temp_dict["from_init"] = infos["init"]
         self._custom_info_buffer.extend([temp_dict])
+
+    def _update_info_buffer_save(self, infos):
+        """
+        Update the buffer for episode infos.
+        :param infos: ([dict]) List of infos
+        """
+        if self._ep_info_buffer is None:
+            self._ep_info_buffer = deque(maxlen=self._stats_window_size)
+        self._ep_info_buffer.extend([infos['r']])
 
     def _init_callback(self) -> None:
         self._init_callback_save()

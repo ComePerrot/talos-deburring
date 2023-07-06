@@ -68,7 +68,8 @@ else:
     training_name = current_date + "_" + params_training["name"]
 
 log_dir = "./logs/"
-temp_copy_file = "./logs/temp.yaml"
+temp_file_yaml = "./logs/temp.yaml"
+temp_best_save = "./logs/best_model.zip"
 
 number_environments = params_training["environment_quantity"]
 total_timesteps = params_training["total_timesteps"]
@@ -91,6 +92,9 @@ torch.set_num_threads(1)
 ##############
 # Create environment
 env_class = EnvTalosDeburringHer
+model_class = SAC  # works also with SAC, DDPG and TD3
+callback_class = AllCallbacks
+
 if number_environments == 1:
     env_training = env_class(params_designer, params_env, GUI=False)
 else:
@@ -99,7 +103,6 @@ else:
         * [lambda: Monitor(env_class(params_designer, params_env, GUI=False))],
     )
 
-model_class = SAC  # works also with SAC, DDPG and TD3
 
 goal_selection_strategy = "future" # equivalent to GoalSelectionStrategy.FUTURE
 model = model_class(
@@ -120,18 +123,23 @@ model = model_class(
     policy_kwargs=dict(net_arch=[512, 512, 512])
 )
 
-def saver(temp_copy_file, training_name, model):
+def saver(temp_file_yaml, temp_best_save, training_name, model):
     print("Saving model as {}".format(model.logger.dir + "/" + training_name))
     model.save(model.logger.dir + "/" + training_name)
-    shutil.copy(temp_copy_file, model.logger.dir + "/" + training_name + ".yaml")
-    os.remove(temp_copy_file)
+    shutil.copy(temp_file_yaml, model.logger.dir + "/" + training_name + ".yaml")
+    shutil.copy(temp_best_save, model.logger.dir + "/" + "best_model.zip")
+    os.remove(temp_file_yaml)
+    os.remove(temp_best_save)
 
 def handler(signum, frame):
-    saver(temp_copy_file, training_name, model)
+    saver(temp_file_yaml=temp_file_yaml, 
+          temp_best_save=temp_best_save, 
+          training_name=training_name, 
+          model=model)
     exit(1)
 
 signal.signal(signal.SIGINT, handler)
-shutil.copy(config_filename, temp_copy_file)
+shutil.copy(config_filename, temp_file_yaml)
 
 # 
 # Train Agent
@@ -141,10 +149,15 @@ model.learn(
     total_timesteps=total_timesteps,
     tb_log_name=training_name,
     log_interval=log_interval,
-    callback=TensorboardCallback(verbose=verbose),
-    # callback=AllCallbacks(log_dir="./logs/", stats_window_size=100, check_freq=1000, verbose=verbose),
+    callback=callback_class(log_dir=log_dir, 
+                            stats_window_size=100, 
+                            check_freq=1000, 
+                            verbose=verbose),
 )
 
 print(model.logger.dir)
-saver(temp_copy_file, training_name, model)
+saver(temp_file_yaml=temp_file_yaml, 
+      temp_best_save=temp_best_save, 
+      training_name=training_name, 
+      model=model)
 env_training.close()
