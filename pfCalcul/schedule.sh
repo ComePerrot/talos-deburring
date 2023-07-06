@@ -14,5 +14,4 @@ sleep ${SLURM_ARRAY_TASK_ID} && \
     apptainer run --no-home \
     --bind /pfcalcul/work/cperrot/logs:/logs \
     --bind /pfcalcul/work/cperrot/config:/config \
-    --app train \
     rl.sif
