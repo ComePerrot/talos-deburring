@@ -205,15 +205,16 @@ class TalosDeburringSimulator:
             pin.Quaternion(oMobject.rotation).coeffs(),
         )
     
-    def createCoMVisual(self):
+    def createBaseRobotVisual(self):
         """Create visual representation of the CoM
 
         The visual will not appear unless the physics client is set to
         SHARED_MEMORY
         :param CoM Position of the CoM in the world
+        :param baseRobot Position of the base of the robot in the world
         """
         try:
-            p.removeBody(self.CoM_MPC)
+            p.removeBody(self.baseRobot_MPC)
         except:
             pass
         RADIUS = 0.1
@@ -227,11 +228,11 @@ class TalosDeburringSimulator:
             halfExtents=[0.0, 0.0, 0.0],
         )
 
-        self.CoM_MPC = p.createMultiBody(
+        self.baseRobot_MPC = p.createMultiBody(
             baseMass=0.0,
             baseInertialFramePosition=[0, 0, 0],
             baseVisualShapeIndex=blueBox,
-            basePosition=[self.CoM[0], self.CoM[1], self.CoM[2]],
+            basePosition=[self.baseRobot[0], self.baseRobot[1], self.baseRobot[2]],
             useMaximalCoordinates=True,
         )
 
@@ -273,11 +274,14 @@ class TalosDeburringSimulator:
         """Do one step of simulation"""
         self._applyTorques(torques)
         p.stepSimulation()
-        self.CoM = np.array([p.getBasePositionAndOrientation(self.robotId)[0][0],
+        # self.CoM = np.array([p.getBasePositionAndOrientation(self.robotId)[0][0],
+        #                      p.getBasePositionAndOrientation(self.robotId)[0][1], 
+        #                      p.getBasePositionAndOrientation(self.robotId)[0][2]
+        #                     ])
+        self.baseRobot = np.array([p.getBasePositionAndOrientation(self.robotId)[0][0],
                              p.getBasePositionAndOrientation(self.robotId)[0][1], 
                              p.getBasePositionAndOrientation(self.robotId)[0][2]
                             ])
-
     def _applyTorques(self, torques):
         """Apply computed torques to the robot"""
         p.setJointMotorControlArray(

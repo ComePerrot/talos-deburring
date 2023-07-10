@@ -357,7 +357,7 @@ class EnvTalosDeburringHer(gym.Env):
         Environment is truncated when a constraint is infriged.
         There are two possible reasons for truncations:
          - Loss of balance of the robot:
-            Rollout is stopped if position of CoM is under threshold
+            Rollout is stopped if position of CoM (or base currently) is under threshold
             No check is carried out if threshold is set to 0
          - Infrigement of the kinematic constraints of the robot
             Rollout is stopped if configuration exceeds model limits
@@ -370,7 +370,9 @@ class EnvTalosDeburringHer(gym.Env):
             True if the environment has been truncated, False otherwise.
         """
         # Balance
-        truncation_balance =  (self.simulator.CoM < self.lowerLimitPos).any() or (self.simulator.CoM > self.upperLimitPos
+        # truncation_balance =  (self.simulator.CoM < self.lowerLimitPos).any() or (self.simulator.CoM > self.upperLimitPos
+        # ).any()
+        truncation_balance =  (self.simulator.baseRobot < self.lowerLimitPos).any() or (self.simulator.baseRobot > self.upperLimitPos
         ).any()
         # Limits
         truncation_limits_position = (
@@ -455,7 +457,7 @@ class EnvTalosDeburringHer(gym.Env):
 
 
 
-class EnvTalosDeburringHerParse(EnvTalosDeburringHer):
+class EnvTalosDeburringHerSparse(EnvTalosDeburringHer):
     def __init__(self, 
                  params_designer, 
                  params_env, 
