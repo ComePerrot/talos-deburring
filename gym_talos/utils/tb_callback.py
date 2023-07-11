@@ -1,4 +1,5 @@
 import os
+import shutil
 import numpy as np
 
 from stable_baselines3.common.callbacks import BaseCallback
@@ -12,15 +13,16 @@ class TensorboardCallback(BaseCallback):
     """
 
     def __init__(self,
-                    log_dir: str = None, 
-                    stats_window_size: int = 100,
-                    check_freq: int = 1000,
-                    verbose: int = 0):
+                 stats_window_size: int = 100,
+                 verbose: int = 0):
         super().__init__(verbose)
         self._stats_window_size = stats_window_size
         self._custom_info_buffer = None
         self._episode_num = 0
 
+    def _init_callback(self) -> None:
+        pass
+    
     def _on_step(self) -> bool:
         """
         This method will be called by the model after each call to `env.step()`.
@@ -32,6 +34,32 @@ class TensorboardCallback(BaseCallback):
             if self.locals['log_interval'] is not None and self._episode_num % self.locals['log_interval'] == 0:
                 self._dump_logs()
 
+    def _on_training_start(self) -> None:
+        """
+        This method is called before the first rollout starts.
+        """
+        pass
+
+    def _on_rollout_start(self) -> None:
+        """
+        A rollout is the collection of environment interaction
+        using the current policy.
+        This event is triggered before collecting new samples.
+        """
+        pass
+
+    def _on_rollout_end(self) -> None:
+        """
+        This event is triggered before updating the policy.
+        """
+        pass
+
+    def _on_training_end(self) -> None:
+        """
+        This event is triggered before exiting the `learn()` method.
+        """
+        pass
+    
     def _dump_logs(self) -> None:
         """
         Write log.
@@ -40,8 +68,7 @@ class TensorboardCallback(BaseCallback):
             self.logger.record("z_custom/torque_mean", safe_mean([ep_info["torque"] for ep_info in self._custom_info_buffer]))
             self.logger.record("z_custom/to_reach_mean", safe_mean([ep_info["to_reach"] for ep_info in self._custom_info_buffer]))
             self.logger.record("z_custom/from_init_mean", safe_mean([ep_info["from_init"] for ep_info in self._custom_info_buffer]))
-
-
+        ## If we want saves more frequently we can with the following command
         # self.logger.dump(step=self.num_timesteps)
         return True
     
@@ -58,9 +85,7 @@ class TensorboardCallback(BaseCallback):
         temp_dict["from_init"] = infos["init"]
         self._custom_info_buffer.extend([temp_dict])
 
-
-
-class SaveOnBestTrainingRewardCallback(BaseCallback):
+class SaveCallback(BaseCallback):
     """
     Callback for saving a model (the check is done every ``check_freq`` steps)
     based on the training reward (in practice, we recommend using ``EvalCallback``).
@@ -71,69 +96,31 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
     :param verbose: Verbosity level: 0 for no output, 1 for info messages, 2 for debug messages
     """
     def __init__(self,
-                    log_dir: str = None, 
-                    stats_window_size: int = 100,
+                    config_filename: str = None,
+                    training_name: str = None,
                     check_freq: int = 1000,
                     verbose: int = 0):
         super().__init__(verbose)
         self.check_freq = check_freq
-        self.log_dir = log_dir
-        self.save_path = os.path.join(log_dir, "best_model")
         self.best_mean_reward = -np.inf
+        self.save_path = None
+        self.config_filename = config_filename
+        self.training_name = training_name
 
-    def _init_callback(self) -> None:
-        # Create folder if needed
-        if self.save_path is not None:
-            os.makedirs(self.save_path, exist_ok=True)
+    def _on_training_start(self) -> None:
+        """
+        This method is called before the first rollout starts.
+        """
+        if self.save_path is None:
+            self.save_path = self.locals['self'].logger.dir
+            shutil.copy(self.config_filename, self.save_path + "/" + self.training_name + ".yaml")
 
     def _on_step(self) -> bool:
-        if self.n_calls % self.check_freq == 0:
-          # Retrieve training reward
-          x, y = ts2xy(load_results(self.log_dir), "timesteps")
-          if len(x) > 0:
-              # Mean training reward over the last 100 episodes
-              mean_reward = np.mean(y[-100:])
-              if self.verbose >= 1:
-                print(f"Num timesteps: {self.num_timesteps}")
-                print(f"Best mean reward: {self.best_mean_reward:.2f} - Last mean reward per episode: {mean_reward:.2f}")
-
-              # New best model, you could save the agent here
-              if mean_reward > self.best_mean_reward:
-                  self.best_mean_reward = mean_reward
-                  # Example for saving best model
-                  if self.verbose >= 1:
-                    print(f"Saving new best model to {self.save_path}")
-                  self.model.save(self.save_path)
-
-        return True
-
-class AllCallbacks(BaseCallback):
-    def __init__(self,
-                    log_dir: str = None, 
-                    stats_window_size: int = 100,
-                    check_freq: int = 1000,
-                    verbose: int = 0):
-        super().__init__(verbose)
-        self.check_freq = check_freq
-        self.log_dir = log_dir
-        self.save_path = os.path.join(log_dir, "best_model")
-        self.best_mean_reward = -np.inf
-        self._stats_window_size = stats_window_size
-        self._custom_info_buffer = None
-        self._episode_num = 0
-        self._ep_info_buffer = None
-
-    def _init_callback_save(self) -> None:
-        # Create folder if needed
-        self.model.save(self.save_path)
-
-    def _on_step_save(self) -> bool:
         try:
             self._update_info_buffer_save(self.locals['infos'][0]['episode'])
         except:
             pass
         if self.n_calls % self.check_freq == 0:
-
           # Retrieve training reward
           if len(self._ep_info_buffer) > 0:
               # Mean training reward over the last 100 episodes
@@ -144,8 +131,56 @@ class AllCallbacks(BaseCallback):
                   # Example for saving best model
                   if self.verbose >= 1:
                     print(f"Best model found with mean of: {mean_reward:.2f}")
-                    print(f"Saving new best model to {self.save_path}")
-                  self.model.save(self.save_path)
+                    print(f"Saving new best model to {self.save_path}/best_model.zip")
+                  self.model.save(self.save_path  + "/" + "best_model.zip")
+        return True
+    
+
+
+
+class AllCallbacks(BaseCallback):
+    def __init__(self,
+                    config_filename: str = None, 
+                    training_name: str = None,
+                    stats_window_size: int = 100,
+                    check_freq: int = 1000,
+                    verbose: int = 0):
+        super().__init__(verbose)
+        self.check_freq = check_freq
+        self.config_filename = config_filename
+        self.training_name = training_name
+        self.best_mean_reward = -np.inf
+        self._stats_window_size = stats_window_size
+        self._custom_info_buffer = None
+        self._episode_num = 0
+        self._ep_info_buffer = None
+        self.save_path = None
+
+    def _on_training_start(self) -> None:
+        """
+        This method is called before the first rollout starts.
+        """
+        self.save_path = self.locals['self'].logger.dir
+        shutil.copy(self.config_filename, self.save_path + "/" + self.training_name + ".yaml")
+
+    def _on_step_save(self) -> bool:
+        try:
+            self._update_info_buffer_save(self.locals['infos'][0]['episode'])
+        except:
+            pass
+        if self.n_calls % self.check_freq == 0:
+          # Retrieve training reward
+          if len(self._ep_info_buffer) > 0:
+              # Mean training reward over the last 100 episodes
+              mean_reward = safe_mean([ep_info for ep_info in self._ep_info_buffer])
+              # New best model, you could save the agent here
+              if mean_reward > self.best_mean_reward:
+                  self.best_mean_reward = mean_reward
+                  # Example for saving best model
+                  if self.verbose >= 1:
+                    print(f"Best model found with mean of: {mean_reward:.2f}")
+                    print(f"Saving new best model to {self.save_path}/best_model.zip")
+                  self.model.save(self.save_path  + "/" + "best_model.zip")
     
     def _on_step_tensor(self) -> bool:
         """
@@ -192,10 +227,6 @@ class AllCallbacks(BaseCallback):
         if self._ep_info_buffer is None:
             self._ep_info_buffer = deque(maxlen=self._stats_window_size)
         self._ep_info_buffer.extend([infos['r']])
-
-    def _init_callback(self) -> None:
-        self._init_callback_save()
-        return True
     
     def _on_step(self) -> bool:
         self._on_step_tensor()
