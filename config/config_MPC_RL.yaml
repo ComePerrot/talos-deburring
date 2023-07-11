@@ -1,0 +1,87 @@
+OCP:
+  horizon_length: 100
+  w_state_reg: 0.02
+  w_control_reg: 0.001
+  w_limit: 1000
+  w_com_pos: 500
+  w_gripper_pos: 5
+  w_gripper_rot: 30
+  w_gripper_vel: 2
+  limit_scale: 1
+  state_pos_weights:
+    base: [500, 500, 500, 1000, 1000, 1000]
+    left_leg: [500, 500, 500, 500, 1000, 1000]
+    right_leg: [500, 500, 500, 500, 1000, 1000]
+    torso: [100, 200]
+    left_arm: [100, 100, 100, 100, 1, 1, 1]
+    # right_arm: [500, 500, 500, 500]
+  state_vel_weights:
+    base: [1, 1, 1, 1, 1, 1]
+    left_leg: [1, 1, 1, 1, 1, 1]
+    right_leg: [1, 1, 1, 1, 1, 1]
+    torso: [10, 10]
+    left_arm: [10, 10, 10, 10, 10, 10, 10]
+    # right_arm: [10, 10, 10, 10]
+  control_weights:
+    left_leg: [1, 1, 1, 1, 1, 1]
+    right_leg: [1, 1, 1, 1, 1, 1]
+    torso: [1, 1]
+    left_arm: [1, 1, 1, 1, 1, 1, 1]
+    # right_arm: [1, 1, 1, 1]
+
+training:
+  name: "test"
+  environment_quantity: 1 # Number of environments used to collect data
+  total_timesteps: 5000 # Total number of training timesteps
+  verbose: False
+
+environment:
+  numSimulationSteps: 10
+  timeStepSimulation: 1e-3
+  normalizeObs: True
+  # Stop conditions
+  maxTime: 10 # Maximum epoch time in seconds
+  minHeight: 0.8 # if 0 no check is performed on the height of the robot
+  # Target
+  targetPosition: [0.6,0.4,1.1]
+  # Reward parameters
+  w_target_pos: 10
+  w_control_reg: 0.5
+  w_penalization_truncation: 5
+
+robot_designer:
+  urdf_path: "/opt/openrobots/share/example-robot-data/robots/talos_data/robots/talos_reduced.urdf"
+  srdf_path: "/opt/openrobots/share/example-robot-data/robots/talos_data/srdf/talos.srdf"
+  controlled_joints_names:
+    [
+      root_joint,
+      leg_left_1_joint,
+      leg_left_2_joint,
+      leg_left_3_joint,
+      leg_left_4_joint,
+      leg_left_5_joint,
+      leg_left_6_joint,
+      leg_right_1_joint,
+      leg_right_2_joint,
+      leg_right_3_joint,
+      leg_right_4_joint,
+      leg_right_5_joint,
+      leg_right_6_joint,
+      torso_1_joint,
+      torso_2_joint,
+      arm_left_1_joint,
+      arm_left_2_joint,
+      arm_left_3_joint,
+      arm_left_4_joint,
+      arm_left_5_joint,
+      arm_left_6_joint,
+      arm_left_7_joint,
+      # arm_right_1_joint,
+      # arm_right_2_joint,
+      # arm_right_3_joint,
+      # arm_right_4_joint,
+    ]
+  robot_description: ""
+  left_foot_name: "left_sole_link"
+  right_foot_name: "right_sole_link"
+  toolPosition: [0, -0.02, -0.0825]

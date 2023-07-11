@@ -1,12 +1,12 @@
 import gymnasium as gym
 import numpy as np
 import pinocchio as pin
-from deburring_mpc import RobotDesigner
+from deburring_mpc import RobotDesigner, OCP
 
 from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
 
 
-class EnvTalosBase(gym.Env):
+class EnvTalosMPC(gym.Env):
     def __init__(self, params_env, params_designer, param_ocp, GUI=False) -> None:
         self._init_parameters(params_env)
 
@@ -15,9 +15,9 @@ class EnvTalosBase(gym.Env):
         self.pinWrapper.initialize(params_designer)
 
         gripper_SE3_tool = pin.SE3.Identity()
-        gripper_SE3_tool.translation[0] = params_designer["toolFramePos"][0]
-        gripper_SE3_tool.translation[1] = params_designer["toolFramePos"][1]
-        gripper_SE3_tool.translation[2] = params_designer["toolFramePos"][2]
+        gripper_SE3_tool.translation[0] = params_designer["toolPosition"][0]
+        gripper_SE3_tool.translation[1] = params_designer["toolPosition"][1]
+        gripper_SE3_tool.translation[2] = params_designer["toolPosition"][2]
         self.pinWrapper.add_end_effector_frame(
             "deburring_tool",
             "gripper_left_fingertip_3_link",
@@ -27,8 +27,8 @@ class EnvTalosBase(gym.Env):
         self.rmodel = self.pinWrapper.get_rmodel()
 
         # OCP
-
         self._init_ocp(param_ocp)
+        self.horizon_length = param_ocp.horizon_length
 
         # Simulator
         self.simulator = TalosDeburringSimulator(
@@ -44,15 +44,16 @@ class EnvTalosBase(gym.Env):
         self._init_env_variables(action_dimension, observation_dimension)
 
     def _init_ocp(self, param_ocp):
-        oMtarget = pin.SE3.Identity()
-        oMtarget.translation[0] = self.targetPos[0]
-        oMtarget.translation[1] = self.targetPos[1]
-        oMtarget.translation[2] = self.targetPos[2]
+        self.oMtarget = pin.SE3.Identity()
+        self.oMtarget.translation[0] = self.targetPos[0]
+        self.oMtarget.translation[1] = self.targetPos[1]
+        self.oMtarget.translation[2] = self.targetPos[2]
 
-        oMtarget.rotation = np.array([[0, 0, -1], [0, -1, 0], [-1, 0, 0]])
+        self.oMtarget.rotation = np.array([[0, 0, -1], [0, -1, 0], [-1, 0, 0]])
 
-        self.crocoWrapper = self.OCP(param_ocp, self.pinWrapper)
-        self.crocoWrapper.initialize(self.pinWrapper.get_x0(), oMtarget)
+        self.crocoWrapper = OCP(param_ocp, self.pinWrapper)
+        print(self.pinWrapper.get_x0())
+        self.crocoWrapper.initialize(self.pinWrapper.get_x0(), self.oMtarget)
 
         self.ddp = self.crocoWrapper.solver
 
@@ -153,6 +154,9 @@ class EnvTalosBase(gym.Env):
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured)
 
+        # TODO: reset OCP
+        self.crocoWrapper.initialize(self.pinWrapper.get_x0(), self.oMtarget)
+
         return self._getObservation(x_measured), {}
 
     def step(self, action):
@@ -165,7 +169,7 @@ class EnvTalosBase(gym.Env):
         The termination and condition are checked and the reward is computed.
 
         Args:
-            action: Normalized action vector
+            action: Normalized action vector (arm arm posture reference)
 
         Returns:
             Formatted observations
@@ -173,14 +177,29 @@ class EnvTalosBase(gym.Env):
             Boolean indicating this rollout is done
         """
         self.timer += 1
-        torques = self._scaleAction(action)
+        arm_reference = self._scaleAction(action)
+
+        x0 = self.simulator.getRobotState()
 
         for _ in range(self.numSimulationSteps):
+            x_measured = self.simulator.getRobotState()
+            torques = (
+                self.crocoWrapper.torque
+                + self.crocoWrapper.gain @ self.crocoWrapper.state.diff(x_measured, x0)
+            )
             self.simulator.step(torques)
 
         x_measured = self.simulator.getRobotState()
 
         self.pinWrapper.update_reduced_model(x_measured)
+
+        self.crocoWrapper.recede()  # @TODO bind the recede method to python
+        self.crocoWrapper.change_goal_cost_activation(self.horizon_length - 1, True)
+        self.crocoWrapper.change_posture_reference(
+            self.horizon_length - 1, arm_reference,
+        )  # @TODO make sure the reference is the correct shape
+
+        self.pinWrapper.solve(x_measured)
 
         observation = self._getObservation(x_measured)
         terminated = self._checkTermination(x_measured)
