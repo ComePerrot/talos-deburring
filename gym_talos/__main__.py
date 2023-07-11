@@ -11,9 +11,10 @@ from stable_baselines3 import SAC
 from stable_baselines3.common.env_util import SubprocVecEnv
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3 import HerReplayBuffer, SAC
+from stable_baselines3.common.callbacks import CallbackList, EvalCallback
 
 from .envs.env_talos_deburring_her import EnvTalosDeburringHer
-from .utils.tb_callback import AllCallbacks, TensorboardCallback
+from .utils.tb_callback import AllCallbacks, SaveCallback, TensorboardCallback
 
 ################
 # Main HER SAC #
@@ -93,12 +94,20 @@ torch.set_num_threads(1)
 # Create environment
 env_class = EnvTalosDeburringHer
 model_class = SAC  # works also with SAC, DDPG and TD3
-class_callback = AllCallbacks(config_filename=config_filename, 
-                          training_name=training_name,
-                          stats_window_size=100,
-                          check_freq=1000,
-                          verbose=verbose,
-    )
+callback_class = AllCallbacks(config_filename=config_filename, 
+                            training_name=training_name,
+                            stats_window_size=100, 
+                            check_freq=1000, 
+                            verbose=verbose)
+save_callback = SaveCallback(config_filename=config_filename, 
+                            training_name=training_name,
+                            check_freq=1000,
+                            verbose=verbose
+                            )
+tensorboard_callback = TensorboardCallback(stats_window_size=100,
+                                           verbose=verbose)
+callback_list = CallbackList([save_callback, tensorboard_callback])
+
 if number_environments == 1:
     env_training = env_class(params_designer, params_env, GUI=False)
 else:
@@ -106,7 +115,6 @@ else:
         number_environments
         * [lambda: Monitor(env_class(params_designer, params_env, GUI=False))],
     )
-
 
 goal_selection_strategy = "future" # equivalent to GoalSelectionStrategy.FUTURE
 model = model_class(
@@ -144,7 +152,7 @@ model.learn(
     total_timesteps=total_timesteps,
     tb_log_name=training_name,
     log_interval=log_interval,
-    callback=class_callback
+    callback=callback_class,
 )
 
 saver(training_name=training_name, 

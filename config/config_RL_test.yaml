@@ -40,8 +40,8 @@ environment:
   thresholdSuccess: 0.05 # Distance to the target to consider the target reached
   # Reward parameters
   w_joints_to_init: {
-    'torso_1_joint': 0.1,
-    'torso_2_joint': 0.1,
+    'torso_1_joint': 1,
+    'torso_2_joint': 1,
   }
   w_target_reached: 100
   w_target_pos: 10
