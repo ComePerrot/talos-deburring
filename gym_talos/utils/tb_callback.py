@@ -155,6 +155,7 @@ class AllCallbacks(BaseCallback):
         self._episode_num = 0
         self._ep_info_buffer = None
         self.save_path = None
+        self._ep_end_buffer = None
 
     def _on_training_start(self) -> None:
         """
@@ -174,7 +175,7 @@ class AllCallbacks(BaseCallback):
               # Mean training reward over the last 100 episodes
               mean_reward = safe_mean([ep_info for ep_info in self._ep_info_buffer])
               # New best model, you could save the agent here
-              if mean_reward > self.best_mean_reward:
+              if mean_reward > self.best_mean_reward and mean_reward > 0:
                   self.best_mean_reward = mean_reward
                   # Example for saving best model
                   if self.verbose >= 1:
@@ -190,6 +191,7 @@ class AllCallbacks(BaseCallback):
         self._update_info_buffer_tensor(self.locals['infos'][0])
         if self.locals['dones'][0]:
             self._episode_num += 1
+            self._ep_end_buffer.extend([self.locals['infos'][0]["dst"]])
             if self.locals['log_interval'] is not None and self._episode_num % self.locals['log_interval'] == 0:
                 self._dump_logs_tensor()
 
@@ -201,7 +203,7 @@ class AllCallbacks(BaseCallback):
             self.logger.record("z_custom/torque_mean", safe_mean([ep_info["torque"] for ep_info in self._custom_info_buffer]))
             self.logger.record("z_custom/to_reach_mean", safe_mean([ep_info["to_reach"] for ep_info in self._custom_info_buffer]))
             self.logger.record("z_custom/from_init_mean", safe_mean([ep_info["from_init"] for ep_info in self._custom_info_buffer]))
-
+            self.logger.record("z_custom/final_dt", safe_mean([ep_end for ep_end in self._ep_end_buffer]))
 
         # self.logger.dump(step=self.num_timesteps)
         return True
@@ -214,6 +216,8 @@ class AllCallbacks(BaseCallback):
         temp_dict = {}
         if self._custom_info_buffer is None:
             self._custom_info_buffer = deque(maxlen=self._stats_window_size)
+        if self._ep_end_buffer is None:
+            self._ep_end_buffer = deque(maxlen=self._stats_window_size // 2)
         temp_dict["torque"] = infos["tor"]
         temp_dict["to_reach"] = infos["dst"]
         temp_dict["from_init"] = infos["init"]
