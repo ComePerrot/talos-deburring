@@ -1,9 +1,9 @@
 training:
-  name: "long_training"
+  name: "local_train"
   environment_quantity: 1 # Number of environments used to collect data
   total_timesteps: 10000000 # Total number of training timesteps
   learning_rate: 0.0003 # Learning rate of the algorithm
-  log_interval: 10 # Number of timesteps between logging events
+  log_interval: 100 # Number of timesteps between logging events
   learning_starts: 1000 # Number of timesteps before starting to learn
   train_freq: 2 # Update the model every train_freq steps. Set to None to disable the interval update
   gamma: 0.95 # Discount factor
@@ -21,7 +21,7 @@ environment:
   # (a quarter around the limits and the initial position currently)
   limitPosScale: 1
   limitVelScale: 1
-  torqueScaleCoeff: 0.9
+  torqueScaleCoeff: 1
 
   # Stop conditions
   maxTime: 30 # Maximum epoch time in seconds
@@ -35,18 +35,18 @@ environment:
   # targetPosition: [0.14, 0.46, 0.6834647]
   targetSizeLow: [-0.1, -0.1, -0.1]
   targetSizeHigh: [0.1, 0.1, 0.1]
-  targetRadius: 0.3
+  targetRadius: 0.6
   shoulderPosition: [0.3482729,  0.46236133, 1.08072397]
   thresholdSuccess: 0.05 # Distance to the target to consider the target reached
   # Reward parameters
   w_joints_to_init: {
-    'torso_1_joint': 0.2,
-    'torso_2_joint': 0.2,
+    'torso_1_joint': 1,
+    'torso_2_joint': 1,
   }
-  w_target_reached: 100
+  w_target_reached: 10
   w_target_pos: 10
   w_control_reg: 0.05
-  w_penalization_truncation: 9
+  w_penalization_truncation: 4
 
 robot_designer:
   # URDF: "/talos_data/robots/talos_full_v2.urdf"
@@ -83,5 +83,5 @@ robot_designer:
     ]
 
   # Initial position of the robot
-  # toolPosition: [0.0, 0.0, 0.0]
-  toolPosition: [0, -0.02, -0.0825]
+  toolPosition: [0.0, 0.0, 0.0]
+  # toolPosition: [0, -0.02, -0.0825]
