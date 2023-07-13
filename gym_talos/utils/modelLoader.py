@@ -80,6 +80,7 @@ class TalosDesigner:
         self.z_c = self.q0Complete[2]
         self.g = self.gravity[2]
         self._buffer_CoM = deque(maxlen=3)
+        self.base_robot_bullet_SE3_origin_robot_pinocchio = pin.SE3(np.eye(3), self.q0Complete[:3]).inverse()
         # Check that controlled joints belong to model
         for joint in controlledJointsName:
             if joint not in self.rmodelComplete.names:
@@ -113,29 +114,34 @@ class TalosDesigner:
         # pin.framesForwardKinematics(self.rmodel, self.rdata, x_measured[: self.rmodel.nq])
         pin.forwardKinematics(self.rmodel, self.rdata, x_measured[: self.rmodel.nq], x_measured[-self.rmodel.nv:])
         pin.updateFramePlacements(self.rmodel, self.rdata)
-        self.mat_SE3 = pin.XYZQUATToSE3(base_pos)
+
+        # Updating from bullet world to base robot bullet
+        self.world_bullet_SE3_base_robot_bullet = pin.XYZQUATToSE3(base_pos)
+        self.world_bullet_SE3_origin_robot_pin = self.world_bullet_SE3_base_robot_bullet * self.base_robot_bullet_SE3_origin_robot_pinocchio
+        self.get_CoM(x_measured, base_pos)
+        
+        self.oMtool = self.rdata.oMf[self.endEffectorId]
+        self._buffer_CoM.append(self.CoM[:2])
+
+        if len(self._buffer_CoM) == 3:
+            acc = 0.01 * (self._buffer_CoM[2] + self._buffer_CoM[0] - 2 * self._buffer_CoM[1]) / (self.dt ** 2)
+            self.ZMP = self.z_c / self.g * acc 
+        else:
+            self.ZMP = self._buffer_CoM[0]
+
+    def get_CoM(self, x_measured, base_pos):
+        """Compute the CoM position from the robot state"""
         local_CoM = pin.centerOfMass(
             self.rmodel,
             self.rdata,
             x_measured[: self.rmodel.nq]
         )
-        self.CoM = self.convert_local_to_global(local_CoM)
-        self.oMtool = self.rdata.oMf[self.endEffectorId]
-        self._buffer_CoM.append(self.CoM[:2])
-        if len(self._buffer_CoM) == 3:
-            acc = 100 * (self._buffer_CoM[2] + self._buffer_CoM[0] - 2 * self._buffer_CoM[1]) / (self.dt ** 2)
-            self.ZMP = self.z_c / self.g * acc 
-        else:
-            self.ZMP = self._buffer_CoM[0]
+        self.CoM = self.world_bullet_SE3_origin_robot_pin.rotation @ local_CoM + self.world_bullet_SE3_origin_robot_pin.translation
 
-    def convert_local_to_global(self, vec_to_convert):
-        return self.mat_SE3.rotation @ (vec_to_convert - self.q0Complete[:3]) + self.mat_SE3.translation
-    
     def get_end_effector_pos(self):
-        return self.convert_local_to_global(self.oMtool.translation)
+        """Compute the end effector position from the robot state"""
+        return self.world_bullet_SE3_origin_robot_pin.rotation @ self.oMtool.translation + self.world_bullet_SE3_origin_robot_pin.translation
     
     def get_end_effector_pos_local(self):
+        """Compute the end effector position from the robot state in local frame"""
         return self.oMtool.translation
-    
-    def get_vec_to_se3(self, vec):
-        return pin.XYZQUATToSe3(vec)

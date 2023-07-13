@@ -271,7 +271,8 @@ class EnvTalosDeburringHer(gym.Env):
             self.simulator.step(torques)
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured, self.simulator.getRobotPos())
-        self.simulator.createBaseRobotVisual(np.concatenate([self.pinWrapper.ZMP, np.array([1])]))
+        # self.simulator.createBaseRobotVisual(self.pinWrapper.get_end_effector_pos())
+        self.simulator.createBaseRobotVisual(self.pinWrapper.CoM)
         ob = self._getObservation(x_measured) # position and velocity of the joints and the final goal
         truncated = self._checkTruncation(x_measured)
         reward, infos = self._reward(torques, ob, truncated)
@@ -386,6 +387,7 @@ class EnvTalosDeburringHer(gym.Env):
             np.abs(x_measured[-self.rmodel.nv :]) >  self.limitVelScale * self.rmodel.velocityLimit
         ).any()
         truncation_limits = truncation_limits_position or truncation_limits_speed
+        return False
         return truncation_limits or truncation_balance
     
     def _checkSuccess(self):
