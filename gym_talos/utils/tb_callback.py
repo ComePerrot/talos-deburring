@@ -171,17 +171,18 @@ class AllCallbacks(BaseCallback):
             pass
         if self.n_calls % self.check_freq == 0:
           # Retrieve training reward
-          if len(self._ep_info_buffer) > 0:
-              # Mean training reward over the last 100 episodes
-              mean_reward = safe_mean([ep_info for ep_info in self._ep_info_buffer])
-              # New best model, you could save the agent here
-              if mean_reward > self.best_mean_reward and mean_reward > 0:
-                  self.best_mean_reward = mean_reward
-                  # Example for saving best model
-                  if self.verbose >= 1:
-                    print(f"Best model found with mean of: {mean_reward:.2f}")
-                    print(f"Saving new best model to {self.save_path}/best_model.zip")
-                  self.model.save(self.save_path  + "/" + "best_model.zip")
+            if self._ep_info_buffer is not None:
+                if len(self._ep_info_buffer) > 0:
+                    # Mean training reward over the last 100 episodes
+                    mean_reward = safe_mean([ep_info for ep_info in self._ep_info_buffer])
+                    # New best model, you could save the agent here
+                    if mean_reward > self.best_mean_reward and mean_reward > 0:
+                        self.best_mean_reward = mean_reward
+                        # Example for saving best model
+                        if self.verbose >= 1:
+                            print(f"Best model found with mean of: {mean_reward:.2f}")
+                            print(f"Saving new best model to {self.save_path}/best_model.zip")
+                        self.model.save(self.save_path  + "/" + "best_model.zip")
     
     def _on_step_tensor(self) -> bool:
         """

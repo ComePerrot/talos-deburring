@@ -1,3 +1,4 @@
+from collections import deque
 import example_robot_data
 import numpy as np
 import pinocchio as pin
@@ -6,10 +7,11 @@ np.set_printoptions(precision=3, linewidth=300, suppress=True, threshold=10000)
 
 
 class TalosDesigner:
-    def __init__(self, URDF, SRDF, toolPosition, controlledJoints, **kwargs):
+    def __init__(self, URDF, SRDF, toolPosition, controlledJoints, set_gravity, dt, **kwargs):
         modelPath = example_robot_data.getModelPath(URDF)
         self.URDF_path = modelPath + URDF
-
+        self.gravity = np.array([0, 0, -9.81]) if set_gravity else np.array([0, 0, 0])
+        self.dt = dt
         if True:
             self.rmodelComplete = pin.buildModelFromUrdf(
                 self.URDF_path,
@@ -75,7 +77,9 @@ class TalosDesigner:
         :param controlledJoints List of the joints to control
         """
         self.q0Complete = self.rmodelComplete.referenceConfigurations["half_sitting"]
-
+        self.z_c = self.q0Complete[2]
+        self.g = self.gravity[2]
+        self._buffer_CoM = deque(maxlen=3)
         # Check that controlled joints belong to model
         for joint in controlledJointsName:
             if joint not in self.rmodelComplete.names:
@@ -105,18 +109,33 @@ class TalosDesigner:
         self.q0 = self.rmodel.referenceConfigurations["half_sitting"]
         self.rmodel.defaultState = np.concatenate([self.q0, np.zeros(self.rmodel.nv)])
 
-    def update_reduced_model(self, x_measured):
+    def update_reduced_model(self, x_measured, base_pos):
         # pin.framesForwardKinematics(self.rmodel, self.rdata, x_measured[: self.rmodel.nq])
         pin.forwardKinematics(self.rmodel, self.rdata, x_measured[: self.rmodel.nq], x_measured[-self.rmodel.nv:])
         pin.updateFramePlacements(self.rmodel, self.rdata)
-
-        self.CoM = pin.centerOfMass(
+        self.mat_SE3 = pin.XYZQUATToSE3(base_pos)
+        local_CoM = pin.centerOfMass(
             self.rmodel,
             self.rdata,
             x_measured[: self.rmodel.nq]
         )
+        self.CoM = self.convert_local_to_global(local_CoM)
         self.oMtool = self.rdata.oMf[self.endEffectorId]
-        
+        self._buffer_CoM.append(self.CoM[:2])
+        if len(self._buffer_CoM) == 3:
+            acc = 100 * (self._buffer_CoM[2] + self._buffer_CoM[0] - 2 * self._buffer_CoM[1]) / (self.dt ** 2)
+            self.ZMP = self.z_c / self.g * acc 
+        else:
+            self.ZMP = self._buffer_CoM[0]
 
+    def convert_local_to_global(self, vec_to_convert):
+        return self.mat_SE3.rotation @ (vec_to_convert - self.q0Complete[:3]) + self.mat_SE3.translation
+    
     def get_end_effector_pos(self):
+        return self.convert_local_to_global(self.oMtool.translation)
+    
+    def get_end_effector_pos_local(self):
         return self.oMtool.translation
+    
+    def get_vec_to_se3(self, vec):
+        return pin.XYZQUATToSe3(vec)

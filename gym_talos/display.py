@@ -6,7 +6,7 @@ from stable_baselines3 import SAC
 from .envs.env_talos_deburring import EnvTalosDeburring
 from .envs.env_talos_deburring_her import EnvTalosDeburringHer
 
-training_name = "2023-07-11_long_training_1"
+training_name = "2023-07-10_long_training_2"
 train_name = "_".join(training_name.split("_")[:-1])
 
 

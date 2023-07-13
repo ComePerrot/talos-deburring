@@ -27,6 +27,8 @@ class EnvTalosDeburringHer(gym.Env):
             SRDF=params_designer["SRDF"],
             toolPosition=params_designer["toolPosition"],
             controlledJoints=params_designer["controlledJoints"],
+            set_gravity=True,
+            dt=self.timeStepSimulation * self.numSimulationSteps,
         )
 
         self.rmodel = self.pinWrapper.rmodel
@@ -239,7 +241,7 @@ class EnvTalosDeburringHer(gym.Env):
         self.targetPos = self._init_target(self.params_env) # Reset target position
         self.simulator.reset(self.targetPos) # Reset simulator
         x_measured = self.simulator.getRobotState()
-        self.pinWrapper.update_reduced_model(x_measured)
+        self.pinWrapper.update_reduced_model(x_measured, self.simulator.getRobotPos())
         infos = {"dst": self.compute_reward(self.pinWrapper.get_end_effector_pos(), self.targetPos, {}, p=1),
                 "tor": 0, 
                 "init": 0}
@@ -261,13 +263,15 @@ class EnvTalosDeburringHer(gym.Env):
             Reward
             Boolean indicating this rollout is done
         """
+
         self.timer += 1
         torques = self._scaleAction(action)
 
         for _ in range(self.numSimulationSteps):
             self.simulator.step(torques)
         x_measured = self.simulator.getRobotState()
-        self.pinWrapper.update_reduced_model(x_measured)
+        self.pinWrapper.update_reduced_model(x_measured, self.simulator.getRobotPos())
+        self.simulator.createBaseRobotVisual(np.concatenate([self.pinWrapper.ZMP, np.array([1])]))
         ob = self._getObservation(x_measured) # position and velocity of the joints and the final goal
         truncated = self._checkTruncation(x_measured)
         reward, infos = self._reward(torques, ob, truncated)

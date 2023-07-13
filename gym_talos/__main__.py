@@ -69,8 +69,6 @@ else:
     training_name = current_date + "_" + params_training["name"]
 
 log_dir = "./logs/"
-temp_file_yaml = "./logs/temp.yaml"
-temp_best_save = "./logs/best_model.zip"
 
 number_environments = params_training["environment_quantity"]
 total_timesteps = params_training["total_timesteps"]

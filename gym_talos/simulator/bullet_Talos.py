@@ -161,51 +161,8 @@ class TalosDeburringSimulator:
             basePosition=[target[0], target[1], target[2]],
             useMaximalCoordinates=True,
         )
-
-    def _createToolVisual(self, oMtool):
-        """Create visual representation of the robot end effector
-
-        The visual will not appear unless the physics client is set to
-        SHARED_MEMMORY
-
-        Arguments:
-            oMtool -- Position of the tool in the world
-        """
-        RADIUS = 0.01
-        LENGTH = 0.02
-        blueCapsule = p.createVisualShape(
-            shapeType=p.GEOM_CAPSULE,
-            rgbaColor=[0, 0, 1, 0.5],
-            visualFramePosition=[0.0, 0.0, 0.0],
-            radius=RADIUS,
-            length=LENGTH,
-            halfExtents=[0.0, 0.0, 0.0],
-        )
-        self.tool_pin = p.createMultiBody(
-            baseMass=0.0,
-            baseInertialFramePosition=[0, 0, 0],
-            baseVisualShapeIndex=blueCapsule,
-            basePosition=[0.0, 0.0, 0.0],
-            useMaximalCoordinates=True,
-        )
-
-        self._setObjectPosition(self.tool_pin, oMtool)
-
-    def _setObjectPosition(self, objectName, oMobject):
-        """Move an object to the given position
-
-        Arguments:
-            objectName -- Name of the object to move
-            oMobject -- Position of the object in the world
-        """
-
-        p.resetBasePositionAndOrientation(
-            objectName,
-            oMobject.translation,
-            pin.Quaternion(oMobject.rotation).coeffs(),
-        )
     
-    def createBaseRobotVisual(self):
+    def createBaseRobotVisual(self, baseRobot):
         """Create visual representation of the CoM
 
         The visual will not appear unless the physics client is set to
@@ -232,7 +189,7 @@ class TalosDeburringSimulator:
             baseMass=0.0,
             baseInertialFramePosition=[0, 0, 0],
             baseVisualShapeIndex=blueBox,
-            basePosition=[self.baseRobot[0], self.baseRobot[1], self.baseRobot[2]],
+            basePosition=[baseRobot[0], baseRobot[1], baseRobot[2]],
             useMaximalCoordinates=True,
         )
 
@@ -274,14 +231,11 @@ class TalosDeburringSimulator:
         """Do one step of simulation"""
         self._applyTorques(torques)
         p.stepSimulation()
-        # self.CoM = np.array([p.getBasePositionAndOrientation(self.robotId)[0][0],
-        #                      p.getBasePositionAndOrientation(self.robotId)[0][1], 
-        #                      p.getBasePositionAndOrientation(self.robotId)[0][2]
-        #                     ])
         self.baseRobot = np.array([p.getBasePositionAndOrientation(self.robotId)[0][0],
                              p.getBasePositionAndOrientation(self.robotId)[0][1], 
                              p.getBasePositionAndOrientation(self.robotId)[0][2]
                             ])
+        
     def _applyTorques(self, torques):
         """Apply computed torques to the robot"""
         p.setJointMotorControlArray(
@@ -300,6 +254,11 @@ class TalosDeburringSimulator:
             self.initial_base_orientation,
             # self.physicsClient,
         )
+        self.baseRobot = np.array([p.getBasePositionAndOrientation(self.robotId)[0][0],
+                             p.getBasePositionAndOrientation(self.robotId)[0][1], 
+                             p.getBasePositionAndOrientation(self.robotId)[0][2]
+                            ])
+        # print("baseRobot", self.baseRobot)
         p.resetBaseVelocity(
             self.robotId,
             [0.0, 0.0, 0.0],
