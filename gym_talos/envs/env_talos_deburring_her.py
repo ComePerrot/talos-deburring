@@ -20,7 +20,7 @@ class EnvTalosDeburringHer(gym.Env):
             GUI: set to true to activate display. Defaults to False.
         """
         self._init_parameters(params_env, GUI)
-    
+
         # Robot Designer
         self.pinWrapper = TalosDesigner(
             URDF=params_designer["URDF"],
@@ -43,7 +43,7 @@ class EnvTalosDeburringHer(gym.Env):
             dt=self.timeStepSimulation,
         )
 
-        # Penalization for truncation of torsos 
+        # Penalization for truncation of torsos
         self.order_positions = self.simulator.dict_pos
         self.mat_dt_init = np.zeros(self.rmodel.nq)
         if self.weight_joints_to_init is not None:
@@ -80,7 +80,6 @@ class EnvTalosDeburringHer(gym.Env):
         self.weight_target = params_env["w_target_pos"]
         self.weight_command = params_env["w_control_reg"]
         self.weight_truncation = params_env["w_penalization_truncation"]
-        
         self.GUI = GUI
         try:
             self.random_init_robot = params_env["randomInit"]
@@ -131,37 +130,38 @@ class EnvTalosDeburringHer(gym.Env):
         if self.targetType.lower() == "fixed":
             target_pos = param_env["targetPosition"]
         elif self.targetType.lower() == "reachable":
-            phi   = np.random.uniform(0, 2 * np.pi)
+            phi = np.random.uniform(0, 2 * np.pi)
             theta = np.arccos(np.random.uniform(-1, 1))
-            u     = np.random.uniform(0, 1)
-            target_pos = [param_env["shoulderPosition"][0] + 
-                          u * np.sin(theta) * np.cos(phi), 
-                          param_env["shoulderPosition"][1] +
-                          u * np.sin(theta) * np.sin(phi), 
-                          param_env["shoulderPosition"][2] +
-                          u * np.cos(theta)]
+            u = np.random.uniform(0, 1)
+            target_pos = [
+                param_env["shoulderPosition"][0] + u * np.sin(theta) * np.cos(phi),
+                param_env["shoulderPosition"][1] + u * np.sin(theta) * np.sin(phi),
+                param_env["shoulderPosition"][2] + u * np.cos(theta),
+            ]
         elif self.targetType.lower() == "box":
             size_low = param_env["targetSizeLow"]
             size_high = param_env["targetSizeHigh"]
-            target_pos = [param_env["shoulderPosition"][0] +
-                            np.random.uniform(size_low[0], size_high[0]),
-                            param_env["shoulderPosition"][1] +
-                            np.random.uniform(size_low[1], size_high[1]),
-                            param_env["shoulderPosition"][2] +
-                            np.random.uniform(size_low[2], size_high[2])]
+            target_pos = [
+                param_env["shoulderPosition"][0]
+                + np.random.uniform(size_low[0], size_high[0]),
+                param_env["shoulderPosition"][1]
+                + np.random.uniform(size_low[1], size_high[1]),
+                param_env["shoulderPosition"][2]
+                + np.random.uniform(size_low[2], size_high[2]),
+            ]
         elif self.targetType.lower() == "sphere":
-            phi   = np.random.uniform(0, 2 * np.pi)
+            phi = np.random.uniform(0, 2 * np.pi)
             theta = np.arccos(np.random.uniform(-1, 1))
             radius = param_env["targetRadius"]
-            u     = np.random.uniform(0, radius)
-            target_pos = [param_env["shoulderPosition"][0] +
-                            u * np.sin(theta) * np.cos(phi),
-                            param_env["shoulderPosition"][1] +
-                            u * np.sin(theta) * np.sin(phi),
-                            param_env["shoulderPosition"][2] +
-                            u * np.cos(theta)]
+            u = np.random.uniform(0, radius)
+            target_pos = [
+                param_env["shoulderPosition"][0] + u * np.sin(theta) * np.cos(phi),
+                param_env["shoulderPosition"][1] + u * np.sin(theta) * np.sin(phi),
+                param_env["shoulderPosition"][2] + u * np.cos(theta),
+            ]
         else:
-            raise ValueError("Unknown target type")
+            msg = "Unknown target type"
+            raise ValueError(msg)
         return target_pos
 
     def _init_env_variables(self, action_dimension, observation_dimension):
@@ -197,23 +197,23 @@ class EnvTalosDeburringHer(gym.Env):
         else:
             limit = 10
         self.observation_space.spaces["observation"] = gym.spaces.Box(
-                    low=-limit,
-                    high=limit,
-                    shape=(observation_dimension,),
-                    dtype=np.float64,
-                )
+            low=-limit,
+            high=limit,
+            shape=(observation_dimension,),
+            dtype=np.float64,
+        )
         self.observation_space.spaces["achieved_goal"] = gym.spaces.Box(
-                    low=-limit,
-                    high=limit,
-                    shape=(len(self.targetPos),),
-                    dtype=np.float64,
-                )
+            low=-limit,
+            high=limit,
+            shape=(len(self.targetPos),),
+            dtype=np.float64,
+        )
         self.observation_space.spaces["desired_goal"] = gym.spaces.Box(
-                    low=-limit,
-                    high=limit,
-                    shape=(len(self.targetPos),),
-                    dtype=np.float64,
-                )
+            low=-limit,
+            high=limit,
+            shape=(len(self.targetPos),),
+            dtype=np.float64,
+        )
 
     def close(self):
         """Properly shuts down the environment.
@@ -221,7 +221,7 @@ class EnvTalosDeburringHer(gym.Env):
         Closes the simulator windows.
         """
         self.simulator.end()
-            
+
     def reset(self, *, seed=None, options=None):
         """Reset the environment
 
@@ -238,14 +238,21 @@ class EnvTalosDeburringHer(gym.Env):
         """
         self.timer = 0
         self.on_target = 0
-        self.targetPos = self._init_target(self.params_env) # Reset target position
-        self.simulator.reset(self.targetPos) # Reset simulator
+        self.targetPos = self._init_target(self.params_env)  # Reset target position
+        self.simulator.reset(self.targetPos)  # Reset simulator
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured, self.simulator.getRobotPos())
-        infos = {"dst": self.compute_reward(self.pinWrapper.get_end_effector_pos(), self.targetPos, {}, p=1),
-                "tor": 0, 
-                "init": 0}
-        return self._getObservation(x_measured), infos                                  
+        infos = {
+            "dst": self.compute_reward(
+                self.pinWrapper.get_end_effector_pos(),
+                self.targetPos,
+                {},
+                p=1,
+            ),
+            "tor": 0,
+            "init": 0,
+        }
+        return self._getObservation(x_measured), infos
 
     def step(self, action):
         """Execute a step of the environment
@@ -273,9 +280,8 @@ class EnvTalosDeburringHer(gym.Env):
         self.pinWrapper.update_reduced_model(x_measured, self.simulator.getRobotPos())
         if self.GUI:
             self.simulator.createBaseRobotVisual(self.pinWrapper.get_end_effector_pos())
-            # self.simulator.createBaseRobotVisual(np.concatenate((self.pinWrapper.get_ZMP(), np.ones(1))))
         self.rCoM = self.pinWrapper.get_CoM()
-        ob = self._getObservation(x_measured) # position and velocity of the joints and the final goal
+        ob = self._getObservation(x_measured)  # position velocity joint and goal
         truncated = self._checkTruncation(x_measured)
         reward, infos = self._reward(torques, ob, truncated)
         self.on_target += 1 if infos["on_target"] else 0
@@ -301,10 +307,10 @@ class EnvTalosDeburringHer(gym.Env):
         else:
             observation = x_measured
         final_obs.spaces["observation"] = np.array(observation)
-        final_obs.spaces["achieved_goal"] = np.array(self.pinWrapper.get_end_effector_pos())
+        final_obs.spaces["achieved_goal"] = self.pinWrapper.get_end_effector_pos()
         final_obs.spaces["desired_goal"] = np.array(self.targetPos)
         return final_obs
-    
+
     def _reward(self, torques, ob, truncated):
         """Compute step reward
 
@@ -323,27 +329,29 @@ class EnvTalosDeburringHer(gym.Env):
         Returns:
             Scalar reward
         """
-        pos_reward = self.compute_reward(ob['achieved_goal'], ob['desired_goal'], {}, p=1)
-        len_to_init = - np.sum((self.simulator.qC0 - 
-                          ob['observation'][:self.rmodel.nq]).T * 
-                         self.mat_dt_init * 
-                         (self.simulator.qC0 - 
-                          ob['observation'][:self.rmodel.nq]))
+        pos_reward = self.compute_reward(
+            ob["achieved_goal"], ob["desired_goal"], {}, p=1,
+        )
+        len_to_init = -np.sum(
+            (self.simulator.qC0 - ob["observation"][: self.rmodel.nq]).T
+            * self.mat_dt_init
+            * (self.simulator.qC0 - ob["observation"][: self.rmodel.nq]),
+        )
         bool_check = np.abs(pos_reward) < self.threshold_success
         reward = self.weight_target_reached * bool_check.astype(float)
         reward += self.weight_target * pos_reward
         reward += self.weight_truncation if not truncated else 0
         reward += self.weight_command * -np.linalg.norm(torques)
         reward += len_to_init
-        
+
         # Infos for logs
         infos = {}
         infos["tor"] = np.linalg.norm(torques)
-        infos["dst"] = - pos_reward
-        infos["init"] = - len_to_init
+        infos["dst"] = -pos_reward
+        infos["init"] = -len_to_init
         infos["on_target"] = bool_check
         return reward, infos
-    
+
     def _checkTermination(self):
         """Check the termination conditions.
 
@@ -377,18 +385,24 @@ class EnvTalosDeburringHer(gym.Env):
             True if the environment has been truncated, False otherwise.
         """
         # Balance
-        truncation_balance =  (self.rCoM < self.lowerLimitPos).any() or (self.rCoM > self.upperLimitPos
+        truncation_balance = (self.rCoM < self.lowerLimitPos).any() or (
+            self.rCoM > self.upperLimitPos
         ).any()
         # Limits
         truncation_limits_position = (
-            x_measured[: self.rmodel.nq] > self.limitPosScale * self.rmodel.upperPositionLimit
-        ).any() or (x_measured[: self.rmodel.nq] < self.limitPosScale * self.rmodel.lowerPositionLimit).any()
+            x_measured[: self.rmodel.nq]
+            > self.limitPosScale * self.rmodel.upperPositionLimit
+        ).any() or (
+            x_measured[: self.rmodel.nq]
+            < self.limitPosScale * self.rmodel.lowerPositionLimit
+        ).any()
         truncation_limits_speed = (
-            np.abs(x_measured[-self.rmodel.nv :]) >  self.limitVelScale * self.rmodel.velocityLimit
+            np.abs(x_measured[-self.rmodel.nv :])
+            > self.limitVelScale * self.rmodel.velocityLimit
         ).any()
         truncation_limits = truncation_limits_position or truncation_limits_speed
         return truncation_limits or truncation_balance
-    
+
     def _checkSuccess(self):
         """Checks the success conditions.
 
@@ -402,7 +416,7 @@ class EnvTalosDeburringHer(gym.Env):
             True if the environment has been successful, False otherwise.
         """
         return self.on_target > 30
-    
+
     def _scaleAction(self, action):
         """Scales normalized actions to obtain robot torques
 
@@ -443,8 +457,14 @@ class EnvTalosDeburringHer(gym.Env):
             normalized observation
         """
         return (x_measured - self.avgObs) / self.diffObs
-    
-    def compute_reward(self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: dict, p: float = 0.5) -> float:
+
+    def compute_reward(
+        self,
+        achieved_goal: np.ndarray,
+        desired_goal: np.ndarray,
+        info: dict,
+        p: float = 0.5,
+    ) -> float:
         """
         Proximity to the goal is rewarded
 
@@ -453,20 +473,16 @@ class EnvTalosDeburringHer(gym.Env):
         :param achieved_goal: the goal that was achieved
         :param desired_goal: the goal that was desired
         :param dict info: any supplementary information
-        :param p: the Lp^p norm used in the reward. Use p<1 to have high kurtosis for rewards in [0, 1]
+        :param p: the Lp^p norm used in the reward. Use p<1 to
+        have high kurtosis for rewards in [0, 1]
         :return: the corresponding reward
         """
 
-        return - np.sum(np.power(np.abs(achieved_goal - desired_goal), p), axis=-1)
-    
-
+        return -np.sum(np.power(np.abs(achieved_goal - desired_goal), p), axis=-1)
 
 
 class EnvTalosDeburringHerSparse(EnvTalosDeburringHer):
-    def __init__(self, 
-                 params_designer, 
-                 params_env, 
-                 GUI=False):
+    def __init__(self, params_designer, params_env, GUI=False):
         super().__init__(params_designer, params_env, GUI)
 
     def _reward(self, torques, ob, truncated):
@@ -487,24 +503,33 @@ class EnvTalosDeburringHerSparse(EnvTalosDeburringHer):
         Returns:
             Scalar reward
         """
-        pos_reward = self.compute_reward(ob['achieved_goal'], ob['desired_goal'], {})
-        len_to_init = - np.sum((self.simulator.qC0 - 
-                          ob['observation'][:self.rmodel.nq]).T * 
-                         self.mat_dt_init * 
-                         (self.simulator.qC0 - 
-                          ob['observation'][:self.rmodel.nq]))
+        pos_reward = self.compute_reward(ob["achieved_goal"], ob["desired_goal"], {})
+        len_to_init = -np.sum(
+            (self.simulator.qC0 - ob["observation"][: self.rmodel.nq]).T
+            * self.mat_dt_init
+            * (self.simulator.qC0 - ob["observation"][: self.rmodel.nq]),
+        )
+        reward = 0
         reward += self.weight_target * pos_reward
         reward += self.weight_truncation if not truncated else 0
         reward += self.weight_command * -np.linalg.norm(torques)
         reward += len_to_init
-        
+
         # Infos for logs
         infos = {}
         infos["tor"] = np.linalg.norm(torques)
-        infos["dst"] = - pos_reward
-        infos["init"] = - len_to_init
-        infos["on_target"] = np.linalg.norm(ob['achieved_goal'] -  ob['desired_goal'], axis=-1) < self.threshold_success
+        infos["dst"] = -pos_reward
+        infos["init"] = -len_to_init
+        infos["on_target"] = (
+            np.linalg.norm(ob["achieved_goal"] - ob["desired_goal"], axis=-1)
+            < self.threshold_success
+        )
         return reward, infos
 
-    def compute_reward(self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: dict) -> float:
-        return - (np.linalg.norm(achieved_goal - desired_goal, axis=-1) < self.threshold_success).astype(float)
+    def compute_reward(
+        self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: dict,
+    ) -> float:
+        return -(
+            np.linalg.norm(achieved_goal - desired_goal, axis=-1)
+            < self.threshold_success
+        ).astype(float)

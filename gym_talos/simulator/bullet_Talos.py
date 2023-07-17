@@ -1,7 +1,6 @@
 import numpy as np
 import pybullet as p  # PyBullet simulator
 import pybullet_data
-import pinocchio as pin
 
 
 class TalosDeburringSimulator:
@@ -22,7 +21,7 @@ class TalosDeburringSimulator:
         # Start the client for PyBullet
         if enableGUI:
             self.physicsClient = p.connect(p.SHARED_MEMORY)
-            if (self.physicsClient < 0):
+            if self.physicsClient < 0:
                 self.physicsClient = p.connect(p.GUI)
             p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         else:
@@ -70,9 +69,10 @@ class TalosDeburringSimulator:
             self.initial_base_position[i] += self.localInertiaPos[i]
 
         self.names2bulletIndices = {
-            p.getJointInfo(self.robotId, i)[1].decode(): i for i in range(p.getNumJoints(self.robotId))
+            p.getJointInfo(self.robotId, i)[1].decode(): i
+            for i in range(p.getNumJoints(self.robotId))
         }
-        self.bulletJointsIdInPinOrder = [ 
+        self.bulletJointsIdInPinOrder = [
             self.names2bulletIndices[name] for name in rmodelComplete.names[2:]
         ]
         # Joints controlled with crocoddyl
@@ -127,9 +127,17 @@ class TalosDeburringSimulator:
         self.dict_pos = {}
         for i in range(len(self.bullet_controlledJoints)):
             self.qC0[i] = p.getJointState(
-                self.robotId, self.bullet_controlledJoints[i]
+                self.robotId,
+                self.bullet_controlledJoints[i],
             )[0]
-            self.dict_pos[rmodelComplete.names[2 + self.bulletJointsIdInPinOrder.index(self.bullet_controlledJoints[i])]] = i
+            self.dict_pos[
+                rmodelComplete.names[
+                    2
+                    + self.bulletJointsIdInPinOrder.index(
+                        self.bullet_controlledJoints[i],
+                    )
+                ]
+            ] = i
 
     def createTargetVisual(self, target):
         """Create visual representation of the target to track
@@ -140,7 +148,7 @@ class TalosDeburringSimulator:
         """
         try:
             p.removeBody(self.target_MPC)
-        except:
+        except:  # noqa: E722
             pass
         RADIUS = 0.01
         LENGTH = 0.0001
@@ -160,7 +168,7 @@ class TalosDeburringSimulator:
             basePosition=[target[0], target[1], target[2]],
             useMaximalCoordinates=True,
         )
-    
+
     def createBaseRobotVisual(self, baseRobot):
         """Create visual representation of the CoM
 
@@ -171,7 +179,7 @@ class TalosDeburringSimulator:
         """
         try:
             p.removeBody(self.baseRobot_MPC)
-        except:
+        except:  # noqa: E722
             pass
         RADIUS = 0.1
         LENGTH = 0.0001
@@ -192,7 +200,6 @@ class TalosDeburringSimulator:
             useMaximalCoordinates=True,
         )
 
-
     def getRobotState(self):
         """Get current state of the robot from pyBullet"""
         # Get articulated joint pos and vel
@@ -211,7 +218,7 @@ class TalosDeburringSimulator:
         # x[:3] -= self.localInertiaPos
 
         return x  # noqa: RET504
-    
+
     def getRobotPos(self):
         """Get current state of the robot from pyBullet"""
         # Get basis pose
@@ -230,11 +237,14 @@ class TalosDeburringSimulator:
         """Do one step of simulation"""
         self._applyTorques(torques)
         p.stepSimulation()
-        self.baseRobot = np.array([p.getBasePositionAndOrientation(self.robotId)[0][0],
-                             p.getBasePositionAndOrientation(self.robotId)[0][1], 
-                             p.getBasePositionAndOrientation(self.robotId)[0][2]
-                            ])
-        
+        self.baseRobot = np.array(
+            [
+                p.getBasePositionAndOrientation(self.robotId)[0][0],
+                p.getBasePositionAndOrientation(self.robotId)[0][1],
+                p.getBasePositionAndOrientation(self.robotId)[0][2],
+            ],
+        )
+
     def _applyTorques(self, torques):
         """Apply computed torques to the robot"""
         p.setJointMotorControlArray(
@@ -253,10 +263,13 @@ class TalosDeburringSimulator:
             self.initial_base_orientation,
             # self.physicsClient,
         )
-        self.baseRobot = np.array([p.getBasePositionAndOrientation(self.robotId)[0][0],
-                             p.getBasePositionAndOrientation(self.robotId)[0][1], 
-                             p.getBasePositionAndOrientation(self.robotId)[0][2]
-                            ])
+        self.baseRobot = np.array(
+            [
+                p.getBasePositionAndOrientation(self.robotId)[0][0],
+                p.getBasePositionAndOrientation(self.robotId)[0][1],
+                p.getBasePositionAndOrientation(self.robotId)[0][2],
+            ],
+        )
         p.resetBaseVelocity(
             self.robotId,
             [0.0, 0.0, 0.0],
@@ -265,12 +278,21 @@ class TalosDeburringSimulator:
         )
         # Reset joints
         for i in range(len(self.initial_joint_positions)):
-            if self.bulletJointsIdInPinOrder[i] in self.bullet_controlledJoints and self.random_init:
+            if (
+                self.bulletJointsIdInPinOrder[i] in self.bullet_controlledJoints
+                and self.random_init
+            ):
                 init_pos = np.random.uniform(
-                    low = 1/8 * (self.initial_joint_positions[i] + self.lower_limits_joint[i]),
-                    high = 1/8 * (self.upper_limits_joint[i] + self.initial_joint_positions[i]),
+                    low=1
+                    / 8
+                    * (self.initial_joint_positions[i] + self.lower_limits_joint[i]),
+                    high=1
+                    / 8
+                    * (self.upper_limits_joint[i] + self.initial_joint_positions[i]),
                 )
-                self.qC0[self.bullet_controlledJoints.index(self.bulletJointsIdInPinOrder[i])] = init_pos
+                self.qC0[
+                    self.bullet_controlledJoints.index(self.bulletJointsIdInPinOrder[i])
+                ] = init_pos
             else:
                 init_pos = self.initial_joint_positions[i]
             p.resetJointState(
@@ -279,7 +301,6 @@ class TalosDeburringSimulator:
                 init_pos,
             )
         self.createTargetVisual(target_position)
-        
 
     def end(self):
         """Ends connection with pybullet."""

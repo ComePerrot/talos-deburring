@@ -3,7 +3,6 @@ from pathlib import Path
 import yaml
 from stable_baselines3 import SAC
 
-from .envs.env_talos_deburring import EnvTalosDeburring
 from .envs.env_talos_deburring_her import EnvTalosDeburringHer
 
 training_name = "2023-07-10_long_training_2"
@@ -30,10 +29,9 @@ while True:
     obs, info = envDisplay.reset()
     done = False
     i = 0
-    while (not done):
+    while not done:
         i += 1
         action, _ = model.predict(obs, deterministic=True)
         obs, reward, terminated, truncated, _ = envDisplay.step(action)
         if terminated or truncated or i > 500:
             done = True
-envDisplay.close()

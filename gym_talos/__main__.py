@@ -1,17 +1,14 @@
 import argparse
 import datetime
 import pathlib
-import shutil
 import signal
-import os
 
 import torch
 import yaml
-from stable_baselines3 import SAC
 from stable_baselines3.common.env_util import SubprocVecEnv
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3 import HerReplayBuffer, SAC
-from stable_baselines3.common.callbacks import CallbackList, EvalCallback
+from stable_baselines3.common.callbacks import CallbackList
 
 from .envs.env_talos_deburring_her import EnvTalosDeburringHer
 from .utils.tb_callback import AllCallbacks, SaveCallback, TensorboardCallback
@@ -20,9 +17,12 @@ from .utils.tb_callback import AllCallbacks, SaveCallback, TensorboardCallback
 # Main HER SAC #
 ################
 
-# Need to add also for the goal the speed of the ARM probably, cause need to stop the movement at the right time
-# However with HER program, the issue is that it would mean that every time we need to stop the movement at the right time
-# And so replay buffers arent good for that since the movement is stopped earlier than the goal, so with speed ? 
+# Need to add also for the goal the speed of the ARM probably,
+# cause need to stop the movement at the right time
+# However with HER program, the issue is that it would mean that every time we need to
+# stop the movement at the right time
+# And so replay buffers arent good for that since the movement is stopped earlier than
+# the goal, so with speed ?
 
 ################
 #  PARAMETERS  #
@@ -85,25 +85,27 @@ learning_starts = params_training["learning_starts"]
 torch.set_num_threads(1)
 
 
-
 ##############
 #  TRAINING  #
 ##############
 # Create environment
 env_class = EnvTalosDeburringHer
 model_class = SAC  # works also with SAC, DDPG and TD3
-callback_class = AllCallbacks(config_filename=config_filename, 
-                            training_name=training_name,
-                            stats_window_size=100, 
-                            check_freq=1000, 
-                            verbose=verbose)
-save_callback = SaveCallback(config_filename=config_filename, 
-                            training_name=training_name,
-                            check_freq=1000,
-                            verbose=verbose
-                            )
-tensorboard_callback = TensorboardCallback(stats_window_size=100,
-                                           verbose=verbose)
+
+callback_class = AllCallbacks(
+    config_filename=config_filename,
+    training_name=training_name,
+    stats_window_size=100,
+    check_freq=1000,
+    verbose=verbose,
+)
+save_callback = SaveCallback(
+    config_filename=config_filename,
+    training_name=training_name,
+    check_freq=1000,
+    verbose=verbose,
+)
+tensorboard_callback = TensorboardCallback(stats_window_size=100, verbose=verbose)
 callback_list = CallbackList([save_callback, tensorboard_callback])
 
 if number_environments == 1:
@@ -114,33 +116,37 @@ else:
         * [lambda: Monitor(env_class(params_designer, params_env, GUI=False))],
     )
 
-goal_selection_strategy = "future" # equivalent to GoalSelectionStrategy.FUTURE
+goal_selection_strategy = "future"  # equivalent to GoalSelectionStrategy.FUTURE
 model = model_class(
     "MultiInputPolicy",
     env_training,
     replay_buffer_class=HerReplayBuffer,
-    replay_buffer_kwargs=dict(
-        n_sampled_goal=n_sampled_goal,
-        goal_selection_strategy=goal_selection_strategy,
-    ),
+    replay_buffer_kwargs={
+        "n_sampled_goal": n_sampled_goal,
+        "goal_selection_strategy": goal_selection_strategy,
+    },
     verbose=verbose,
     learning_starts=learning_starts,
     tensorboard_log=log_dir,
     device="cpu",
     buffer_size=buffer_size,
     learning_rate=learning_rate,
-    gamma=gamma, batch_size=batch_size, tau=tau,
-    policy_kwargs=dict(net_arch=[512, 512, 512])
+    gamma=gamma,
+    batch_size=batch_size,
+    tau=tau,
+    policy_kwargs={"net_arch": [512, 512, 512]},
 )
+
 
 def saver(training_name, model):
     print("Saving model as {}".format(model.logger.dir + "/" + training_name))
     model.save(model.logger.dir + "/" + training_name)
 
+
 def handler(signum, frame):
-    saver(training_name=training_name, 
-          model=model)
+    saver(training_name=training_name, model=model)
     exit(1)
+
 
 signal.signal(signal.SIGINT, handler)
 
@@ -153,6 +159,5 @@ model.learn(
     callback=callback_class,
 )
 
-saver(training_name=training_name, 
-      model=model)
+saver(training_name=training_name, model=model)
 env_training.close()
