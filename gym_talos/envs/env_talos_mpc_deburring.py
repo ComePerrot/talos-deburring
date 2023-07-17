@@ -39,7 +39,7 @@ class EnvTalosMPC(gym.Env):
             dt=self.timeStepSimulation,
         )
 
-        action_dimension = self.rmodel.nq
+        action_dimension = self.rmodel.nq - 7
         observation_dimension = len(self.simulator.getRobotState())
         self._init_env_variables(action_dimension, observation_dimension)
 
@@ -52,7 +52,6 @@ class EnvTalosMPC(gym.Env):
         self.oMtarget.rotation = np.array([[0, 0, -1], [0, -1, 0], [-1, 0, 0]])
 
         self.crocoWrapper = OCP(param_ocp, self.pinWrapper)
-        print(self.pinWrapper.get_x0())
         self.crocoWrapper.initialize(self.pinWrapper.get_x0(), self.oMtarget)
 
         self.ddp = self.crocoWrapper.solver
@@ -65,7 +64,8 @@ class EnvTalosMPC(gym.Env):
         Args:
             params_env: kwargs for the environment
         """
-        # Simumlation timings
+        # Simulation timings
+        print(params_env)
         self.timeStepSimulation = float(params_env["timeStepSimulation"])
         self.numSimulationSteps = params_env["numSimulationSteps"]
 
@@ -99,7 +99,7 @@ class EnvTalosMPC(gym.Env):
         if self.normalizeObs:
             self._init_obsNormalizer()
 
-        self.torqueScale = np.array(self.rmodel.effortLimit)
+        self.torqueScale = np.array(self.rmodel.effortLimit[6:])
 
         action_dim = action_dimension
         self.action_space = gym.spaces.Box(
@@ -149,7 +149,7 @@ class EnvTalosMPC(gym.Env):
             Observation of the initial state.
         """
         self.timer = 0
-        self.simulator.reset()
+        self.simulator.reset([0,0,0])
 
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured)
@@ -199,7 +199,7 @@ class EnvTalosMPC(gym.Env):
             self.horizon_length - 1, arm_reference,
         )  # @TODO make sure the reference is the correct shape
 
-        self.pinWrapper.solve(x_measured)
+        self.crocoWrapper.solve(x_measured)
 
         observation = self._getObservation(x_measured)
         terminated = self._checkTermination(x_measured)
@@ -219,6 +219,8 @@ class EnvTalosMPC(gym.Env):
         Returns:
             Fromated observations
         """
+        # x_meas_reduced = x_measured[7:self.rmodel.nq,self.rmodel.nq+6:]
+        # x_meas_reduced = x_measured[self.rmodel.nq+6:]
         if self.normalizeObs:
             observation = self._obsNormalizer(x_measured)
         else:
@@ -252,7 +254,7 @@ class EnvTalosMPC(gym.Env):
         reward_command = -np.linalg.norm(torques)
         # target distance
         reward_toolPosition = -np.linalg.norm(
-            self.pinWrapper.get_end_effector_pos() - self.targetPos,
+            self.pinWrapper.get_end_effector_frame().translation - self.targetPos,
         )
 
         return (
@@ -295,7 +297,7 @@ class EnvTalosMPC(gym.Env):
         """
         # Balance
         truncation_balance = (not (self.minHeight == 0)) and (
-            self.pinWrapper.CoM[2] < self.minHeight
+            self.pinWrapper.get_com_position()[2] < self.minHeight
         )
 
         # Limits
@@ -329,6 +331,10 @@ class EnvTalosMPC(gym.Env):
                 -self.rmodel.velocityLimit,
             ),
         )
+        self.lowerObsLim[:7] = -5
+        self.lowerObsLim[
+            self.pinWrapper.get_rmodel().nq : self.pinWrapper.get_rmodel().nq + 6
+        ] = -5
 
         self.upperObsLim = np.concatenate(
             (
@@ -336,6 +342,10 @@ class EnvTalosMPC(gym.Env):
                 self.rmodel.velocityLimit,
             ),
         )
+        self.upperObsLim[:7] = 5
+        self.upperObsLim[
+            self.pinWrapper.get_rmodel().nq : self.pinWrapper.get_rmodel().nq + 6
+        ] = 5
 
         self.avgObs = (self.upperObsLim + self.lowerObsLim) / 2
         self.diffObs = self.upperObsLim - self.lowerObsLim

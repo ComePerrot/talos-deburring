@@ -61,7 +61,7 @@ class TalosDeburringSimulator:
             useFixedBase=False,
         )
 
-        # Fetching the position of the center of mass
+        # Fetching the position of the center of mass of the base
         # (which is different from the origin of the root link)
         self.localInertiaPos = p.getDynamicsInfo(self.robotId, -1)[3]
         # Expressing initial position wrt the CoM
@@ -78,7 +78,7 @@ class TalosDeburringSimulator:
         # Joints controlled with crocoddyl
         self.bullet_controlledJoints = [
             self.names2bulletIndices[rmodelComplete.names[i]]
-            for i in controlledJointsIDs
+            for i in controlledJointsIDs[1:]
         ]
         self._setInitialConfig()
         self._changeFriction(["leg_left_6_joint", "leg_right_6_joint"], 100, 30)
@@ -213,13 +213,16 @@ class TalosDeburringSimulator:
 
         # Get basis pose
         pos, quat = p.getBasePositionAndOrientation(self.robotId)
+
         # Get basis vel
         v, w = p.getBaseVelocity(self.robotId)
 
         # Concatenate into a single x vector
-        x = np.concatenate([q, vq])
-        # Magic transformation of the basis translation, as classical in Bullet.
-        # x[:3] -= self.localInertiaPos
+        x = np.concatenate([pos, quat, q, v, w, vq])
+
+        # Transformation between CoM of the base (base position in bullet)
+        # and position of the base in Pinocchio
+        x[:3] -= self.localInertiaPos
 
         return x  # noqa: RET504
 

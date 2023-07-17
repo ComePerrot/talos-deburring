@@ -10,30 +10,30 @@ OCP:
   limit_scale: 1
   state_pos_weights:
     base: [500, 500, 500, 1000, 1000, 1000]
-    left_leg: [500, 500, 500, 500, 1000, 1000]
-    right_leg: [500, 500, 500, 500, 1000, 1000]
+    # left_leg: [500, 500, 500, 500, 1000, 1000]
+    # right_leg: [500, 500, 500, 500, 1000, 1000]
     torso: [100, 200]
-    left_arm: [100, 100, 100, 100, 1, 1, 1]
+    left_arm: [100, 100, 100, 100] #, 1, 1, 1]
     # right_arm: [500, 500, 500, 500]
   state_vel_weights:
     base: [1, 1, 1, 1, 1, 1]
-    left_leg: [1, 1, 1, 1, 1, 1]
-    right_leg: [1, 1, 1, 1, 1, 1]
+    # left_leg: [1, 1, 1, 1, 1, 1]
+    # right_leg: [1, 1, 1, 1, 1, 1]
     torso: [10, 10]
-    left_arm: [10, 10, 10, 10, 10, 10, 10]
+    left_arm: [10, 10, 10, 10] #, 10, 10, 10]
     # right_arm: [10, 10, 10, 10]
   control_weights:
-    left_leg: [1, 1, 1, 1, 1, 1]
-    right_leg: [1, 1, 1, 1, 1, 1]
+    # left_leg: [1, 1, 1, 1, 1, 1]
+    # right_leg: [1, 1, 1, 1, 1, 1]
     torso: [1, 1]
-    left_arm: [1, 1, 1, 1, 1, 1, 1]
+    left_arm: [1, 1, 1, 1] #, 1, 1, 1]
     # right_arm: [1, 1, 1, 1]
 
 training:
   name: "test"
-  environment_quantity: 1 # Number of environments used to collect data
-  total_timesteps: 5000 # Total number of training timesteps
-  verbose: False
+  environment_quantity: 2 # Number of environments used to collect data
+  total_timesteps: 10000 # Total number of training timesteps
+  verbose: True
 
 environment:
   numSimulationSteps: 10
@@ -55,27 +55,27 @@ robot_designer:
   controlled_joints_names:
     [
       root_joint,
-      leg_left_1_joint,
-      leg_left_2_joint,
-      leg_left_3_joint,
-      leg_left_4_joint,
-      leg_left_5_joint,
-      leg_left_6_joint,
-      leg_right_1_joint,
-      leg_right_2_joint,
-      leg_right_3_joint,
-      leg_right_4_joint,
-      leg_right_5_joint,
-      leg_right_6_joint,
+      # leg_left_1_joint,
+      # leg_left_2_joint,
+      # leg_left_3_joint,
+      # leg_left_4_joint,
+      # leg_left_5_joint,
+      # leg_left_6_joint,
+      # leg_right_1_joint,
+      # leg_right_2_joint,
+      # leg_right_3_joint,
+      # leg_right_4_joint,
+      # leg_right_5_joint,
+      # leg_right_6_joint,
       torso_1_joint,
       torso_2_joint,
       arm_left_1_joint,
       arm_left_2_joint,
       arm_left_3_joint,
       arm_left_4_joint,
-      arm_left_5_joint,
-      arm_left_6_joint,
-      arm_left_7_joint,
+      # arm_left_5_joint,
+      # arm_left_6_joint,
+      # arm_left_7_joint,
       # arm_right_1_joint,
       # arm_right_2_joint,
       # arm_right_3_joint,
