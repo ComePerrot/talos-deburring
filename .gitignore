@@ -1,6 +1,6 @@
 .vscode
 pyRL
 envRL
-logs
+logs*
 __pycache__
 *.sif*
