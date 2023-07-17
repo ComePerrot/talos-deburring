@@ -271,7 +271,9 @@ class EnvTalosDeburringHer(gym.Env):
             self.simulator.step(torques)
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured, self.simulator.getRobotPos())
-        self.simulator.createBaseRobotVisual(self.pinWrapper.get_CoM())
+        if self.GUI:
+            self.simulator.createBaseRobotVisual(self.pinWrapper.get_end_effector_pos())
+            # self.simulator.createBaseRobotVisual(np.concatenate((self.pinWrapper.get_ZMP(), np.ones(1))))
         self.rCoM = self.pinWrapper.get_CoM()
         ob = self._getObservation(x_measured) # position and velocity of the joints and the final goal
         truncated = self._checkTruncation(x_measured)
