@@ -65,7 +65,6 @@ class TalosDeburringSimulator:
         # Fetching the position of the center of mass
         # (which is different from the origin of the root link)
         self.localInertiaPos = p.getDynamicsInfo(self.robotId, -1)[3]
-
         # Expressing initial position wrt the CoM
         for i in range(3):
             self.initial_base_position[i] += self.localInertiaPos[i]
@@ -219,7 +218,7 @@ class TalosDeburringSimulator:
         pos, quat = p.getBasePositionAndOrientation(self.robotId)
         # Get basis vel
         v, w = p.getBaseVelocity(self.robotId)
-
+        # pos = np.array(pos) - self.localInertiaPos
         # Concatenate into a single x vector
         x = np.concatenate([pos, quat])
         # Magic transformation of the basis translation, as classical in Bullet.
@@ -258,7 +257,6 @@ class TalosDeburringSimulator:
                              p.getBasePositionAndOrientation(self.robotId)[0][1], 
                              p.getBasePositionAndOrientation(self.robotId)[0][2]
                             ])
-        # print("baseRobot", self.baseRobot)
         p.resetBaseVelocity(
             self.robotId,
             [0.0, 0.0, 0.0],
