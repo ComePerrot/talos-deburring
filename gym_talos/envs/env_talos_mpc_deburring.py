@@ -99,7 +99,9 @@ class EnvTalosMPC(gym.Env):
         if self.normalizeObs:
             self._init_obsNormalizer()
 
-        self.torqueScale = np.array(self.rmodel.effortLimit[6:])
+        self._init_actScaler()
+
+        self.q0 = self.pinWrapper.get_x0().copy()
 
         action_dim = action_dimension
         self.action_space = gym.spaces.Box(
@@ -149,7 +151,7 @@ class EnvTalosMPC(gym.Env):
             Observation of the initial state.
         """
         self.timer = 0
-        self.simulator.reset([0,0,0])
+        self.simulator.reset([0, 0, 0])
 
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured)
@@ -177,7 +179,10 @@ class EnvTalosMPC(gym.Env):
             Boolean indicating this rollout is done
         """
         self.timer += 1
-        arm_reference = self._scaleAction(action)
+        arm_reference = self._actScaler(action)
+
+        posture_reference = self.q0
+        posture_reference[7 : self.rmodel.nq] = arm_reference
 
         x0 = self.simulator.getRobotState()
 
@@ -193,11 +198,12 @@ class EnvTalosMPC(gym.Env):
 
         self.pinWrapper.update_reduced_model(x_measured)
 
-        self.crocoWrapper.recede()  # @TODO bind the recede method to python
+        self.crocoWrapper.recede()
         self.crocoWrapper.change_goal_cost_activation(self.horizon_length - 1, True)
         self.crocoWrapper.change_posture_reference(
-            self.horizon_length - 1, arm_reference,
-        )  # @TODO make sure the reference is the correct shape
+            self.horizon_length - 1,
+            posture_reference,
+        )
 
         self.crocoWrapper.solve(x_measured)
 
@@ -322,6 +328,29 @@ class EnvTalosMPC(gym.Env):
             torque array
         """
         return self.torqueScale * action
+
+    def _init_actScaler(self):
+        """Initializes the action scaler using robot model limits"""
+        self.lowerActLim = self.rmodel.lowerPositionLimit[
+            7 : self.pinWrapper.get_rmodel().nq
+        ]
+        self.upperActLim = self.rmodel.upperPositionLimit[
+            7 : self.pinWrapper.get_rmodel().nq
+        ]
+
+        self.avgAct = (self.upperActLim + self.lowerActLim) / 2
+        self.diffAct = self.upperActLim - self.lowerActLim
+
+    def _actScaler(self, action):
+        """Scale the action given by the agent
+
+        Args:
+            action: normalized action given by the agent
+
+        Returns:
+            unnormalized reference
+        """
+        return action*self.diffAct + self.avgAct
 
     def _init_obsNormalizer(self):
         """Initializes the observation normalizer using robot model limits"""
