@@ -4,6 +4,7 @@ import numpy as np
 from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
 
 from ..utils.modelLoader import TalosDesigner
+from ..utils.create_target import TargetGoal
 
 
 class EnvTalosDeburringHer(gym.Env):
@@ -43,6 +44,8 @@ class EnvTalosDeburringHer(gym.Env):
             dt=self.timeStepSimulation,
         )
 
+        self.target = TargetGoal(params_env=params_env)
+
         # Penalization for truncation of torsos
         self.order_positions = self.simulator.dict_pos
         self.mat_dt_init = np.zeros(self.rmodel.nq)
@@ -70,11 +73,6 @@ class EnvTalosDeburringHer(gym.Env):
         #   Stop conditions
         self.maxTime = params_env["maxTime"]
         self.minHeight = params_env["minHeight"]
-
-        #   Target
-        self.params_env = params_env
-        self.targetType = params_env["targetType"]
-        self.targetPos = self._init_target(params_env)
 
         #   Reward parameters
         self.weight_target = params_env["w_target_pos"]
@@ -118,52 +116,6 @@ class EnvTalosDeburringHer(gym.Env):
         except KeyError:
             self.weight_joints_to_init = None
 
-    def _init_target(self, param_env):
-        """Initialize the target position
-
-        Args:
-            param_env: kwargs for the environment
-
-        Returns:
-            target_pos: target position
-        """
-        if self.targetType.lower() == "fixed":
-            target_pos = param_env["targetPosition"]
-        elif self.targetType.lower() == "reachable":
-            phi = np.random.uniform(0, 2 * np.pi)
-            theta = np.arccos(np.random.uniform(-1, 1))
-            u = np.random.uniform(0, 1)
-            target_pos = [
-                param_env["shoulderPosition"][0] + u * np.sin(theta) * np.cos(phi),
-                param_env["shoulderPosition"][1] + u * np.sin(theta) * np.sin(phi),
-                param_env["shoulderPosition"][2] + u * np.cos(theta),
-            ]
-        elif self.targetType.lower() == "box":
-            size_low = param_env["targetSizeLow"]
-            size_high = param_env["targetSizeHigh"]
-            target_pos = [
-                param_env["shoulderPosition"][0]
-                + np.random.uniform(size_low[0], size_high[0]),
-                param_env["shoulderPosition"][1]
-                + np.random.uniform(size_low[1], size_high[1]),
-                param_env["shoulderPosition"][2]
-                + np.random.uniform(size_low[2], size_high[2]),
-            ]
-        elif self.targetType.lower() == "sphere":
-            phi = np.random.uniform(0, 2 * np.pi)
-            theta = np.arccos(np.random.uniform(-1, 1))
-            radius = param_env["targetRadius"]
-            u = np.random.uniform(0, radius)
-            target_pos = [
-                param_env["shoulderPosition"][0] + u * np.sin(theta) * np.cos(phi),
-                param_env["shoulderPosition"][1] + u * np.sin(theta) * np.sin(phi),
-                param_env["shoulderPosition"][2] + u * np.cos(theta),
-            ]
-        else:
-            msg = "Unknown target type"
-            raise ValueError(msg)
-        return target_pos
-
     def _init_env_variables(self, action_dimension, observation_dimension):
         """Initialize internal variables of the environment
 
@@ -205,13 +157,13 @@ class EnvTalosDeburringHer(gym.Env):
         self.observation_space.spaces["achieved_goal"] = gym.spaces.Box(
             low=-limit,
             high=limit,
-            shape=(len(self.targetPos),),
+            shape=(len(self.target.position_target),),
             dtype=np.float64,
         )
         self.observation_space.spaces["desired_goal"] = gym.spaces.Box(
             low=-limit,
             high=limit,
-            shape=(len(self.targetPos),),
+            shape=(len(self.target.position_target),),
             dtype=np.float64,
         )
 
@@ -238,14 +190,14 @@ class EnvTalosDeburringHer(gym.Env):
         """
         self.timer = 0
         self.on_target = 0
-        self.targetPos = self._init_target(self.params_env)  # Reset target position
-        self.simulator.reset(self.targetPos)  # Reset simulator
+        self.target.create_target()
+        self.simulator.reset(self.target.position_target)  # Reset simulator
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured, self.simulator.getRobotPos())
         infos = {
             "dst": self.compute_reward(
                 self.pinWrapper.get_end_effector_pos(),
-                self.targetPos,
+                self.target.position_target,
                 {},
                 p=1,
             ),
