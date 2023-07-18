@@ -224,7 +224,6 @@ class EnvTalosDeburringHer(gym.Env):
             Reward
             Boolean indicating this rollout is done
         """
-
         self.timer += 1
         torques = self._scaleAction(action)
 
@@ -233,7 +232,9 @@ class EnvTalosDeburringHer(gym.Env):
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured, self.simulator.getRobotPos())
         if self.GUI:
-            self.simulator.createBaseRobotVisual(self.pinWrapper.get_end_effector_pos())
+            # self.simulator.createBaseRobotVisual(
+            #   self.pinWrapper.get_end_effector_pos())
+            pass
         self.rCoM = self.pinWrapper.get_CoM()
         ob = self._getObservation(x_measured)  # position velocity joint and goal
         truncated = self._checkTruncation(x_measured)
@@ -288,7 +289,10 @@ class EnvTalosDeburringHer(gym.Env):
             Scalar reward
         """
         pos_reward = self.compute_reward(
-            ob["achieved_goal"], ob["desired_goal"], {}, p=1,
+            ob["achieved_goal"],
+            ob["desired_goal"],
+            {},
+            p=1,
         )
         len_to_init = -np.sum(
             (self.simulator.qC0 - ob["observation"][: self.rmodel.nq]).T
@@ -521,7 +525,10 @@ class EnvTalosDeburringHerSparse(EnvTalosDeburringHer):
         return reward, infos
 
     def compute_reward(
-        self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: dict,
+        self,
+        achieved_goal: np.ndarray,
+        desired_goal: np.ndarray,
+        info: dict,
     ) -> float:
         return -(
             np.linalg.norm(achieved_goal - desired_goal, axis=-1)
