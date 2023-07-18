@@ -5,13 +5,11 @@ import signal
 
 import torch
 import yaml
-from stable_baselines3.common.env_util import SubprocVecEnv
-from stable_baselines3.common.monitor import Monitor
 from stable_baselines3 import HerReplayBuffer, SAC
-from stable_baselines3.common.callbacks import CallbackList
 
 from .envs.env_talos_deburring_her import EnvTalosDeburringHer
-from .utils.tb_callback import AllCallbacks, SaveCallback, TensorboardCallback
+from .utils.custom_callbacks import AllCallbacks
+from .utils.loader_and_saver import saver, handler, setup_model, setup_env
 
 ################
 # Main HER SAC #
@@ -54,8 +52,7 @@ training_id = args.identication
 with config_filename.open() as config_file:
     params = yaml.safe_load(config_file)
 
-params_designer = params["robot_designer"]
-params_env = params["environment"]
+designer_params = params["robot_designer"]
 params_training = params["training"]
 
 # Setting names and log locations
@@ -68,87 +65,52 @@ if training_id:
 else:
     training_name = current_date + "_" + params_training["name"]
 
-log_dir = "./logs/"
-
-number_environments = params_training["environment_quantity"]
 total_timesteps = params_training["total_timesteps"]
-verbose = params_training["verbose"]
-gamma = params_training["gamma"]
-batch_size = params_training["batch_size"]
-learning_rate = params_training["learning_rate"]
-buffer_size = int(float(params_training["buffer_size"]))
-tau = params_training["tau"]
 log_interval = params_training["log_interval"]
-n_sampled_goal = params_training["n_sampled_goal"]
-learning_starts = params_training["learning_starts"]
 
 torch.set_num_threads(1)
 
 
-##############
-#  TRAINING  #
-##############
-# Create environment
+################
+#  PARAMETERS  #
+################
+
 env_class = EnvTalosDeburringHer
-model_class = SAC  # works also with SAC, DDPG and TD3
+env_params = params["environment"]
+
+model_class = SAC
+model_params = params["SAC"]
+
+replay_buffer_class = HerReplayBuffer
 
 callback_class = AllCallbacks(
     config_filename=config_filename,
     training_name=training_name,
     stats_window_size=100,
     check_freq=1000,
-    verbose=verbose,
+    verbose=1,
 )
-save_callback = SaveCallback(
-    config_filename=config_filename,
-    training_name=training_name,
-    check_freq=1000,
-    verbose=verbose,
+env_training = setup_env(
+    env_class=env_class,
+    env_params=env_params,
+    designer_params=designer_params,
 )
-tensorboard_callback = TensorboardCallback(stats_window_size=100, verbose=verbose)
-callback_list = CallbackList([save_callback, tensorboard_callback])
-
-if number_environments == 1:
-    env_training = env_class(params_designer, params_env, GUI=False)
-else:
-    env_training = SubprocVecEnv(
-        number_environments
-        * [lambda: Monitor(env_class(params_designer, params_env, GUI=False))],
-    )
-
-goal_selection_strategy = "future"  # equivalent to GoalSelectionStrategy.FUTURE
-model = model_class(
-    "MultiInputPolicy",
-    env_training,
-    replay_buffer_class=HerReplayBuffer,
-    replay_buffer_kwargs={
-        "n_sampled_goal": n_sampled_goal,
-        "goal_selection_strategy": goal_selection_strategy,
-    },
-    verbose=verbose,
-    learning_starts=learning_starts,
-    tensorboard_log=log_dir,
-    device="cpu",
-    buffer_size=buffer_size,
-    learning_rate=learning_rate,
-    gamma=gamma,
-    batch_size=batch_size,
-    tau=tau,
-    policy_kwargs={"net_arch": [512, 512, 512]},
+model = setup_model(
+    model_class=model_class,
+    model_params=model_params,
+    env_training=env_training,
+    replay_buffer_class=replay_buffer_class,
 )
-
-
-def saver(training_name, model):
-    print("Saving model as {}".format(model.logger.dir + "/" + training_name))
-    model.save(model.logger.dir + "/" + training_name)
-
-
-def handler(signum, frame):
-    saver(training_name=training_name, model=model)
-    exit(1)
-
-
-signal.signal(signal.SIGINT, handler)
+# Callback function to save the model when CTRL+C is pressed
+signal.signal(
+    signal.SIGINT,
+    lambda signum, frame: handler(
+        signum=signum,
+        frame=frame,
+        training_name=training_name,
+        model=model,
+    ),
+)
 
 # Train Agent
 
