@@ -1,19 +1,36 @@
 training:
   name: "local_training"
-  environment_quantity: 1 # Number of environments used to collect data
   total_timesteps: 10000000 # Total number of training timesteps
-  learning_rate: 0.0003 # Learning rate of the algorithm
   log_interval: 10 # Number of timesteps between logging events
-  learning_starts: 1000 # Number of timesteps before starting to learn
-  train_freq: 2 # Update the model every train_freq steps. Set to None to disable the interval update
-  gamma: 0.95 # Discount factor
-  batch_size: 128 # Minibatch size for each gradient update
-  n_sampled_goal: 1 # Number of sampled goals to optimize the distance to
-  buffer_size: 1e6 # Size of the replay buffer
-  tau: 0.010 # Target network update rate
-  verbose: 2 # 0: no output 1: info 2: debug
+
+SAC:
+  model_param:
+    {
+      policy: "MultiInputPolicy",
+      verbose: 2,
+      learning_starts: 1000,
+      tensorboard_log: "logs/",
+      device: "cpu",
+      buffer_size: 1000000,
+      learning_rate: 0.0003,
+      train_freq: 1,
+      gamma: 0.99,
+      batch_size: 128,
+      tau: 0.005,
+      policy_kwargs: {
+        net_arch: [512, 512, 512],
+      },
+    }
+  HerReplayBuffer_param:
+    replay_buffer_kwargs:
+      {
+        n_sampled_goal: 1,
+        goal_selection_strategy: "future",
+      }
+
 
 environment:
+  nb_environments: 1 # Number of environments used to collect data
   numSimulationSteps: 10
   timeStepSimulation: 1e-3
   normalizeObs: True
