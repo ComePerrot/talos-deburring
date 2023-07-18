@@ -125,13 +125,15 @@ class EnvTalosDeburringHer(gym.Env):
         """
         self.timer = 0
         self.on_target = 0
-
+        self.target.create_target()
         self.maxStep = int(
             self.maxTime / (self.timeStepSimulation * self.numSimulationSteps),
         )
 
         if self.normalizeObs:
             self._init_obsNormalizer()
+            self._init_goalNormalizer()
+            self._init_targetNormalizer()
 
         self.torqueScale = self.torqueScaleCoeff * np.array(self.rmodel.effortLimit)
         action_dim = action_dimension
@@ -256,11 +258,15 @@ class EnvTalosDeburringHer(gym.Env):
         final_obs = gym.spaces.Dict()
         if self.normalizeObs:
             observation = self._obsNormalizer(x_measured)
+            achieved_goal = self._goalNormalizer(self.pinWrapper.get_end_effector_pos())
+            desired_goal = self._targetNormalizer(self.target.position_target)
         else:
             observation = x_measured
+            achieved_goal = self.pinWrapper.get_end_effector_pos()
+            desired_goal = self.target.position_target
         final_obs.spaces["observation"] = np.array(observation)
-        final_obs.spaces["achieved_goal"] = self.pinWrapper.get_end_effector_pos()
-        final_obs.spaces["desired_goal"] = np.array(self.targetPos)
+        final_obs.spaces["achieved_goal"] = np.array(achieved_goal)
+        final_obs.spaces["desired_goal"] = np.array(desired_goal)
         return final_obs
 
     def _reward(self, torques, ob, truncated):
@@ -399,6 +405,31 @@ class EnvTalosDeburringHer(gym.Env):
         self.avgObs = (self.upperObsLim + self.lowerObsLim) / 2
         self.diffObs = self.upperObsLim - self.lowerObsLim
 
+    def _init_goalNormalizer(self):
+        """Initializes the goal normalizer using robot model limits"""
+        self.lowerGoalLim = -3 * np.ones(3)
+        self.upperGoalLim = 3 * np.ones(3)
+        self.avgGoal = (self.upperGoalLim + self.lowerGoalLim) / 2
+        self.diffGoal = self.upperGoalLim - self.lowerGoalLim
+
+    def _init_targetNormalizer(self):
+        """Initializes the target normalizer using robot model limits"""
+        self.lowerGoalLim = -3 * np.ones(3)
+        self.upperGoalLim = 3 * np.ones(3)
+        self.avgGoal = (self.upperGoalLim + self.lowerGoalLim) / 2
+        self.diffGoal = self.upperGoalLim - self.lowerGoalLim
+
+    def _goalNormalizer(self, goal):
+        """Normalizes the goal
+
+        Args:
+            goal: goal array
+
+        Returns:
+            normalized goal
+        """
+        return (goal - self.avgGoal) / self.diffGoal
+
     def _obsNormalizer(self, x_measured):
         """Normalizes the observation taken from the simulator
 
@@ -409,6 +440,17 @@ class EnvTalosDeburringHer(gym.Env):
             normalized observation
         """
         return (x_measured - self.avgObs) / self.diffObs
+
+    def _targetNormalizer(self, target):
+        """Normalizes the target
+
+        Args:
+            target: target array
+
+        Returns:
+            normalized target
+        """
+        return (target - self.avgGoal) / self.diffGoal
 
     def compute_reward(
         self,

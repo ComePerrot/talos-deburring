@@ -16,7 +16,7 @@ training:
 environment:
   numSimulationSteps: 10
   timeStepSimulation: 1e-3
-  normalizeObs: False
+  normalizeObs: True
   randomInit: True # Choose to randomize the position of controlled joint arount the initial position 
   # (a quarter around the limits and the initial position currently)
   limitPosScale: 1
