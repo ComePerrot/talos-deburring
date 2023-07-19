@@ -2,13 +2,13 @@ import argparse
 import datetime
 import pathlib
 import shutil
+import numpy as np
 
 import torch
 import yaml
 from stable_baselines3 import SAC
 from stable_baselines3.common.env_util import SubprocVecEnv
 from stable_baselines3.common.monitor import Monitor
-from deburring_mpc import OCPSettings
 
 from .envs.env_talos_mpc_deburring import EnvTalosMPC
 
@@ -47,8 +47,35 @@ params_env = params["environment"]
 params_training = params["training"]
 
 # parameter OCP
-OCPparams = OCPSettings()
-OCPparams.read_from_yaml("./config/config_MPC_RL.yaml")
+OCPparams = params["OCP"]
+OCPparams["state_weights"] = np.array([
+    500,
+    500,
+    500,
+    1000,
+    1000,
+    1000,
+    100,
+    200,
+    100,
+    100,
+    100,
+    100,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    10,
+    10,
+    10,
+    10,
+    10,
+    10,
+])
+OCPparams["control_weights"] = np.array([1, 1, 1, 1, 1, 1])
+
 
 # Setting names and log locations
 now = datetime.datetime.now()
@@ -73,11 +100,15 @@ torch.set_num_threads(1)
 ##############
 # Create environment
 if number_environments == 1:
-    env_training = EnvTalosMPC( params_env, params_designer, OCPparams, GUI=True)
+    env_training = EnvTalosMPC(params_env, params_designer, OCPparams, GUI=False)
 else:
     env_training = SubprocVecEnv(
         number_environments
-        * [lambda: Monitor(EnvTalosMPC(params_env, params_designer,  OCPparams, GUI=False))],
+        * [
+            lambda: Monitor(
+                EnvTalosMPC(params_env, params_designer, OCPparams, GUI=False),
+            ),
+        ],
     )
 
 # Create Agent

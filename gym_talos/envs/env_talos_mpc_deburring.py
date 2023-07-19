@@ -28,7 +28,7 @@ class EnvTalosMPC(gym.Env):
 
         # OCP
         self._init_ocp(param_ocp)
-        self.horizon_length = param_ocp.horizon_length
+        self.horizon_length = param_ocp["horizon_length"]
 
         # Simulator
         self.simulator = TalosDeburringSimulator(

@@ -1,5 +1,6 @@
 OCP:
   horizon_length: 100
+  time_step: 0.01
   w_state_reg: 0.02
   w_control_reg: 0.001
   w_limit: 1000
@@ -31,7 +32,7 @@ OCP:
 
 training:
   name: "test"
-  environment_quantity: 1 # Number of environments used to collect data
+  environment_quantity: 2 # Number of environments used to collect data
   total_timesteps: 10000 # Total number of training timesteps
   verbose: True
 
