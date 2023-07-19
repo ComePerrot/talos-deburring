@@ -180,6 +180,8 @@ class AllCallbacks(BaseCallback):
         self._ep_info_buffer = None
         self.save_path = None
         self._ep_end_buffer = None
+        self._ep_dst_min_buffer = None
+        self._dst_min = None
 
     def _on_training_start(self) -> None:
         """
@@ -221,9 +223,15 @@ class AllCallbacks(BaseCallback):
         :return: (bool) If the callback returns False, training is aborted early.
         """
         self._update_info_buffer_tensor(self.locals["infos"][0])
+        if self._dst_min is None:
+            self._dst_min = self.locals["infos"][0]["dst"]
+        else:
+            self._dst_min = min(self._dst_min, self.locals["infos"][0]["dst"])
         if self.locals["dones"][0]:
             self._episode_num += 1
             self._ep_end_buffer.extend([self.locals["infos"][0]["dst"]])
+            self._ep_dst_min_buffer.extend([self._dst_min])
+            self._dst_min = None
             if (
                 self.locals["log_interval"] is not None
                 and self._episode_num % self.locals["log_interval"] == 0
@@ -255,6 +263,10 @@ class AllCallbacks(BaseCallback):
                 "z_custom/final_dt",
                 safe_mean(list(self._ep_end_buffer)),
             )
+            self.logger.record(
+                "z_custom/min_dt",
+                safe_mean(list(self._ep_dst_min_buffer)),
+            )
 
         # self.logger.dump(step=self.num_timesteps)
         return True
@@ -268,7 +280,9 @@ class AllCallbacks(BaseCallback):
         if self._custom_info_buffer is None:
             self._custom_info_buffer = deque(maxlen=self._stats_window_size)
         if self._ep_end_buffer is None:
-            self._ep_end_buffer = deque(maxlen=self._stats_window_size // 2)
+            self._ep_end_buffer = deque(maxlen=self._stats_window_size)
+        if self._ep_dst_min_buffer is None:
+            self._ep_dst_min_buffer = deque(maxlen=self._stats_window_size)
         temp_dict["torque"] = infos["tor"]
         temp_dict["to_reach"] = infos["dst"]
         temp_dict["from_init"] = infos["init"]
