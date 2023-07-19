@@ -280,9 +280,9 @@ class AllCallbacks(BaseCallback):
         if self._custom_info_buffer is None:
             self._custom_info_buffer = deque(maxlen=self._stats_window_size)
         if self._ep_end_buffer is None:
-            self._ep_end_buffer = deque(maxlen=self._stats_window_size)
+            self._ep_end_buffer = deque(maxlen=self.locals["log_interval"])
         if self._ep_dst_min_buffer is None:
-            self._ep_dst_min_buffer = deque(maxlen=self._stats_window_size)
+            self._ep_dst_min_buffer = deque(maxlen=self.locals["log_interval"])
         temp_dict["torque"] = infos["tor"]
         temp_dict["to_reach"] = infos["dst"]
         temp_dict["from_init"] = infos["init"]
