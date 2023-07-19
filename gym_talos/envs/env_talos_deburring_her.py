@@ -72,7 +72,6 @@ class EnvTalosDeburringHer(gym.Env):
 
         #   Stop conditions
         self.maxTime = params_env["maxTime"]
-        self.minHeight = params_env["minHeight"]
 
         #   Reward parameters
         self.weight_target = params_env["w_target_pos"]
@@ -231,10 +230,11 @@ class EnvTalosDeburringHer(gym.Env):
             self.simulator.step(torques)
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured, self.simulator.getRobotPos())
-        if self.GUI:
-            # self.simulator.createBaseRobotVisual(
-            #   self.pinWrapper.get_end_effector_pos())
-            pass
+        # if self.GUI:
+        #     # self.simulator.createBaseRobotVisual(
+        #     # self.pinWrapper.get_end_effector_pos())
+        #     # print(self.pinWrapper.get_end_effector_pos())
+        #     pass
         self.rCoM = self.pinWrapper.get_CoM()
         ob = self._getObservation(x_measured)  # position velocity joint and goal
         truncated = self._checkTruncation(x_measured)
