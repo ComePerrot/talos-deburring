@@ -3,6 +3,7 @@ import datetime
 import pathlib
 import shutil
 import numpy as np
+import time
 
 import torch
 import yaml
@@ -48,33 +49,75 @@ params_training = params["training"]
 
 # parameter OCP
 OCPparams = params["OCP"]
-OCPparams["state_weights"] = np.array([
-    500,
-    500,
-    500,
-    1000,
-    1000,
-    1000,
-    100,
-    200,
-    100,
-    100,
-    100,
-    100,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    10,
-    10,
-    10,
-    10,
-    10,
-    10,
-])
-OCPparams["control_weights"] = np.array([1, 1, 1, 1, 1, 1])
+OCPparams["state_weights"] = np.array(
+    [
+        500,
+        500,
+        500,
+        1000,
+        1000,
+        1000,
+        500,
+        500,
+        500,
+        500,
+        1000,
+        1000,
+        500,
+        500,
+        500,
+        500,
+        1000,
+        1000,
+        100,
+        200,
+        100,
+        100,
+        100,
+        100,
+        1,
+        1,
+        1,
+        500,
+        500,
+        500,
+        500,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+    ],
+)
+OCPparams["control_weights"] = np.array(
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+)
 
 
 # Setting names and log locations

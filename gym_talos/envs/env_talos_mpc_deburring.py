@@ -26,6 +26,8 @@ class EnvTalosMPC(gym.Env):
 
         self.rmodel = self.pinWrapper.get_rmodel()
 
+        self.arm_joint_ID = self.rmodel.names.tolist().index('arm_left_1_joint')-2+7
+
         # OCP
         self._init_ocp(param_ocp)
         self.horizon_length = param_ocp["horizon_length"]
@@ -39,7 +41,7 @@ class EnvTalosMPC(gym.Env):
             dt=self.timeStepSimulation,
         )
 
-        action_dimension = self.rmodel.nq - 7
+        action_dimension = 4
         observation_dimension = len(self.simulator.getRobotState())
         self._init_env_variables(action_dimension, observation_dimension)
 
@@ -182,7 +184,7 @@ class EnvTalosMPC(gym.Env):
         arm_reference = self._actScaler(action)
 
         posture_reference = self.q0
-        posture_reference[7 : self.rmodel.nq] = arm_reference
+        posture_reference[self.arm_joint_ID : self.arm_joint_ID + 4] = arm_reference
 
         x0 = self.simulator.getRobotState()
 
@@ -332,10 +334,10 @@ class EnvTalosMPC(gym.Env):
     def _init_actScaler(self):
         """Initializes the action scaler using robot model limits"""
         self.lowerActLim = self.rmodel.lowerPositionLimit[
-            7 : self.pinWrapper.get_rmodel().nq
+            self.arm_joint_ID : self.arm_joint_ID + 4
         ]
         self.upperActLim = self.rmodel.upperPositionLimit[
-            7 : self.pinWrapper.get_rmodel().nq
+            self.arm_joint_ID : self.arm_joint_ID + 4
         ]
 
         self.avgAct = (self.upperActLim + self.lowerActLim) / 2

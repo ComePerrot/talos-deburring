@@ -1,12 +1,15 @@
 import yaml
 import os
+import numpy as np
 
 from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
 from gym_talos.utils.modelLoader import TalosDesigner
-from deburring_mpc import OCPSettings
 
 from stable_baselines3.common.env_checker import check_env
+from stable_baselines3.common.env_util import make_vec_env
 from .envs.env_talos_mpc_deburring import EnvTalosMPC
+
+from IPython import embed
 
 # Parsing configuration file
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -15,16 +18,47 @@ config_file = dir_path + filename
 with open(config_file) as config_file:
     params = yaml.safe_load(config_file)
 
-# parameter OCP
-OCPparams = OCPSettings()
-OCPparams.read_from_yaml("./config/config_MPC_RL.yaml")
-
 params_designer = params["robot_designer"]
 params_env = params["environment"]
 params_training = params["training"]
 
+OCPparams = params["OCP"]
+OCPparams["state_weights"] = np.array(
+    [
+        500,
+        500,
+        500,
+        1000,
+        1000,
+        1000,
+        100,
+        200,
+        100,
+        100,
+        100,
+        100,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+    ]
+)
+OCPparams["control_weights"] = np.array([1, 1, 1, 1, 1, 1])
 
-check_env(EnvTalosMPC(params_env, params_designer, OCPparams))
+
+env = EnvTalosMPC(params_env, params_designer, OCPparams)
+
+check_env(env)
+
+# embed()
 
 # pinWrapper = TalosDesigner(
 #     URDF="/talos_data/robots/talos_reduced.urdf",

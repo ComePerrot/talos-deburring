@@ -32,7 +32,7 @@ OCP:
 
 training:
   name: "test"
-  environment_quantity: 2 # Number of environments used to collect data
+  environment_quantity: 1 # Number of environments used to collect data
   total_timesteps: 10000 # Total number of training timesteps
   verbose: True
 
@@ -56,31 +56,31 @@ robot_designer:
   controlled_joints_names:
     [
       root_joint,
-      # leg_left_1_joint,
-      # leg_left_2_joint,
-      # leg_left_3_joint,
-      # leg_left_4_joint,
-      # leg_left_5_joint,
-      # leg_left_6_joint,
-      # leg_right_1_joint,
-      # leg_right_2_joint,
-      # leg_right_3_joint,
-      # leg_right_4_joint,
-      # leg_right_5_joint,
-      # leg_right_6_joint,
+      leg_left_1_joint,
+      leg_left_2_joint,
+      leg_left_3_joint,
+      leg_left_4_joint,
+      leg_left_5_joint,
+      leg_left_6_joint,
+      leg_right_1_joint,
+      leg_right_2_joint,
+      leg_right_3_joint,
+      leg_right_4_joint,
+      leg_right_5_joint,
+      leg_right_6_joint,
       torso_1_joint,
       torso_2_joint,
       arm_left_1_joint,
       arm_left_2_joint,
       arm_left_3_joint,
       arm_left_4_joint,
-      # arm_left_5_joint,
-      # arm_left_6_joint,
-      # arm_left_7_joint,
-      # arm_right_1_joint,
-      # arm_right_2_joint,
-      # arm_right_3_joint,
-      # arm_right_4_joint,
+      arm_left_5_joint,
+      arm_left_6_joint,
+      arm_left_7_joint,
+      arm_right_1_joint,
+      arm_right_2_joint,
+      arm_right_3_joint,
+      arm_right_4_joint,
     ]
   robot_description: ""
   left_foot_name: "left_sole_link"
