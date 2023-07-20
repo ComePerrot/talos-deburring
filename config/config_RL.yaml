@@ -8,14 +8,14 @@ SAC:
     {
       policy: "MultiInputPolicy",
       verbose: 2,
-      learning_starts: 1000,
+      learning_starts: 100,
       tensorboard_log: "logs/",
       device: "cpu",
       buffer_size: 1000000,
       learning_rate: 0.0003,
-      train_freq: 2,
+      train_freq: 1,
       gamma: 0.95,
-      batch_size: 128,
+      batch_size: 20,
       tau: 0.01,
       policy_kwargs: {
         net_arch: [512, 512, 512],
@@ -24,6 +24,7 @@ SAC:
   HerReplayBuffer_param:
     replay_buffer_kwargs:
       {
+        copy_info_dict: True,
         n_sampled_goal: 1,
         goal_selection_strategy: "future",
       }
@@ -55,8 +56,11 @@ environment:
   targetRadius: 0.5
   shoulderPosition: [0.382729,  0.4236133, 1.0072397]
   
+  #Kind of reward
+  rewardType: "dense" # "sparse" or "dense"
+
   # Reward parameters
-  w_target_pos: 10
+  w_target_pos: 3
   w_control_reg: 0.1
   w_penalization_truncation: 7
 

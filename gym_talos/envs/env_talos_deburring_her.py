@@ -21,7 +21,10 @@ class EnvTalosDeburringHer(gym.Env):
             GUI: set to true to activate display. Defaults to False.
         """
         self._init_parameters(params_env, GUI)
-
+        if self.reward_type == "dense":
+            self.compute_reward = self.compute_reward_dense
+        elif self.reward_type == "sparse":
+            self.compute_reward = self.compute_reward_sparse
         # Robot Designer
         self.pinWrapper = TalosDesigner(
             URDF=params_designer["URDF"],
@@ -58,7 +61,7 @@ class EnvTalosDeburringHer(gym.Env):
         observation_dimension = len(self.simulator.getRobotState())
         self._init_env_variables(action_dimension, observation_dimension)
 
-    def _init_parameters(self, params_env, GUI):
+    def _init_parameters(self, params_env, GUI):  # noqa: C901
         """Load environment parameters from provided dictionnary
 
         Args:
@@ -114,6 +117,10 @@ class EnvTalosDeburringHer(gym.Env):
             self.weight_joints_to_init = params_env["w_joints_to_init"]
         except KeyError:
             self.weight_joints_to_init = None
+        try:
+            self.reward_type = params_env["rewardType"]
+        except KeyError:
+            self.reward_type = "dense"
 
     def _init_env_variables(self, action_dimension, observation_dimension):
         """Initialize internal variables of the environment
@@ -196,11 +203,8 @@ class EnvTalosDeburringHer(gym.Env):
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured, self.simulator.getRobotPos())
         infos = {
-            "dst": self.compute_reward(
-                self.pinWrapper.get_end_effector_pos(),
-                self.target.position_target,
-                {},
-                p=1,
+            "dst": np.linalg.norm(
+                self.pinWrapper.get_end_effector_pos() - self.target.position_target,
             ),
             "tor": 0,
             "init": 0,
@@ -288,29 +292,36 @@ class EnvTalosDeburringHer(gym.Env):
         Returns:
             Scalar reward
         """
-        pos_reward = self.compute_reward(
-            ob["achieved_goal"],
-            ob["desired_goal"],
-            {},
-            p=1,
-        )
         len_to_init = -np.sum(
             (self.simulator.qC0 - ob["observation"][: self.rmodel.nq]).T
             * self.mat_dt_init
             * (self.simulator.qC0 - ob["observation"][: self.rmodel.nq]),
         )
-        bool_check = np.abs(pos_reward) < self.threshold_success
-        reward = self.weight_target_reached * bool_check.astype(float)
-        reward += self.weight_target * pos_reward
+        infos = {}
+        infos["param_rew"] = np.array([np.linalg.norm(torques), len_to_init, truncated])
+        infos["tor"] = np.linalg.norm(torques)
+        infos["init"] = -len_to_init
+        infos["truncated"] = truncated
+        ach_goal = np.empty((1, 3))
+        des_goal = np.empty((1, 3))
+        ach_goal[0, :] = ob["achieved_goal"]
+        des_goal[0, :] = ob["desired_goal"]
+        print("achieved_goal", ach_goal)
+        print("desired_goal", des_goal)
+        reward = self.compute_reward(
+            achieved_goal=ach_goal,
+            desired_goal=des_goal,
+            info=np.array([infos]),
+        )
+        dst = np.linalg.norm(ob["achieved_goal"] - ob["desired_goal"])
+        bool_check = dst < self.threshold_success
+        # reward += self.weight_target_reached * bool_check.astype(float)
         reward += self.weight_truncation if not truncated else 0
         reward += self.weight_command * -np.linalg.norm(torques)
         reward += len_to_init
 
         # Infos for logs
-        infos = {}
-        infos["tor"] = np.linalg.norm(torques)
-        infos["dst"] = -pos_reward
-        infos["init"] = -len_to_init
+        infos["dst"] = dst
         infos["on_target"] = bool_check
         return reward, infos
 
@@ -456,12 +467,26 @@ class EnvTalosDeburringHer(gym.Env):
         """
         return (target - self.avgGoal) / self.diffGoal
 
-    def compute_reward(
+    def compute_reward_sparse(
         self,
         achieved_goal: np.ndarray,
         desired_goal: np.ndarray,
         info: dict,
-        p: float = 0.5,
+    ) -> float:
+        return (
+            self.weight_target
+            * (
+                np.linalg.norm(achieved_goal - desired_goal, axis=-1)
+                < self.threshold_success
+            ).astype(float)
+            - 1
+        )
+
+    def compute_reward_dense(
+        self,
+        achieved_goal: np.ndarray,
+        desired_goal: np.ndarray,
+        info: dict,
     ) -> float:
         """
         Proximity to the goal is rewarded
@@ -475,62 +500,12 @@ class EnvTalosDeburringHer(gym.Env):
         have high kurtosis for rewards in [0, 1]
         :return: the corresponding reward
         """
-
-        return -np.sum(np.power(np.abs(achieved_goal - desired_goal), p), axis=-1)
-
-
-class EnvTalosDeburringHerSparse(EnvTalosDeburringHer):
-    def __init__(self, params_designer, params_env, GUI=False):
-        super().__init__(params_designer, params_env, GUI)
-
-    def _reward(self, torques, ob, truncated):
-        """Compute step reward
-
-        The reward is composed of:
-            - A bonus when the environment is still alive (no constraint has been
-              infriged)
-            - A cost proportional to the norm of the torques
-            - A cost proportional to the distance of the end-effector to the target
-
-        Args:
-            torques: torque vector
-            ob: observation array obtained from the simulator
-            terminated: termination bool
-            truncated: truncation bool
-
-        Returns:
-            Scalar reward
-        """
-        pos_reward = self.compute_reward(ob["achieved_goal"], ob["desired_goal"], {})
-        len_to_init = -np.sum(
-            (self.simulator.qC0 - ob["observation"][: self.rmodel.nq]).T
-            * self.mat_dt_init
-            * (self.simulator.qC0 - ob["observation"][: self.rmodel.nq]),
+        info_matrix = np.empty((achieved_goal.shape[0], 3))
+        print(info_matrix)
+        for i, inf in enumerate(info):
+            info_matrix[i] = inf["param_rew"]
+        print(info_matrix)
+        return -self.weight_target * np.linalg.norm(
+            achieved_goal - desired_goal,
+            axis=-1,
         )
-        reward = 0
-        reward += self.weight_target * pos_reward
-        reward += self.weight_truncation if not truncated else 0
-        reward += self.weight_command * -np.linalg.norm(torques)
-        reward += len_to_init
-
-        # Infos for logs
-        infos = {}
-        infos["tor"] = np.linalg.norm(torques)
-        infos["dst"] = -pos_reward
-        infos["init"] = -len_to_init
-        infos["on_target"] = (
-            np.linalg.norm(ob["achieved_goal"] - ob["desired_goal"], axis=-1)
-            < self.threshold_success
-        )
-        return reward, infos
-
-    def compute_reward(
-        self,
-        achieved_goal: np.ndarray,
-        desired_goal: np.ndarray,
-        info: dict,
-    ) -> float:
-        return -(
-            np.linalg.norm(achieved_goal - desired_goal, axis=-1)
-            < self.threshold_success
-        ).astype(float)
