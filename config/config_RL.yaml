@@ -15,8 +15,8 @@ SAC:
       learning_rate: 0.0003,
       train_freq: 1,
       gamma: 0.95,
-      batch_size: 20,
-      tau: 0.01,
+      batch_size: 16,
+      tau: 0.05,
       policy_kwargs: {
         net_arch: [512, 512, 512],
       },
@@ -53,16 +53,17 @@ environment:
   # targetPosition: [0.14, 0.46, 0.6834647]
   targetSizeLow: [-0.1, -0.1, -0.1]
   targetSizeHigh: [0.1, 0.1, 0.1]
-  targetRadius: 0.5
-  shoulderPosition: [0.382729,  0.4236133, 1.0072397]
+  targetRadius: 0.6
+  shoulderPosition: [0.3482729,  0.46236133, 1.08072397]
   
   #Kind of reward
-  rewardType: "dense" # "sparse" or "dense"
+  rewardType: "sparse" # "sparse" or "dense"
 
   # Reward parameters
-  w_target_pos: 3
-  w_control_reg: 0.1
-  w_penalization_truncation: 7
+  w_target_reached: 500
+  w_target_pos: 50
+  w_control_reg: 0.01
+  w_penalization_truncation: 1
 
 
 robot_designer:
