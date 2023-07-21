@@ -292,22 +292,22 @@ class EnvTalosDeburringHer(gym.Env):
         Returns:
             Scalar reward
         """
-        len_to_init = -np.sum(
+        len_to_init = np.sum(
             (self.simulator.qC0 - ob["observation"][: self.rmodel.nq]).T
             * self.mat_dt_init
             * (self.simulator.qC0 - ob["observation"][: self.rmodel.nq]),
         )
         infos = {}
-        infos["param_rew"] = np.array([np.linalg.norm(torques), len_to_init, truncated])
+        infos["param_rew"] = np.array(
+            [np.linalg.norm(torques), len_to_init, not truncated],
+        )
         infos["tor"] = np.linalg.norm(torques)
-        infos["init"] = -len_to_init
+        infos["init"] = len_to_init
         infos["truncated"] = truncated
         ach_goal = np.empty((1, 3))
         des_goal = np.empty((1, 3))
         ach_goal[0, :] = ob["achieved_goal"]
         des_goal[0, :] = ob["desired_goal"]
-        print("achieved_goal", ach_goal)
-        print("desired_goal", des_goal)
         reward = self.compute_reward(
             achieved_goal=ach_goal,
             desired_goal=des_goal,
@@ -315,12 +315,6 @@ class EnvTalosDeburringHer(gym.Env):
         )
         dst = np.linalg.norm(ob["achieved_goal"] - ob["desired_goal"])
         bool_check = dst < self.threshold_success
-        # reward += self.weight_target_reached * bool_check.astype(float)
-        reward += self.weight_truncation if not truncated else 0
-        reward += self.weight_command * -np.linalg.norm(torques)
-        reward += len_to_init
-
-        # Infos for logs
         infos["dst"] = dst
         infos["on_target"] = bool_check
         return reward, infos
@@ -473,14 +467,42 @@ class EnvTalosDeburringHer(gym.Env):
         desired_goal: np.ndarray,
         info: dict,
     ) -> float:
-        return (
-            self.weight_target
-            * (
-                np.linalg.norm(achieved_goal - desired_goal, axis=-1)
-                < self.threshold_success
-            ).astype(float)
-            - 1
+        """
+        Proximity to the goal is rewarded
+
+        We use a weighted p-norm
+
+        :param achieved_goal: the goal that was achieved
+        :param desired_goal: the goal that was desired
+        :param dict info: any supplementary information
+        :param p: the Lp^p norm used in the reward. Use p<1 to
+        have high kurtosis for rewards in [0, 1]
+        :return: the corresponding reward
+        """
+        dst = np.array([np.linalg.norm(achieved_goal - desired_goal, axis=-1)]).T
+        coeff_matrix = np.array(
+            [
+                [
+                    -self.weight_command,
+                    -1,
+                    self.weight_truncation,
+                    self.weight_target_reached,
+                ],
+            ],
+        ).T
+        info_matrix = np.empty((achieved_goal.shape[0], 3))
+
+        for i, inf in enumerate(info):
+            info_matrix[i] = inf["param_rew"]
+        info_matrix = np.concatenate(
+            (
+                info_matrix,
+                # (dst < self.threshold_success).astype(int) - np.ones_like(dst),
+                (dst < self.threshold_success).astype(int) - np.ones_like(dst),
+            ),
+            axis=1,
         )
+        return info_matrix @ coeff_matrix
 
     def compute_reward_dense(
         self,
@@ -500,12 +522,24 @@ class EnvTalosDeburringHer(gym.Env):
         have high kurtosis for rewards in [0, 1]
         :return: the corresponding reward
         """
+        dst = np.array([np.linalg.norm(achieved_goal - desired_goal, axis=-1)]).T
+        coeff_matrix = np.array(
+            [
+                [
+                    -self.weight_command,
+                    -1,
+                    self.weight_truncation,
+                    0,
+                    -self.weight_target,
+                ],
+            ],
+        ).T
         info_matrix = np.empty((achieved_goal.shape[0], 3))
-        print(info_matrix)
+
         for i, inf in enumerate(info):
             info_matrix[i] = inf["param_rew"]
-        print(info_matrix)
-        return -self.weight_target * np.linalg.norm(
-            achieved_goal - desired_goal,
-            axis=-1,
+        info_matrix = np.concatenate(
+            (info_matrix, (dst < self.threshold_success).astype(int), dst),
+            axis=1,
         )
+        return info_matrix @ coeff_matrix
