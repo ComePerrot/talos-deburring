@@ -57,13 +57,13 @@ environment:
   shoulderPosition: [0.3482729,  0.46236133, 1.08072397]
   
   #Kind of reward
-  rewardType: "sparse" # "sparse" or "dense"
-
+  rewardType: "dense" # "sparse" or "dense"
+  thresholdSuccess: 0.05 # Distance threshold to consider that the target is reached
   # Reward parameters
   w_target_reached: 500
-  w_target_pos: 50
-  w_control_reg: 0.01
-  w_penalization_truncation: 1
+  w_target_pos: 10
+  w_control_reg: 0.1
+  w_penalization_truncation: 7
 
 
 robot_designer:

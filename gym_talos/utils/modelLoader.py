@@ -155,7 +155,9 @@ class TalosDesigner:
     def _calculate_CoM(self, x_measured):
         """Compute the CoM position from the robot state"""
         local_CoM = pin.centerOfMass(
-            self.rmodel, self.rdata, x_measured[: self.rmodel.nq],
+            self.rmodel,
+            self.rdata,
+            x_measured[: self.rmodel.nq],
         )
         self._CoM = (
             self.world_bullet_SE3_origin_robot_pin.rotation @ local_CoM

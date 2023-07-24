@@ -123,6 +123,10 @@ class TalosDeburringSimulator:
         )
 
     def _init_joint_controlled(self, rmodelComplete):
+        """
+        Initialize the joint controlled
+        :param rmodelComplete Complete model of the robot
+        """
         self.qC0 = np.empty(len(self.bullet_controlledJoints))
         self.dict_pos = {}
         for i in range(len(self.bullet_controlledJoints)):
@@ -278,17 +282,18 @@ class TalosDeburringSimulator:
         )
         # Reset joints
         for i in range(len(self.initial_joint_positions)):
+            scale = 0.05
             if (
                 self.bulletJointsIdInPinOrder[i] in self.bullet_controlledJoints
                 and self.random_init
             ):
                 init_pos = np.random.uniform(
-                    low=1
-                    / 8
-                    * (self.initial_joint_positions[i] + self.lower_limits_joint[i]),
-                    high=1
-                    / 8
-                    * (self.upper_limits_joint[i] + self.initial_joint_positions[i]),
+                    low=scale
+                    * (self.lower_limits_joint[i] - self.initial_joint_positions[i])
+                    + self.initial_joint_positions[i],
+                    high=scale
+                    * (self.upper_limits_joint[i] - self.initial_joint_positions[i])
+                    + self.initial_joint_positions[i],
                 )
                 self.qC0[
                     self.bullet_controlledJoints.index(self.bulletJointsIdInPinOrder[i])

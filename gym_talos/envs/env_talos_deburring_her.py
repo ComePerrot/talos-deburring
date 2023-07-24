@@ -68,6 +68,7 @@ class EnvTalosDeburringHer(gym.Env):
             params_env: kwargs for the environment
         """
         # Simumlation timings
+        self.params_env = params_env
         self.timeStepSimulation = float(params_env["timeStepSimulation"])
         self.numSimulationSteps = params_env["numSimulationSteps"]
 
@@ -202,7 +203,10 @@ class EnvTalosDeburringHer(gym.Env):
         """
         self.timer = 0
         self.on_target = 0
-        self.target.create_target()
+        if options is None:
+            self.target.create_target()
+        elif "target" in options.keys():
+            self.target.position_target = options["target"]
         self.simulator.reset(self.target.position_target)  # Reset simulator
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured, self.simulator.getRobotPos())
@@ -241,7 +245,6 @@ class EnvTalosDeburringHer(gym.Env):
         # if self.GUI:
         #     # self.simulator.createBaseRobotVisual(
         #     # self.pinWrapper.get_end_effector_pos())
-        #     # print(self.pinWrapper.get_end_effector_pos())
         #     pass
         self.rCoM = self.pinWrapper.get_CoM()
         ob = self._getObservation(x_measured)  # position velocity joint and goal
@@ -312,12 +315,15 @@ class EnvTalosDeburringHer(gym.Env):
         des_goal = np.empty((1, 3))
         ach_goal[0, :] = ob["achieved_goal"]
         des_goal[0, :] = ob["desired_goal"]
-        reward = self.compute_reward(
-            achieved_goal=ach_goal,
-            desired_goal=des_goal,
-            info=np.array([infos]),
+        reward = float(
+            self.compute_reward(
+                achieved_goal=ach_goal,
+                desired_goal=des_goal,
+                info=np.array([infos]),
+            ),
         )
         dst = np.linalg.norm(ob["achieved_goal"] - ob["desired_goal"])
+
         bool_check = dst < self.threshold_success
         infos["dst"] = dst
         infos["on_target"] = bool_check
@@ -487,10 +493,10 @@ class EnvTalosDeburringHer(gym.Env):
         coeff_matrix = np.array(
             [
                 [
-                    # -self.weight_command,
+                    -self.weight_command,
                     # -1,
                     # self.weight_alive,
-                    0,
+                    # 0,
                     0,
                     0,
                     self.weight_target_reached,
@@ -504,12 +510,10 @@ class EnvTalosDeburringHer(gym.Env):
         info_matrix = np.concatenate(
             (
                 info_matrix,
-                # (dst < self.threshold_success).astype(int) - np.ones_like(dst),
-                (dst < self.threshold_success).astype(int) - np.ones_like(dst),
+                (dst < self.threshold_success).astype(int) - 0.002 * np.ones_like(dst),
             ),
             axis=1,
         )
-        print(info_matrix @ coeff_matrix)
         return info_matrix @ coeff_matrix
 
     def compute_reward_dense(
@@ -534,10 +538,9 @@ class EnvTalosDeburringHer(gym.Env):
         coeff_matrix = np.array(
             [
                 [
-                    -self.weight_command,
+                    self.weight_command,
                     -1,
                     self.weight_truncation,
-                    0,
                     -self.weight_target,
                 ],
             ],
@@ -547,7 +550,7 @@ class EnvTalosDeburringHer(gym.Env):
         for i, inf in enumerate(info):
             info_matrix[i] = inf["param_rew"]
         info_matrix = np.concatenate(
-            (info_matrix, (dst < self.threshold_success).astype(int), dst),
+            (info_matrix, dst),
             axis=1,
         )
         return info_matrix @ coeff_matrix

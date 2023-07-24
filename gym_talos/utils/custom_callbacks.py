@@ -1,10 +1,12 @@
 import shutil
+import gymnasium as gym
 import numpy as np
 
 from stable_baselines3.common.callbacks import BaseCallback
 from collections import deque
 from stable_baselines3.common.utils import safe_mean
 from typing import Optional
+from .create_target import TargetGoal
 
 
 class TensorboardCallback(BaseCallback):
@@ -168,6 +170,7 @@ class AllCallbacks(BaseCallback):
         stats_window_size: int = 100,
         check_freq: int = 1000,
         verbose: int = 0,
+        env: gym.Env = None,
     ):
         super().__init__(verbose)
         self.check_freq = check_freq
@@ -175,6 +178,8 @@ class AllCallbacks(BaseCallback):
         self.training_name = training_name
         self.best_mean_reward = -np.inf
         self._stats_window_size = stats_window_size
+        self.env = env
+        self.eval_on_training = None
         self._custom_info_buffer = None
         self._episode_num = 0
         self._ep_info_buffer = None
@@ -237,6 +242,15 @@ class AllCallbacks(BaseCallback):
                 and self._episode_num % self.locals["log_interval"] == 0
             ):
                 self._dump_logs_tensor()
+            if self._episode_num % self.check_freq == 0:
+                if self.eval_on_training is None:
+                    self.eval_on_training = EvalOnTraining(
+                        model=self.locals["self"],
+                        eval_env=self.env,
+                        n_eval_episodes=100,
+                    )
+                eval_reward = self.eval_on_training.eval_on_train()
+                self.logger.record("z_custom/eval_reward", eval_reward)
 
     def _dump_logs_tensor(self) -> None:
         """
@@ -301,3 +315,42 @@ class AllCallbacks(BaseCallback):
         self._on_step_tensor()
         self._on_step_save()
         return True
+
+
+class EvalOnTraining:
+    """
+    Callback for evaluating an agent during training.
+
+    :param eval_env: The environment used for initialization
+    :param n_eval_episodes: The number of episodes to evaluate the agent
+    """
+
+    def __init__(self, model, eval_env, n_eval_episodes=100):
+        self.model = model
+        self.eval_env = eval_env
+        self.n_eval_episodes = n_eval_episodes
+        self.target_builder = TargetGoal(self.eval_env.params_env)
+        self.targets = []
+        self._define_targets()
+
+    def _define_targets(self):
+        for _ in range(self.n_eval_episodes):
+            self.target_builder.create_target()
+            self.targets.append(self.target_builder.position_target)
+
+    def eval_on_train(self) -> None:
+        """
+        This method will evaluate the agent during training
+        """
+        eval_rewards = []
+        for _ in range(self.n_eval_episodes):
+            episode_reward = 0.0
+            done = False
+            obs, _ = self.eval_env.reset(options={"target": self.targets[0]})
+            while not done:
+                action, _ = self.model.predict(obs, deterministic=True)
+                obs, reward, terminated, truncated, infos = self.eval_env.step(action)
+                episode_reward += reward
+                done = True if terminated or truncated else False
+            eval_rewards.append(episode_reward)
+        return np.mean(eval_rewards)
