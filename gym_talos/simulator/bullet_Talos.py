@@ -64,21 +64,27 @@ class TalosDeburringSimulator:
         # Fetching the position of the center of mass of the base
         # (which is different from the origin of the root link)
         self.localInertiaPos = p.getDynamicsInfo(self.robotId, -1)[3]
-        # Expressing initial position wrt the CoM
-        for i in range(3):
-            self.initial_base_position[i] += self.localInertiaPos[i]
 
         self.names2bulletIndices = {
             p.getJointInfo(self.robotId, i)[1].decode(): i
             for i in range(p.getNumJoints(self.robotId))
         }
+
+        # Checks if the robot has a free-flyer to know how to shape state
+        self.has_free_flyer = (
+            rmodelComplete.getFrameId("root_joint") in controlledJointsIDs
+        )
+        # Needs to remove root_joint from joints controller by bullet
+        # if robot has a free-flyer
+        offset_controlled_joints = int(self.has_free_flyer) * 1
+
         self.bulletJointsIdInPinOrder = [
             self.names2bulletIndices[name] for name in rmodelComplete.names[2:]
         ]
         # Joints controlled with crocoddyl
         self.bullet_controlledJoints = [
             self.names2bulletIndices[rmodelComplete.names[i]]
-            for i in controlledJointsIDs[1:]
+            for i in controlledJointsIDs[offset_controlled_joints:]
         ]
         self._setInitialConfig()
         self._changeFriction(["leg_left_6_joint", "leg_right_6_joint"], 100, 30)
@@ -87,6 +93,7 @@ class TalosDeburringSimulator:
 
     def _setInitialConfig(self):
         """Initialize robot configuration in pyBullet
+
         :param q0 Intial robot configuration
         """
         for i in range(len(self.initial_joint_positions)):
@@ -211,18 +218,22 @@ class TalosDeburringSimulator:
         q = [x[0] for x in xbullet]
         vq = [x[1] for x in xbullet]
 
-        # Get basis pose
-        pos, quat = p.getBasePositionAndOrientation(self.robotId)
+        if self.has_free_flyer:
+            # Get base pose
+            pos, quat = p.getBasePositionAndOrientation(self.robotId)
 
-        # Get basis vel
-        v, w = p.getBaseVelocity(self.robotId)
+            # Get base vel
+            v, w = p.getBaseVelocity(self.robotId)
 
-        # Concatenate into a single x vector
-        x = np.concatenate([pos, quat, q, v, w, vq])
+            # Concatenate into a single x vector
+            x = np.concatenate([pos, quat, q, v, w, vq])
 
-        # Transformation between CoM of the base (base position in bullet)
-        # and position of the base in Pinocchio
-        x[:3] -= self.localInertiaPos
+            # Transformation between CoM of the base (base position in bullet)
+            # and position of the base in Pinocchio
+            x[:3] -= self.localInertiaPos
+
+        else:
+            x = np.concatenate([q, vq])
 
         return x  # noqa: RET504
 
