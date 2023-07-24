@@ -16,6 +16,7 @@ class TalosDeburringSimulator:
     ):
         self._setupBullet(enableGUI, enableGravity, dt)
         self._setupRobot(URDF, rmodelComplete, controlledJointsIDs, randomInit)
+        self._setupInitializer(randomInit, rmodelComplete)
 
     def _setupBullet(self, enableGUI, enableGravity, dt):
         # Start the client for PyBullet
@@ -45,9 +46,6 @@ class TalosDeburringSimulator:
         self.initial_base_position = list(self.q0[:3])
         self.initial_base_orientation = list(self.q0[3:7])
         self.initial_joint_positions = list(self.q0[7:])
-        self.lower_limits_joint = list(rmodelComplete.lowerPositionLimit[7:])
-        self.upper_limits_joint = list(rmodelComplete.upperPositionLimit[7:])
-        self.random_init = randomInit
 
         rmodelComplete.armature = (
             rmodelComplete.rotorInertia * rmodelComplete.rotorGearRatio**2
@@ -89,7 +87,6 @@ class TalosDeburringSimulator:
         self._setInitialConfig()
         self._changeFriction(["leg_left_6_joint", "leg_right_6_joint"], 100, 30)
         self._setControlledJoints()
-        self._init_joint_controlled(rmodelComplete)
 
     def _setInitialConfig(self):
         """Initialize robot configuration in pyBullet
@@ -117,17 +114,41 @@ class TalosDeburringSimulator:
     def _setControlledJoints(self):
         """Define joints controlled by pyBullet
 
+        Disable default position controller in torque controlled joints.
+        Default controller will take care of other joints.
+
         :param rmodelComplete Complete model of the robot
         :param ControlledJoints List of ControlledJoints
         """
-        # Disable default position controler in torque controlled joints
-        # Default controller will take care of other joints
         p.setJointMotorControlArray(
             self.robotId,
             jointIndices=self.bullet_controlledJoints,
             controlMode=p.VELOCITY_CONTROL,
             forces=[0.0 for m in self.bullet_controlledJoints],
         )
+
+    def _setupInitializer(self, randomInit, rmodelComplete, noise_coeff=0.01):
+        self.random_init = randomInit
+
+        lower_limits_joint = rmodelComplete.lowerPositionLimit[7:]
+        upper_limits_joint = rmodelComplete.upperPositionLimit[7:]
+        amplitude_limits_joint = upper_limits_joint - lower_limits_joint
+
+        lower_sampling_bound = (
+            self.initial_joint_positions - noise_coeff * amplitude_limits_joint
+        )
+        upper_sampling_bound = (
+            self.initial_joint_positions + noise_coeff * amplitude_limits_joint
+        )
+        self.lower_joint_bound = [
+            max(lower_sampling_bound[i], lower_limits_joint[i])
+            for i in range(len(self.initial_joint_positions))
+        ]
+        self.upper_joint_bound = [
+            min(upper_sampling_bound[i], upper_limits_joint[i])
+            for i in range(len(self.initial_joint_positions))
+        ]
+        self._init_joint_controlled(rmodelComplete)
 
     def _init_joint_controlled(self, rmodelComplete):
         """
@@ -235,7 +256,7 @@ class TalosDeburringSimulator:
         else:
             x = np.concatenate([q, vq])
 
-        return x  # noqa: RET504
+        return x
 
     def getRobotPos(self):
         """Get current state of the robot from pyBullet"""
@@ -294,7 +315,11 @@ class TalosDeburringSimulator:
             [0.0, 0.0, 0.0],
             # self.physicsClient,
         )
-        # Reset joints
+
+        self._reset_robot_joints()
+        self.createTargetVisual(target_position)
+
+    def _reset_robot_joints(self):
         for i in range(len(self.initial_joint_positions)):
             scale = 0.05
             if (
@@ -302,12 +327,8 @@ class TalosDeburringSimulator:
                 and self.random_init
             ):
                 init_pos = np.random.uniform(
-                    low=scale
-                    * (self.lower_limits_joint[i] - self.initial_joint_positions[i])
-                    + self.initial_joint_positions[i],
-                    high=scale
-                    * (self.upper_limits_joint[i] - self.initial_joint_positions[i])
-                    + self.initial_joint_positions[i],
+                    low=self.lower_joint_bound[i],
+                    high=self.upper_joint_bound[i],
                 )
                 self.qC0[
                     self.bullet_controlledJoints.index(self.bulletJointsIdInPinOrder[i])
@@ -319,7 +340,6 @@ class TalosDeburringSimulator:
                 self.bulletJointsIdInPinOrder[i],
                 init_pos,
             )
-        self.createTargetVisual(target_position)
 
     def end(self):
         """Ends connection with pybullet."""
