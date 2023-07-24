@@ -121,6 +121,10 @@ class EnvTalosDeburringHer(gym.Env):
             self.reward_type = params_env["rewardType"]
         except KeyError:
             self.reward_type = "dense"
+        try:
+            self.weight_alive = params_env["w_alive"]
+        except KeyError:
+            self.weight_alive = 1
 
     def _init_env_variables(self, action_dimension, observation_dimension):
         """Initialize internal variables of the environment
@@ -483,9 +487,12 @@ class EnvTalosDeburringHer(gym.Env):
         coeff_matrix = np.array(
             [
                 [
-                    -self.weight_command,
-                    -1,
-                    self.weight_truncation,
+                    # -self.weight_command,
+                    # -1,
+                    # self.weight_alive,
+                    0,
+                    0,
+                    0,
                     self.weight_target_reached,
                 ],
             ],
@@ -502,6 +509,7 @@ class EnvTalosDeburringHer(gym.Env):
             ),
             axis=1,
         )
+        print(info_matrix @ coeff_matrix)
         return info_matrix @ coeff_matrix
 
     def compute_reward_dense(
