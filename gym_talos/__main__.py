@@ -84,13 +84,6 @@ model_params = params["SAC"]
 
 replay_buffer_class = HerReplayBuffer
 
-callback_class = AllCallbacks(
-    config_filename=config_filename,
-    training_name=training_name,
-    stats_window_size=100,
-    check_freq=1000,
-    verbose=1,
-)
 env_training = setup_env(
     env_class=env_class,
     env_params=env_params,
@@ -101,6 +94,15 @@ model = setup_model(
     model_params=model_params,
     env_training=env_training,
     replay_buffer_class=replay_buffer_class,
+)
+
+callback_class = AllCallbacks(
+    config_filename=config_filename,
+    training_name=training_name,
+    stats_window_size=100,
+    check_freq=1000,
+    verbose=1,
+    env=env_training,
 )
 # Callback function to save the model when CTRL+C is pressed
 signal.signal(
