@@ -62,6 +62,9 @@ class TalosDeburringSimulator:
         # Fetching the position of the center of mass of the base
         # (which is different from the origin of the root link)
         self.localInertiaPos = p.getDynamicsInfo(self.robotId, -1)[3]
+        # Expressing initial position wrt the CoM
+        for i in range(3):
+            self.initial_base_position[i] += self.localInertiaPos[i]
 
         self.names2bulletIndices = {
             p.getJointInfo(self.robotId, i)[1].decode(): i
