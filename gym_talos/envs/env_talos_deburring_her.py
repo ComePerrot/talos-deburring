@@ -304,13 +304,17 @@ class EnvTalosDeburringHer(gym.Env):
             * self.mat_dt_init
             * (self.simulator.qC0 - ob["observation"][: self.rmodel.nq]),
         )
+        dst = np.linalg.norm(ob["achieved_goal"] - ob["desired_goal"])
+
+        bool_check = dst < self.threshold_success
         infos = {}
         infos["param_rew"] = np.array(
             [np.linalg.norm(torques), len_to_init, not truncated],
         )
         infos["tor"] = np.linalg.norm(torques)
         infos["init"] = len_to_init
-        infos["truncated"] = truncated
+        infos["dst"] = dst
+        infos["on_target"] = bool_check
         ach_goal = np.empty((1, 3))
         des_goal = np.empty((1, 3))
         ach_goal[0, :] = ob["achieved_goal"]
@@ -322,11 +326,7 @@ class EnvTalosDeburringHer(gym.Env):
                 info=np.array([infos]),
             ),
         )
-        dst = np.linalg.norm(ob["achieved_goal"] - ob["desired_goal"])
 
-        bool_check = dst < self.threshold_success
-        infos["dst"] = dst
-        infos["on_target"] = bool_check
         return reward, infos
 
     def _checkTermination(self):
@@ -522,26 +522,18 @@ class EnvTalosDeburringHer(gym.Env):
         desired_goal: np.ndarray,
         info: dict,
     ) -> float:
-        """
-        Proximity to the goal is rewarded
-
-        We use a weighted p-norm
-
-        :param achieved_goal: the goal that was achieved
-        :param desired_goal: the goal that was desired
-        :param dict info: any supplementary information
-        :param p: the Lp^p norm used in the reward. Use p<1 to
-        have high kurtosis for rewards in [0, 1]
-        :return: the corresponding reward
-        """
         dst = np.array([np.linalg.norm(achieved_goal - desired_goal, axis=-1)]).T
         coeff_matrix = np.array(
             [
                 [
-                    self.weight_command,
+                    -self.weight_command,
+                    # corresponds to the command penalization
                     -1,
+                    # corresponds to the lenght to init penalization
                     self.weight_truncation,
+                    # corresponds to the truncation penalization
                     -self.weight_target,
+                    # corresponds to the distance to target
                 ],
             ],
         ).T
