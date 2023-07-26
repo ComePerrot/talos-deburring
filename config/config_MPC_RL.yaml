@@ -41,9 +41,10 @@ environment:
   timeStepSimulation: 1e-3
   normalizeObs: True
   # Stop conditions
-  maxTime: 10 # Maximum epoch time in seconds
+  maxTime: 5 # Maximum epoch time in seconds
   minHeight: 0.8 # if 0 no check is performed on the height of the robot
   # Target
+  targetType: "fixed"
   targetPosition: [0.6,0.4,1.1]
   # Reward parameters
   w_target_pos: 10

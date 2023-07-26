@@ -4,11 +4,15 @@ import pinocchio as pin
 from deburring_mpc import RobotDesigner, OCP
 
 from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
+from gym_talos.utils.create_target import TargetGoal
 
 
 class EnvTalosMPC(gym.Env):
     def __init__(self, params_env, params_designer, param_ocp, GUI=False) -> None:
         self._init_parameters(params_env)
+
+        self.target_handler = TargetGoal(params_env)
+        self.target_handler.create_target()
 
         # Robot wrapper
         self.pinWrapper = RobotDesigner()
@@ -26,7 +30,7 @@ class EnvTalosMPC(gym.Env):
 
         self.rmodel = self.pinWrapper.get_rmodel()
 
-        self.arm_joint_ID = self.rmodel.names.tolist().index('arm_left_1_joint')-2+7
+        self.arm_joint_ID = self.rmodel.names.tolist().index("arm_left_1_joint") - 2 + 7
 
         # OCP
         self._init_ocp(param_ocp)
@@ -45,11 +49,13 @@ class EnvTalosMPC(gym.Env):
         observation_dimension = len(self.simulator.getRobotState())
         self._init_env_variables(action_dimension, observation_dimension)
 
+        self.target_handler = TargetGoal(params_env)
+
     def _init_ocp(self, param_ocp):
         self.oMtarget = pin.SE3.Identity()
-        self.oMtarget.translation[0] = self.targetPos[0]
-        self.oMtarget.translation[1] = self.targetPos[1]
-        self.oMtarget.translation[2] = self.targetPos[2]
+        self.oMtarget.translation[0] = self.target_handler.position_target[0]
+        self.oMtarget.translation[1] = self.target_handler.position_target[1]
+        self.oMtarget.translation[2] = self.target_handler.position_target[2]
 
         self.oMtarget.rotation = np.array([[0, 0, -1], [0, -1, 0], [-1, 0, 0]])
 
@@ -67,7 +73,6 @@ class EnvTalosMPC(gym.Env):
             params_env: kwargs for the environment
         """
         # Simulation timings
-        print(params_env)
         self.timeStepSimulation = float(params_env["timeStepSimulation"])
         self.numSimulationSteps = params_env["numSimulationSteps"]
 
@@ -76,9 +81,6 @@ class EnvTalosMPC(gym.Env):
         #   Stop conditions
         self.maxTime = params_env["maxTime"]
         self.minHeight = params_env["minHeight"]
-
-        #   Target
-        self.targetPos = params_env["targetPosition"]
 
         #   Reward parameters
         self.weight_target = params_env["w_target_pos"]
@@ -158,8 +160,12 @@ class EnvTalosMPC(gym.Env):
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured)
 
-        # TODO: reset OCP
-        self.crocoWrapper.initialize(self.pinWrapper.get_x0(), self.oMtarget)
+
+        self.target_handler.create_target()
+        self.oMtarget.translation[0] = self.target_handler.position_target[0]
+        self.oMtarget.translation[1] = self.target_handler.position_target[1]
+        self.oMtarget.translation[2] = self.target_handler.position_target[2]
+        self.crocoWrapper.reset(x_measured, self.oMtarget)
 
         return self._getObservation(x_measured), {}
 
@@ -262,7 +268,8 @@ class EnvTalosMPC(gym.Env):
         reward_command = -np.linalg.norm(torques)
         # target distance
         reward_toolPosition = -np.linalg.norm(
-            self.pinWrapper.get_end_effector_frame().translation - self.targetPos,
+            self.pinWrapper.get_end_effector_frame().translation
+            - self.target_handler.position_target,
         )
 
         return (
@@ -352,7 +359,7 @@ class EnvTalosMPC(gym.Env):
         Returns:
             unnormalized reference
         """
-        return action*self.diffAct + self.avgAct
+        return action * self.diffAct + self.avgAct
 
     def _init_obsNormalizer(self):
         """Initializes the observation normalizer using robot model limits"""

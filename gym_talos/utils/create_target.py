@@ -64,7 +64,7 @@ class TargetGoal:
         """Create a target position for the environment"""
 
         if self._type_target == "fixed":
-            self.position_target = self.range
+            self.position_target = self._range_target
         elif self._type_target == "box":
             self.position_target = self.create_box()
         elif self._type_target == "sphere":
