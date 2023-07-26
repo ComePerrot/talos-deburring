@@ -1,6 +1,6 @@
 import gymnasium as gym
 import numpy as np
-
+import collections
 from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
 
 from ..utils.modelLoader import TalosDesigner
@@ -279,7 +279,7 @@ class EnvTalosDeburringHer(gym.Env):
         final_obs.spaces["observation"] = np.array(observation)
         final_obs.spaces["achieved_goal"] = np.array(achieved_goal)
         final_obs.spaces["desired_goal"] = np.array(desired_goal)
-        return final_obs
+        return collections.OrderedDict(final_obs)
 
     def _reward(self, torques, ob, truncated):
         """Compute step reward
