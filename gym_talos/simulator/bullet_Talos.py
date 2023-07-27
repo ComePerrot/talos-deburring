@@ -1,6 +1,7 @@
 import numpy as np
 import pybullet as p  # PyBullet simulator
 import pybullet_data
+import pinocchio as pin
 
 
 class TalosDeburringSimulator:
@@ -17,6 +18,7 @@ class TalosDeburringSimulator:
         self._setupBullet(enableGUI, enableGravity, dt)
         self._setupRobot(URDF, rmodelComplete, controlledJointsIDs, randomInit)
         self._setupInitializer(randomInit, rmodelComplete)
+        self._createObjectVisuals()
 
     def _setupBullet(self, enableGUI, enableGravity, dt):
         # Start the client for PyBullet
@@ -235,6 +237,57 @@ class TalosDeburringSimulator:
             useMaximalCoordinates=True,
         )
 
+    def _createObjectVisuals(self, target=True, tool=True):
+        RADIUS = 0.01
+        LENGTH = 0.01
+        blueSphere = p.createVisualShape(
+            shapeType=p.GEOM_SPHERE,
+            rgbaColor=[0, 0, 1, 0.5],
+            visualFramePosition=[0.0, 0.0, 0.0],
+            radius=RADIUS,
+            halfExtents=[0.0, 0.0, 0.0],
+        )
+        blueCapsule = p.createVisualShape(
+            shapeType=p.GEOM_CAPSULE,
+            rgbaColor=[0, 0, 1, 1.0],
+            visualFramePosition=[0.0, 0.0, 0.0],
+            radius=RADIUS/3,
+            length=LENGTH,
+            halfExtents=[0.0, 0.0, 0.0],
+        )
+
+        if target:
+            self.target_visual = p.createMultiBody(
+                baseMass=0.0,
+                baseInertialFramePosition=[0, 0, 0],
+                baseVisualShapeIndex=blueSphere,
+                basePosition=[0.0, 0.0, 0.0],
+                useMaximalCoordinates=True,
+            )
+
+        if tool:
+            self.tool_visual = p.createMultiBody(
+                baseMass=0.0,
+                baseInertialFramePosition=[0, 0, 0],
+                baseVisualShapeIndex=blueCapsule,
+                basePosition=[0.0, 0.0, 0.0],
+                useMaximalCoordinates=True,
+            )
+
+    def _setVisualObjectPosition(self, objectName, oMobject):
+        """Move an object to the given position
+
+        Arguments:
+            objectName -- Name of the object to move
+            oMobject -- Position of the object in the world
+        """
+
+        p.resetBasePositionAndOrientation(
+            objectName,
+            oMobject.translation,
+            pin.Quaternion(oMobject.rotation).coeffs(),
+        )
+
     def getRobotState(self):
         """Get current state of the robot from pyBullet"""
         # Get articulated joint pos and vel
@@ -279,8 +332,9 @@ class TalosDeburringSimulator:
         """Get contact points between the robot and the environment"""
         return [(i[4], i[6], i[9]) for i in p.getContactPoints()]
 
-    def step(self, torques):
+    def step(self, torques, oMtool):
         """Do one step of simulation"""
+        self._setVisualObjectPosition(self.tool_visual, oMtool)
         self._applyTorques(torques)
         p.stepSimulation()
         self.baseRobot = np.array(
@@ -300,7 +354,7 @@ class TalosDeburringSimulator:
             forces=torques,
         )
 
-    def reset(self, target_position, seed=None):
+    def reset(self, oMtarget, seed=None):
         """Reset robot to initial configuration"""
         # Reset base
         p.resetBasePositionAndOrientation(
@@ -324,7 +378,7 @@ class TalosDeburringSimulator:
         )
 
         self._reset_robot_joints()
-        self.createTargetVisual(target_position)
+        self._setVisualObjectPosition(self.target_visual, oMtarget)
 
     def _reset_robot_joints(self):
         for i in range(len(self.initial_joint_positions)):

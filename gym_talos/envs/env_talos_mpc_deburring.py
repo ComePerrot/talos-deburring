@@ -162,17 +162,18 @@ class EnvTalosMPC(gym.Env):
             Observation of the initial state.
         """
         self.timer = 0
-        self.simulator.reset([0, 0, 0])
-        self.crocoWrapper.set_warm_start(self.X_warm, self.U_warm)
-
-        x_measured = self.simulator.getRobotState()
-        self.pinWrapper.update_reduced_model(x_measured)
 
         self.target_handler.create_target()
         self.oMtarget.translation[0] = self.target_handler.position_target[0]
         self.oMtarget.translation[1] = self.target_handler.position_target[1]
         self.oMtarget.translation[2] = self.target_handler.position_target[2]
+
+        self.simulator.reset(self.oMtarget)
+
+        x_measured = self.simulator.getRobotState()
+        self.pinWrapper.update_reduced_model(x_measured)
         self.crocoWrapper.reset(x_measured, self.oMtarget)
+        self.crocoWrapper.set_warm_start(self.X_warm, self.U_warm)
 
         return self._getObservation(x_measured), {}
 
@@ -201,6 +202,7 @@ class EnvTalosMPC(gym.Env):
 
         for _ in range(self.numOCPSteps):
             x0 = self.simulator.getRobotState()
+            oMtool = self.pinWrapper.get_end_effector_frame()
 
             for _ in range(self.numSimulationSteps):
                 x_measured = self.simulator.getRobotState()
@@ -209,7 +211,7 @@ class EnvTalosMPC(gym.Env):
                     + self.crocoWrapper.gain
                     @ self.crocoWrapper.state.diff(x_measured, x0)
                 )
-                self.simulator.step(torques)
+                self.simulator.step(torques, oMtool)
 
             x_measured = self.simulator.getRobotState()
 
