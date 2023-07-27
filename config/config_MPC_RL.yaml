@@ -85,7 +85,7 @@ training:
 
 environment:
   timeStepSimulation: 1e-3
-  numOCPSteps: 5
+  numOCPSteps: 10
   normalizeObs: True
   # Stop conditions
   maxTime: 5 # Maximum epoch time in seconds
@@ -94,7 +94,7 @@ environment:
   targetType: "fixed"
   targetPosition: [0.6, 0.4, 1.1]
   # Reward parameters
-  distanceThreshold: 0.05
+  distanceThreshold: 0.01
   w_success: 1
   w_penalization_truncation: 10
 
