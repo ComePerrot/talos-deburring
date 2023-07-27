@@ -64,6 +64,9 @@ class EnvTalosMPC(gym.Env):
 
         self.ddp = self.crocoWrapper.solver
 
+        self.X_warm = self.ddp.xs
+        self.U_warm = self.ddp.us
+
         # Problem can be modified here to fit the needs of the RL
 
     def _init_parameters(self, params_env):
@@ -156,10 +159,10 @@ class EnvTalosMPC(gym.Env):
         """
         self.timer = 0
         self.simulator.reset([0, 0, 0])
+        self.crocoWrapper.set_warm_start(self.X_warm, self.U_warm)
 
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured)
-
 
         self.target_handler.create_target()
         self.oMtarget.translation[0] = self.target_handler.position_target[0]
