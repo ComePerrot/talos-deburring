@@ -23,35 +23,8 @@ params_env = params["environment"]
 params_training = params["training"]
 
 OCPparams = params["OCP"]
-OCPparams["state_weights"] = np.array(
-    [
-        500,
-        500,
-        500,
-        1000,
-        1000,
-        1000,
-        100,
-        200,
-        100,
-        100,
-        100,
-        100,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        10,
-        10,
-        10,
-        10,
-        10,
-        10,
-    ]
-)
-OCPparams["control_weights"] = np.array([1, 1, 1, 1, 1, 1])
+OCPparams["state_weights"] = np.array(OCPparams["state_weights"])
+OCPparams["control_weights"] = np.array(OCPparams["control_weights"])
 
 
 env = EnvTalosMPC(params_env, params_designer, OCPparams)

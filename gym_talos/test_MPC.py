@@ -49,75 +49,8 @@ params_training = params["training"]
 
 # parameter OCP
 OCPparams = params["OCP"]
-OCPparams["state_weights"] = np.array(
-    [
-        500,
-        500,
-        500,
-        1000,
-        1000,
-        1000,
-        500,
-        500,
-        500,
-        500,
-        1000,
-        1000,
-        500,
-        500,
-        500,
-        500,
-        1000,
-        1000,
-        100,
-        200,
-        100,
-        100,
-        100,
-        100,
-        1,
-        1,
-        1,
-        500,
-        500,
-        500,
-        500,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        10,
-        10,
-        10,
-        10,
-        10,
-        10,
-        10,
-        10,
-        10,
-        10,
-        10,
-        10,
-        10,
-    ],
-)
-OCPparams["control_weights"] = np.array(
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-)
+OCPparams["state_weights"] = np.array(OCPparams["state_weights"])
+OCPparams["control_weights"] = np.array(OCPparams["control_weights"])
 
 
 # Setting names and log locations
@@ -143,7 +76,7 @@ torch.set_num_threads(1)
 ##############
 # Create environment
 if number_environments == 1:
-    env_training = EnvTalosMPC(params_env, params_designer, OCPparams, GUI=False)
+    env_training = EnvTalosMPC(params_env, params_designer, OCPparams, GUI=True)
 else:
     env_training = SubprocVecEnv(
         number_environments

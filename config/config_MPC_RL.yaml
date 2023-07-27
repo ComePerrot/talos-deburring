@@ -1,6 +1,6 @@
 OCP:
-  horizon_length: 100
-  time_step: 0.01
+  horizon_length: 30
+  time_step: 0.02
   w_state_reg: 0.02
   w_control_reg: 0.001
   w_limit: 1000
@@ -9,26 +9,73 @@ OCP:
   w_gripper_rot: 30
   w_gripper_vel: 2
   limit_scale: 1
-  state_pos_weights:
-    base: [500, 500, 500, 1000, 1000, 1000]
-    # left_leg: [500, 500, 500, 500, 1000, 1000]
-    # right_leg: [500, 500, 500, 500, 1000, 1000]
-    torso: [100, 200]
-    left_arm: [100, 100, 100, 100] #, 1, 1, 1]
-    # right_arm: [500, 500, 500, 500]
-  state_vel_weights:
-    base: [1, 1, 1, 1, 1, 1]
-    # left_leg: [1, 1, 1, 1, 1, 1]
-    # right_leg: [1, 1, 1, 1, 1, 1]
-    torso: [10, 10]
-    left_arm: [10, 10, 10, 10] #, 10, 10, 10]
-    # right_arm: [10, 10, 10, 10]
+  state_weights:
+    [
+      500,
+      500,
+      500,
+      1000,
+      1000,
+      1000,
+      500,
+      500,
+      500,
+      500,
+      1000,
+      1000,
+      500,
+      500,
+      500,
+      500,
+      1000,
+      1000,
+      100,
+      200,
+      100,
+      100,
+      100,
+      100,
+      1,
+      1,
+      1,
+      500,
+      500,
+      500,
+      500,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+    ]
   control_weights:
-    # left_leg: [1, 1, 1, 1, 1, 1]
-    # right_leg: [1, 1, 1, 1, 1, 1]
-    torso: [1, 1]
-    left_arm: [1, 1, 1, 1] #, 1, 1, 1]
-    # right_arm: [1, 1, 1, 1]
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
 training:
   name: "test"
@@ -45,7 +92,7 @@ environment:
   minHeight: 0.8 # if 0 no check is performed on the height of the robot
   # Target
   targetType: "fixed"
-  targetPosition: [0.6,0.4,1.1]
+  targetPosition: [0.6, 0.4, 1.1]
   # Reward parameters
   w_target_pos: 10
   w_control_reg: 0.5
