@@ -84,8 +84,8 @@ training:
   verbose: True
 
 environment:
-  numSimulationSteps: 10
   timeStepSimulation: 1e-3
+  numOCPSteps: 5
   normalizeObs: True
   # Stop conditions
   maxTime: 5 # Maximum epoch time in seconds
@@ -94,9 +94,9 @@ environment:
   targetType: "fixed"
   targetPosition: [0.6, 0.4, 1.1]
   # Reward parameters
-  w_target_pos: 10
-  w_control_reg: 0.5
-  w_penalization_truncation: 5
+  distanceThreshold: 0.05
+  w_success: 1
+  w_penalization_truncation: 10
 
 robot_designer:
   urdf_path: "/opt/openrobots/share/example-robot-data/robots/talos_data/robots/talos_reduced.urdf"

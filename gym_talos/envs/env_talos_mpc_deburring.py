@@ -9,7 +9,7 @@ from gym_talos.utils.create_target import TargetGoal
 
 class EnvTalosMPC(gym.Env):
     def __init__(self, params_env, params_designer, param_ocp, GUI=False) -> None:
-        self._init_parameters(params_env)
+        self._init_parameters(params_env, param_ocp)
 
         self.target_handler = TargetGoal(params_env)
         self.target_handler.create_target()
@@ -69,7 +69,7 @@ class EnvTalosMPC(gym.Env):
 
         # Problem can be modified here to fit the needs of the RL
 
-    def _init_parameters(self, params_env):
+    def _init_parameters(self, params_env, param_ocp):
         """Load environment parameters from provided dictionnary
 
         Args:
@@ -77,7 +77,9 @@ class EnvTalosMPC(gym.Env):
         """
         # Simulation timings
         self.timeStepSimulation = float(params_env["timeStepSimulation"])
-        self.numSimulationSteps = params_env["numSimulationSteps"]
+        self.timeStepOCP = float(param_ocp["time_step"])
+
+        self.numOCPSteps = params_env["numOCPSteps"]
 
         self.normalizeObs = params_env["normalizeObs"]
 
@@ -86,8 +88,8 @@ class EnvTalosMPC(gym.Env):
         self.minHeight = params_env["minHeight"]
 
         #   Reward parameters
-        self.weight_target = params_env["w_target_pos"]
-        self.weight_command = params_env["w_control_reg"]
+        self.distanceThreshold = params_env["distanceThreshold"]
+        self.weight_success = params_env["w_success"]
         self.weight_truncation = params_env["w_penalization_truncation"]
 
     def _init_env_variables(self, action_dimension, observation_dimension):
@@ -99,8 +101,10 @@ class EnvTalosMPC(gym.Env):
         """
         self.timer = 0
 
+        self.numSimulationSteps = int(self.timeStepOCP / self.timeStepSimulation)
         self.maxStep = int(
-            self.maxTime / (self.timeStepSimulation * self.numSimulationSteps),
+            self.maxTime
+            / (self.numOCPSteps * self.timeStepSimulation * self.numSimulationSteps),
         )
 
         if self.normalizeObs:
@@ -195,28 +199,30 @@ class EnvTalosMPC(gym.Env):
         posture_reference = self.q0
         posture_reference[self.arm_joint_ID : self.arm_joint_ID + 4] = arm_reference
 
-        x0 = self.simulator.getRobotState()
+        for _ in range(self.numOCPSteps):
+            x0 = self.simulator.getRobotState()
 
-        for _ in range(self.numSimulationSteps):
+            for _ in range(self.numSimulationSteps):
+                x_measured = self.simulator.getRobotState()
+                torques = (
+                    self.crocoWrapper.torque
+                    + self.crocoWrapper.gain
+                    @ self.crocoWrapper.state.diff(x_measured, x0)
+                )
+                self.simulator.step(torques)
+
             x_measured = self.simulator.getRobotState()
-            torques = (
-                self.crocoWrapper.torque
-                + self.crocoWrapper.gain @ self.crocoWrapper.state.diff(x_measured, x0)
+
+            self.pinWrapper.update_reduced_model(x_measured)
+
+            self.crocoWrapper.recede()
+            self.crocoWrapper.change_goal_cost_activation(self.horizon_length - 1, True)
+            self.crocoWrapper.change_posture_reference(
+                self.horizon_length - 1,
+                posture_reference,
             )
-            self.simulator.step(torques)
 
-        x_measured = self.simulator.getRobotState()
-
-        self.pinWrapper.update_reduced_model(x_measured)
-
-        self.crocoWrapper.recede()
-        self.crocoWrapper.change_goal_cost_activation(self.horizon_length - 1, True)
-        self.crocoWrapper.change_posture_reference(
-            self.horizon_length - 1,
-            posture_reference,
-        )
-
-        self.crocoWrapper.solve(x_measured)
+            self.crocoWrapper.solve(x_measured)
 
         observation = self._getObservation(x_measured)
         terminated = self._checkTermination(x_measured)
@@ -263,22 +269,22 @@ class EnvTalosMPC(gym.Env):
             Scalar reward
         """
         if truncated:
-            reward_alive = 0
+            reward_dead = -1
         else:
-            reward_alive = 1
+            reward_dead = 0
 
-        # command regularization
-        reward_command = -np.linalg.norm(torques)
         # target distance
-        reward_toolPosition = -np.linalg.norm(
+        distance_tool_target = -np.linalg.norm(
             self.pinWrapper.get_end_effector_frame().translation
             - self.target_handler.position_target,
         )
+        if distance_tool_target < self.distanceThreshold:
+            reward_success = 1
+        else:
+            reward_success = 0
 
         return (
-            self.weight_target * reward_toolPosition
-            + self.weight_command * reward_command
-            + self.weight_truncation * reward_alive
+            self.weight_success * reward_success + self.weight_truncation * reward_dead
         )
 
     def _checkTermination(self, x_measured):
