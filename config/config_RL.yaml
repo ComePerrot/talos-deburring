@@ -1,7 +1,7 @@
 training:
   name: "local_training"
-  total_timesteps: 10000000 # Total number of training timesteps
-  log_interval: 10 # Number of timesteps between logging events
+  total_timesteps: 300000 # Total number of training timesteps
+  log_interval: 100 # Number of timesteps between logging events
 
 SAC:
   model_param:
@@ -59,9 +59,9 @@ environment:
   rewardType: "dense" # "sparse" or "dense"
   thresholdSuccess: 0.05 # Distance threshold to consider that the target is reached
   # Reward parameters
-  w_target_pos: 1
-  w_control_reg: 0.1
-  w_penalization_truncation: 7
+  w_target_pos: 6
+  w_control_reg: 0.08
+  w_penalization_truncation: 4
 
 
 robot_designer:

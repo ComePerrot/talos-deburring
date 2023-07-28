@@ -21,10 +21,7 @@ class EnvTalosDeburringHer(gym.Env):
             GUI: set to true to activate display. Defaults to False.
         """
         self._init_parameters(params_env, GUI)
-        if self.reward_type == "dense":
-            self.compute_reward = self.compute_reward_dense
-        elif self.reward_type == "sparse":
-            self.compute_reward = self.compute_reward_sparse
+
         # Robot Designer
         self.pinWrapper = TalosDesigner(
             URDF=params_designer["URDF"],
@@ -126,6 +123,10 @@ class EnvTalosDeburringHer(gym.Env):
             self.weight_alive = params_env["w_alive"]
         except KeyError:
             self.weight_alive = 1
+        if self.reward_type == "dense":
+            self.compute_reward = self.compute_reward_dense
+        elif self.reward_type == "sparse":
+            self.compute_reward = self.compute_reward_sparse
 
     def _init_env_variables(self, action_dimension, observation_dimension):
         """Initialize internal variables of the environment
@@ -398,6 +399,8 @@ class EnvTalosDeburringHer(gym.Env):
         Returns:
             True if the environment has been successful, False otherwise.
         """
+        if self.on_target > 30:
+            print("sequence done with success")
         return self.on_target > 30
 
     def _scaleAction(self, action):

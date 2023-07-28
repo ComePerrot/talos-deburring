@@ -156,11 +156,11 @@ class SaveCallback(BaseCallback):
                 if mean_reward > self.best_mean_reward:
                     self.best_mean_reward = mean_reward
                     # Example for saving best model
-                    if self.verbose >= 1:
-                        print(f"Best model found with mean of: {mean_reward:.2f}")
-                        print(
-                            f"Saving new best model to {self.save_path}/best_model.zip",
-                        )
+                    # if self.verbose >= 1:
+                    #     print(f"Best model found with mean of: {mean_reward:.2f}")
+                    #     print(
+                    #     f"Saving new best model to {self.save_path}/best_model.zip",
+                    #     )
                     self.model.save(self.save_path + "/" + "best_model.zip")
         return True
 
@@ -221,11 +221,11 @@ class AllCallbacks(BaseCallback):
                     if mean_reward > self.best_mean_reward and mean_reward > 0:
                         self.best_mean_reward = mean_reward
                         # Example for saving best model
-                        if self.verbose >= 1:
-                            print(f"Best model found with mean of: {mean_reward:.2f}")
-                            print(
-                                f"New best model at {self.save_path}/best_model.zip",
-                            )
+                        # if self.verbose >= 1:
+                        #     print(f"Best model found with mean of: {mean_reward:.2f}")
+                        #     print(
+                        #         f"New best model at {self.save_path}/best_model.zip",
+                        #     )
                         self.model.save(self.save_path + "/" + "best_model.zip")
 
     def _on_step_tensor(self) -> bool:
