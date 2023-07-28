@@ -76,7 +76,7 @@ torch.set_num_threads(1)
 ##############
 # Create environment
 if number_environments == 1:
-    env_training = EnvTalosMPC(params_env, params_designer, OCPparams, GUI=True)
+    env_training = EnvTalosMPC(params_env, params_designer, OCPparams, GUI=False)
 else:
     env_training = SubprocVecEnv(
         number_environments

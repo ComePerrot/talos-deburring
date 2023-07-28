@@ -2,9 +2,13 @@ Bootstrap: docker
 From: python:3.11
 
 %post
-    git clone https://github.com/LBMWiksy/talos-rl.git
+    git clone -b topic/MPC https://github.com/ComePerrot/talos-rl.git
     cd /talos-rl
+    pip install -U pip
     pip install .[deps]
 
 %runscript
-    exec python -m gym_talos -config /config/config_RL_test.yaml
+    exec python -m gym_talos -config /config/config_RL.yaml
+
+%apprun mpc
+    exec python -m gym_talos.training_MPC -config /config/config_MPC_RL.yaml

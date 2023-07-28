@@ -96,7 +96,7 @@ environment:
   # Reward parameters
   distanceThreshold: 0.01
   w_success: 1
-  w_penalization_truncation: 10
+  w_penalization_truncation: 100
 
 robot_designer:
   urdf_path: "/opt/openrobots/share/example-robot-data/robots/talos_data/robots/talos_reduced.urdf"
