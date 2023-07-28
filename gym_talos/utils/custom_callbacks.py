@@ -359,14 +359,35 @@ class EvalOnTraining:
         This method will evaluate the agent during training
         """
         eval_rewards = []
+        eval_min_dt = []
+        eval_torque = []
+        eval_success = []
+        eval_final_dt = []
         for _ in range(self.n_eval_episodes):
+            obs, infos = self.eval_env.reset(options={"target": self.targets[0]})
             episode_reward = 0.0
+            episode_min_dt = infos["dst"]
+            episode_torque = infos["tor"]
             done = False
-            obs, _ = self.eval_env.reset(options={"target": self.targets[0]})
             while not done:
                 action, _ = self.model.predict(obs, deterministic=True)
                 obs, reward, terminated, truncated, infos = self.eval_env.step(action)
+                if infos["dst"] < episode_min_dt:
+                    episode_min_dt = infos["dst"]
                 episode_reward += reward
                 done = True if terminated or truncated else False
+            episode_success = int(infos["is_success"])
+            episode_final_dt = infos["dst"]
             eval_rewards.append(episode_reward)
-        return np.mean(eval_rewards)
+            eval_min_dt.append(episode_min_dt)
+            eval_torque.append(episode_torque)
+            eval_success.append(episode_success)
+            eval_final_dt.append(episode_final_dt)
+
+        return (
+            np.mean(eval_rewards),
+            np.mean(eval_min_dt),
+            np.mean(eval_final_dt),
+            np.mean(eval_torque),
+            np.mean(eval_success),
+        )
