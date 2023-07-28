@@ -102,6 +102,7 @@ callback_class = AllCallbacks(
     stats_window_size=100,
     check_freq=1000,
     verbose=1,
+    total_timesteps=total_timesteps,
     env=env_training,
 )
 # Callback function to save the model when CTRL+C is pressed

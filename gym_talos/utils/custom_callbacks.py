@@ -1,4 +1,6 @@
 import shutil
+import time
+import datetime
 import gymnasium as gym
 import numpy as np
 
@@ -84,6 +86,7 @@ class TensorboardCallback(BaseCallback):
                     [ep_info["from_init"] for ep_info in self._custom_info_buffer],
                 ),
             )
+
         ## If we want saves more frequently we can with the following command
         # self.logger.dump(step=self.num_timesteps)
         return True
@@ -170,9 +173,11 @@ class AllCallbacks(BaseCallback):
         stats_window_size: int = 100,
         check_freq: int = 1000,
         verbose: int = 0,
+        total_timesteps: int = 1000000,
         env: gym.Env = None,
     ):
         super().__init__(verbose)
+        self.time = time.time()
         self.check_freq = check_freq
         self.config_filename = config_filename
         self.training_name = training_name
@@ -187,6 +192,7 @@ class AllCallbacks(BaseCallback):
         self._ep_end_buffer = None
         self._ep_dst_min_buffer = None
         self._dst_min = None
+        self.num_timesteps_left = total_timesteps
 
     def _on_training_start(self) -> None:
         """
@@ -243,35 +249,39 @@ class AllCallbacks(BaseCallback):
             ):
                 self._dump_logs_tensor()
             if self._episode_num % self.check_freq == 0:
-                if self.eval_on_training is None:
-                    self.eval_on_training = EvalOnTraining(
-                        model=self.locals["self"],
-                        eval_env=self.env,
-                        n_eval_episodes=100,
-                    )
-                eval_reward = self.eval_on_training.eval_on_train()
-                self.logger.record("z_custom/eval_reward", eval_reward)
+                self._eval_training_record()
+
+    def _eval_training_record(self):
+        if self.eval_on_training is None:
+            self.eval_on_training = EvalOnTraining(
+                model=self.locals["self"],
+                eval_env=self.env,
+                n_eval_episodes=100,
+            )
+            (
+                eval_reward,
+                eval_min_dt,
+                eval_final_dt,
+                eval_torque,
+                eval_success,
+            ) = self.eval_on_training.eval_on_train()
+            self.logger.record("sampled_eval/reward", eval_reward)
+            self.logger.record("sampled_eval/min_dt", eval_min_dt)
+            self.logger.record("sampled_eval/final_dt", eval_final_dt)
+            self.logger.record("sampled_eval/torque", eval_torque)
+            self.logger.record("sampled_eval/success", eval_success)
+            self.time = time.time()
 
     def _dump_logs_tensor(self) -> None:
         """
         Write log.
         """
+        time_per_timestep = (time.time() - self.time) / self.locals["log_interval"]
+        self.time = time.time()
         if len(self._custom_info_buffer) > 0:
             self.logger.record(
                 "z_custom/torque_mean",
                 safe_mean([ep_info["torque"] for ep_info in self._custom_info_buffer]),
-            )
-            self.logger.record(
-                "z_custom/to_reach_mean",
-                safe_mean(
-                    [ep_info["to_reach"] for ep_info in self._custom_info_buffer],
-                ),
-            )
-            self.logger.record(
-                "z_custom/from_init_mean",
-                safe_mean(
-                    [ep_info["from_init"] for ep_info in self._custom_info_buffer],
-                ),
             )
             self.logger.record(
                 "z_custom/final_dt",
@@ -281,7 +291,13 @@ class AllCallbacks(BaseCallback):
                 "z_custom/min_dt",
                 safe_mean(list(self._ep_dst_min_buffer)),
             )
-
+            self.logger.record(
+                ">>>     ETA    <<<",
+                datetime.timedelta(
+                    seconds=int(self.num_timesteps_left * time_per_timestep),
+                ),
+            )
+        self.num_timesteps_left -= self.locals["log_interval"]
         # self.logger.dump(step=self.num_timesteps)
         return True
 
