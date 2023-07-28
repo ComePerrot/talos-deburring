@@ -13,17 +13,6 @@ from .utils.custom_callbacks import AllCallbacks
 from .utils.loader_and_saver import saver, handler, setup_model, setup_env
 
 ################
-# Main HER SAC #
-################
-
-# Need to add also for the goal the speed of the ARM probably,
-# cause need to stop the movement at the right time
-# However with HER program, the issue is that it would mean that every time we need to
-# stop the movement at the right time
-# And so replay buffers arent good for that since the movement is stopped earlier than
-# the goal, so with speed ?
-
-################
 #  PARAMETERS  #
 ################
 # Parse command line arguments
@@ -76,19 +65,25 @@ torch.set_num_threads(1)
 #  PARAMETERS  #
 ################
 
+# The environment created for training
 env_class = EnvTalosDeburringHer
 env_params = params["environment"]
 
+# The algorithm used for training
 model_class = SAC
 model_params = params["SAC"]
 
+# Adding a replay buffer
 replay_buffer_class = HerReplayBuffer
 
+# Setup environment
 env_training = setup_env(
     env_class=env_class,
     env_params=env_params,
     designer_params=designer_params,
 )
+
+# Setup model
 model = setup_model(
     model_class=model_class,
     model_params=model_params,
@@ -96,6 +91,7 @@ model = setup_model(
     replay_buffer_class=replay_buffer_class,
 )
 
+# Callbacks
 callback_class = AllCallbacks(
     config_filename=config_filename,
     training_name=training_name,
@@ -105,6 +101,7 @@ callback_class = AllCallbacks(
     total_timesteps=total_timesteps,
     env=env_training,
 )
+
 # Callback function to save the model when CTRL+C is pressed
 signal.signal(
     signal.SIGINT,
@@ -117,7 +114,6 @@ signal.signal(
 )
 
 # Train Agent
-
 model.learn(
     total_timesteps=total_timesteps,
     tb_log_name=training_name,
@@ -125,5 +121,6 @@ model.learn(
     callback=callback_class,
 )
 
+# Save the model
 saver(training_name=training_name, model=model)
 env_training.close()
