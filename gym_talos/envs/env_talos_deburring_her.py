@@ -209,7 +209,11 @@ class EnvTalosDeburringHer(gym.Env):
             self.target.position_target = options["target"]
         self.simulator.reset(self.target.position_target)  # Reset simulator
         x_measured = self.simulator.getRobotState()
-        self.pinWrapper.update_reduced_model(x_measured, self.simulator.getRobotPos())
+        self.pinWrapper.update_reduced_model(
+            x_measured,
+            self.simulator.getContactPoints(),
+            self.simulator.getRobotPos(),
+        )
         infos = {
             "dst": np.linalg.norm(
                 self.pinWrapper.get_end_effector_pos() - self.target.position_target,
@@ -241,11 +245,13 @@ class EnvTalosDeburringHer(gym.Env):
         for _ in range(self.numSimulationSteps):
             self.simulator.step(torques)
         x_measured = self.simulator.getRobotState()
-        self.pinWrapper.update_reduced_model(x_measured, self.simulator.getRobotPos())
-        # if self.GUI:
-        #     # self.simulator.createBaseRobotVisual(
-        #     # self.pinWrapper.get_end_effector_pos())
-        #     pass
+        self.pinWrapper.update_reduced_model(
+            x_measured,
+            self.simulator.getContactPoints(),
+            self.simulator.getRobotPos(),
+        )
+        if self.GUI:
+            self.simulator.createBaseRobotVisual(self.pinWrapper.get_ZMP())
         self.rCoM = self.pinWrapper.get_CoM()
         ob = self._getObservation(x_measured)  # position velocity joint and goal
         truncated = self._checkTruncation(x_measured)

@@ -1,4 +1,3 @@
-from collections import deque
 import example_robot_data
 import numpy as np
 import pinocchio as pin
@@ -87,7 +86,6 @@ class TalosDesigner:
         self.q0Complete = self.rmodelComplete.referenceConfigurations["half_sitting"]
         self.z_c = self.q0Complete[2]
         self.g = self.gravity[2]
-        self._buffer_CoM = deque(maxlen=3)
         self.base_translation_bullet_pinocchio = np.array([-0.08222, 0.00838, -0.07261])
         self.base_robot_bullet_SE3_origin_robot_pinocchio = pin.SE3(
             np.eye(3),
@@ -122,7 +120,7 @@ class TalosDesigner:
         self.q0 = self.rmodel.referenceConfigurations["half_sitting"]
         self.rmodel.defaultState = np.concatenate([self.q0, np.zeros(self.rmodel.nv)])
 
-    def update_reduced_model(self, x_measured, base_pos):
+    def update_reduced_model(self, x_measured, external_forces, base_pos):
         pin.forwardKinematics(
             self.rmodel,
             self.rdata,
@@ -138,19 +136,9 @@ class TalosDesigner:
             * self.base_robot_bullet_SE3_origin_robot_pinocchio
         )
         self._calculate_CoM(x_measured)
+        self._calculate_ZMP(external_forces)
 
         self.oMtool = self.rdata.oMf[self.endEffectorId]
-        self._buffer_CoM.append(self._CoM[:2])
-
-        if len(self._buffer_CoM) == 3:
-            acc = (
-                0.01
-                * (self._buffer_CoM[2] + self._buffer_CoM[0] - 2 * self._buffer_CoM[1])
-                / (self.dt**2)
-            )
-            self._ZMP = self.z_c / self.g * acc
-        else:
-            self._ZMP = self._buffer_CoM[0]
 
     def _calculate_CoM(self, x_measured):
         """Compute the CoM position from the robot state"""
@@ -163,6 +151,21 @@ class TalosDesigner:
             self.world_bullet_SE3_origin_robot_pin.rotation @ local_CoM
             + self.world_bullet_SE3_origin_robot_pin.translation
         )
+
+    def _calculate_ZMP(self, external_forces):
+        """Compute the ZMP position from the robot state"""
+        try:
+            sum_tot = 0
+            sum_px = 0
+            sum_py = 0
+            for i in range(len(external_forces)):
+                sum_px += external_forces[i][1][0] * external_forces[i][2]
+                sum_py += external_forces[i][1][1] * external_forces[i][2]
+                sum_tot += external_forces[i][2]
+            ZMP = np.array([sum_px / sum_tot, sum_py / sum_tot, 0])
+            self._ZMP = ZMP
+        except:  # noqa: E722
+            self._ZMP = self._CoM
 
     def get_end_effector_pos(self):
         """Compute the end effector position from the robot state"""

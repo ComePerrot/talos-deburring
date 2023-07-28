@@ -216,9 +216,9 @@ class TalosDeburringSimulator:
             p.removeBody(self.baseRobot_MPC)
         except:  # noqa: E722
             pass
-        RADIUS = 0.03
+        RADIUS = 0.2
         LENGTH = 0.0001
-        blueBox = p.createVisualShape(
+        redBox = p.createVisualShape(
             shapeType=p.GEOM_CAPSULE,
             rgbaColor=[1, 0, 0, 1.0],
             visualFramePosition=[0.0, 0.0, 0.0],
@@ -230,7 +230,7 @@ class TalosDeburringSimulator:
         self.baseRobot_MPC = p.createMultiBody(
             baseMass=0.0,
             baseInertialFramePosition=[0, 0, 0],
-            baseVisualShapeIndex=blueBox,
+            baseVisualShapeIndex=redBox,
             basePosition=[baseRobot[0], baseRobot[1], baseRobot[2]],
             useMaximalCoordinates=True,
         )
@@ -274,6 +274,10 @@ class TalosDeburringSimulator:
         # x[:3] -= self.localInertiaPos
 
         return x  # noqa: RET504
+
+    def getContactPoints(self):
+        """Get contact points between the robot and the environment"""
+        return [(i[4], i[6], i[9]) for i in p.getContactPoints()]
 
     def step(self, torques):
         """Do one step of simulation"""
