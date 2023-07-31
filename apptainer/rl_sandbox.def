@@ -3,9 +3,18 @@ From: python:3.11
 
 %post
     git clone -b topic/MPC https://github.com/ComePerrot/talos-rl.git
-    cd /talos-rl
+    
     pip install -U pip
-    pip install .[deps]
+    pip install ./talos-rl[deps]
+    pip install "crocoddyl==1.9"
+
+    git clone --recursive -b devel https://github.com/ComePerrot/talos-manipulation.git
+
+    cmake -B talos-manipulation/deburring-mpc/build -S talos-manipulation/deburring-mpc \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH=$(cmeel cmake)
+
+
 
 %runscript
     exec python -m gym_talos -config /config/config_RL.yaml
