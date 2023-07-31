@@ -17,6 +17,7 @@ SAC:
       gamma: 0.95,
       batch_size: 128,
       tau: 0.01,
+      ent_coef: "auto_0.04",
       policy_kwargs: {
         net_arch: [512, 512, 512],
       },

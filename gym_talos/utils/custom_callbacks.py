@@ -105,8 +105,6 @@ class AllCallbacks(BaseCallback):
         time_per_timestep = (time.time() - self.time) / self.locals["log_interval"]
         self.num_timesteps_left -= self.check_freq
         self.time = time.time()
-        print(time_per_timestep)
-        print(self.num_timesteps_left)
         if len(self._custom_info_buffer) > 0:
             self.logger.record(
                 "z_custom/torque_mean",

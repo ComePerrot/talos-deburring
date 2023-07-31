@@ -127,6 +127,8 @@ class EnvTalosDeburringHer(gym.Env):
             self.compute_reward = self.compute_reward_dense
         elif self.reward_type == "sparse":
             self.compute_reward = self.compute_reward_sparse
+        elif self.reward_type == "mix":
+            self.compute_reward = self.compute_reward_mix
 
     def _init_env_variables(self, action_dimension, observation_dimension):
         """Initialize internal variables of the environment
@@ -552,6 +554,44 @@ class EnvTalosDeburringHer(gym.Env):
             info_matrix[i] = inf["param_rew"]
         info_matrix = np.concatenate(
             (info_matrix, dst),
+            axis=1,
+        )
+        return info_matrix @ coeff_matrix
+
+    def compute_reward_mix(
+        self,
+        achieved_goal: np.ndarray,
+        desired_goal: np.ndarray,
+        info: dict,
+    ) -> float:
+        dst = np.array([np.linalg.norm(achieved_goal - desired_goal, axis=-1)]).T
+        bool_target = (dst < self.threshold_success).astype(int)
+        coeff_matrix = np.array(
+            [
+                [
+                    -self.weight_command,
+                    # corresponds to the command penalization
+                    -1,
+                    # corresponds to the lenght to init penalization
+                    self.weight_truncation,
+                    # corresponds to the truncation penalization
+                    -self.weight_target,
+                    # corresponds to the distance to target
+                    self.weight_target_reached,
+                    # corresponds to the target reached
+                ],
+            ],
+        ).T
+        info_matrix = np.empty((achieved_goal.shape[0], 3))
+
+        for i, inf in enumerate(info):
+            info_matrix[i] = inf["param_rew"]
+        info_matrix = np.concatenate(
+            (info_matrix, dst),
+            axis=1,
+        )
+        info_matrix = np.concatenate(
+            (info_matrix, bool_target),
             axis=1,
         )
         return info_matrix @ coeff_matrix
