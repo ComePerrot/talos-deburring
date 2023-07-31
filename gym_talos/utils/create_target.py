@@ -86,7 +86,7 @@ class TargetGoal:
         if t_type == "box":
             return t_type, np.concatenate(
                 (
-                    np.array([params_env["shoulderPosition"]]),
+                    np.array([params_env["targetPosition"]]),
                     np.array(params_env["targetSizeLow"]),
                     np.array(params_env["targetSizeHigh"]),
                 ),

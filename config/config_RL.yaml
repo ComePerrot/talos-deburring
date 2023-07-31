@@ -1,6 +1,6 @@
 training:
   name: "local_training"
-  total_timesteps: 300000 # Total number of training timesteps
+  total_timesteps: 10000000 # Total number of training timesteps
   log_interval: 100 # Number of timesteps between logging events
 
 SAC:
@@ -50,19 +50,19 @@ environment:
   # Target
   # targetType can be "fixed" or "reachable" or "box" or "sphere" around the shoulder
   targetType: "sphere"
-  targetPosition: [0.1482729,  0.46236133, 0.68072397]
+  targetPosition: [0.25, 0.43, 1.1]
   # targetPosition: [0.14, 0.46, 0.6834647]
   targetSizeLow: [-0.1, -0.1, -0.1]
   targetSizeHigh: [0.1, 0.1, 0.1]
-  targetRadius: 0.5
-  shoulderPosition: [0.382729,  0.4236133, 1.0072397]
+  targetRadius: 0.3
   
-  rewardType: "dense" # "sparse" or "dense"
+  rewardType: "dense" # "sparse", "dense" or "mix" if want to mix both
   thresholdSuccess: 0.05 # Distance threshold to consider that the target is reached
   # Reward parameters
-  w_target_pos: 6
+  w_target_reached: 10
+  w_target_pos: 10
   w_control_reg: 0.08
-  w_penalization_truncation: 4
+  w_penalization_truncation: 1
 
 
 robot_designer:

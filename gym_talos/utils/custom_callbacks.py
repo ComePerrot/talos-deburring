@@ -88,7 +88,7 @@ class AllCallbacks(BaseCallback):
                 eval_torque,
                 eval_success,
             ) = self.eval_on_training.eval_on_train()
-            if eval_reward > self.best_mean_reward and eval_reward > 0:
+            if eval_reward > 0 and eval_reward > self.best_mean_reward:
                 self.best_mean_reward = eval_reward
                 self.model.save(self.save_path + "/" + "best_model.zip")
             self.logger.record("sampled_eval/reward", eval_reward)
