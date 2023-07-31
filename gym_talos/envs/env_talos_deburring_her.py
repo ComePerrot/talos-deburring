@@ -44,8 +44,6 @@ class EnvTalosDeburringHer(gym.Env):
             dt=self.timeStepSimulation,
         )
 
-        self.target = TargetGoal(params_env=params_env)
-
         # Penalization for truncation of torsos
         self.order_positions = self.simulator.dict_pos
         self.mat_dt_init = np.zeros(self.rmodel.nq)
@@ -129,6 +127,7 @@ class EnvTalosDeburringHer(gym.Env):
             self.compute_reward = self.compute_reward_sparse
         elif self.reward_type == "mix":
             self.compute_reward = self.compute_reward_mix
+        self.target = TargetGoal(params_env=params_env)
 
     def _init_env_variables(self, action_dimension, observation_dimension):
         """Initialize internal variables of the environment
