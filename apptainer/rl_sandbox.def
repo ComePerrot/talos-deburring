@@ -1,20 +1,42 @@
 Bootstrap: docker
-From: python:3.11
+From: ubuntu:20.04
 
 %post
-    git clone -b topic/MPC https://github.com/ComePerrot/talos-rl.git
+    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        gnupg2 \
+        git
     
-    pip install -U pip
-    pip install ./talos-rl[deps]
-    pip install "crocoddyl==1.9"
+    git clone -b topic/mpc_apptainer https://github.com/ComePerrot/talos-rl.git
+    apt-key add talos-rl/apptainer/robotpkg.key
+    echo "deb [arch=amd64] http://robotpkg.openrobots.org/packages/debian/pub focal robotpkg" > /etc/apt/sources.list.d/robotpkg.list
+    
+    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y  \
+        cmake \
+        python3-pip \
+        robotpkg-py3\*-crocoddyl
+
+    export CMAKE_PREFIX_PATH=/opt/openrobots
+
+    git clone https://github.com/jbeder/yaml-cpp
+    cmake -B /yaml-cpp/build -S /yaml-cpp
+    cd yaml-cpp/build
+    make install
+
+    cd /
 
     git clone --recursive -b devel https://github.com/ComePerrot/talos-manipulation.git
-
     cmake -B talos-manipulation/deburring-mpc/build -S talos-manipulation/deburring-mpc \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH=$(cmeel cmake)
+            -DCMAKE_INSTALL_PREFIX=/opt/openrobots
+    cd talos-manipulation/deburring-mpc/build
+    make install
 
+    echo "/opt/openrobots/lib/python3.8/site-packages" > /usr/lib/python3/dist-packages/robotpkg.pth
 
+    cd /
+
+    pip install -U pip
+    pip install ./talos-rl[deps]
 
 %runscript
     exec python -m gym_talos -config /config/config_RL.yaml
