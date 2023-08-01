@@ -349,7 +349,7 @@ class EnvTalosDeburringHer(gym.Env):
         Returns:
             True if the environment has been terminated, False otherwise
         """
-        return self.timer > (self.maxStep - 1) or self.on_target > 30
+        return self.timer > (self.maxStep - 1) or self.on_target > 100
 
     def _checkTruncation(self, x_measured):
         """Checks the truncation conditions.
@@ -400,9 +400,9 @@ class EnvTalosDeburringHer(gym.Env):
         Returns:
             True if the environment has been successful, False otherwise.
         """
-        if self.on_target > 30:
+        if self.on_target > 100:
             print("sequence done with success")
-        return self.on_target > 30
+        return self.on_target > 100
 
     def _scaleAction(self, action):
         """Scales normalized actions to obtain robot torques
