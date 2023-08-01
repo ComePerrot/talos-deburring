@@ -37,7 +37,6 @@ environment:
   timeStepSimulation: 1e-3
   normalizeObs: False
   randomInit: True # Choose to randomize the position of controlled joint arount the initial position 
-  # (a quarter around the limits and the initial position currently)
   limitPosScale: 1
   limitVelScale: 1
   torqueScaleCoeff: 1
@@ -47,25 +46,21 @@ environment:
   maxTime: 30 # Maximum epoch time in seconds
   lowerLimitPos: [-0.25, -0.05, 0.9]
   upperLimitPos: [0.1, 0.05, 1.3]
-  # Target
-  # targetType can be "fixed" or "reachable" or "box" or "sphere" around the shoulder
+  # Target (can be a fixed position or a box or a sphere)
   targetType: "sphere"
   targetPosition: [0.25, 0.43, 1.1]
   targetSizeLow: [-0.1, -0.1, -0.1]
   targetSizeHigh: [0.1, 0.1, 0.1]
   targetRadius: 0.3
   
-  rewardType: "dense" # "sparse", "dense" or "mix" if want to mix both
-  thresholdSuccess: 0.05 # Distance threshold to consider that the target is reached
-  # Reward parameters
-  w_target_reached: 10
+  rewardType: "mix" # "sparse", "dense" or "mix" if want to mix both
+  w_target_reached: 100
   w_target_pos: 10
   w_control_reg: 0.1
   w_penalization_truncation: 4
 
 
 robot_designer:
-  # URDF: "/talos_data/robots/talos_full_v2.urdf"
   URDF: "/talos_data/robots/talos_reduced.urdf"
   SRDF: "/talos_data/srdf/talos.srdf"
   controlledJoints:
@@ -99,5 +94,4 @@ robot_designer:
     ]
 
   # Initial position of the robot
-  # toolPosition: [0.0, 0.0, 0.0]
   toolPosition: [0, -0.02, -0.0825]
