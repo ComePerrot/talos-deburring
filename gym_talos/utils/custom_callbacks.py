@@ -8,6 +8,8 @@ from stable_baselines3.common.callbacks import BaseCallback
 from collections import deque
 from stable_baselines3.common.utils import safe_mean
 from typing import Optional
+
+from gym_talos.utils.loader_and_saver import saver
 from .create_target import TargetGoal
 
 
@@ -49,6 +51,9 @@ class AllCallbacks(BaseCallback):
             self.config_filename,
             self.save_path + "/" + self.training_name + ".yaml",
         )
+        # In order to have a multiple of the log_interval as check_freq
+        temp = self.check_freq // self.locals["log_interval"]
+        self.check_freq = temp * self.locals["log_interval"]
 
     def _on_step(self) -> bool:
         """
@@ -71,8 +76,10 @@ class AllCallbacks(BaseCallback):
                 and self._episode_num % self.locals["log_interval"] == 0
             ):
                 self._dump_logs()
-            if self._episode_num % self.check_freq == 0:
-                self._eval_training_record()
+
+    def _on_training_end(self) -> None:
+        saver(self.training_name, self.locals["self"])
+        return True
 
     def _eval_training_record(self):
         if self.eval_on_training is None:
@@ -81,29 +88,29 @@ class AllCallbacks(BaseCallback):
                 eval_env=self.env,
                 n_eval_episodes=100,
             )
-            (
-                eval_reward,
-                eval_min_dt,
-                eval_final_dt,
-                eval_torque,
-                eval_success,
-            ) = self.eval_on_training.eval_on_train()
-            if eval_reward > 0 and eval_reward > self.best_mean_reward:
-                self.best_mean_reward = eval_reward
-                self.model.save(self.save_path + "/" + "best_model.zip")
-            self.logger.record("sampled_eval/reward", eval_reward)
-            self.logger.record("sampled_eval/min_dt", eval_min_dt)
-            self.logger.record("sampled_eval/final_dt", eval_final_dt)
-            self.logger.record("sampled_eval/torque", eval_torque)
-            self.logger.record("sampled_eval/success", eval_success)
-            self.time = time.time()
+        (
+            eval_reward,
+            eval_min_dt,
+            eval_final_dt,
+            eval_torque,
+            eval_success,
+        ) = self.eval_on_training.eval_on_train()
+        if eval_reward > self.best_mean_reward:
+            self.best_mean_reward = eval_reward
+            self.model.save(self.save_path + "/" + "best_model.zip")
+        self.logger.record("sampled_eval/reward", eval_reward)
+        self.logger.record("sampled_eval/min_dt", eval_min_dt)
+        self.logger.record("sampled_eval/final_dt", eval_final_dt)
+        self.logger.record("sampled_eval/torque", eval_torque)
+        self.logger.record("sampled_eval/success", eval_success)
+        self.time = time.time()
 
     def _dump_logs(self) -> None:
         """
         Write log.
         """
         time_per_timestep = (time.time() - self.time) / self.locals["log_interval"]
-        self.num_timesteps_left -= self.check_freq
+        self.num_timesteps_left -= self.locals["log_interval"]
         self.time = time.time()
         if len(self._custom_info_buffer) > 0:
             self.logger.record(
@@ -124,6 +131,8 @@ class AllCallbacks(BaseCallback):
                     seconds=int(self.num_timesteps_left * time_per_timestep),
                 ),
             )
+            if self._episode_num % self.check_freq == 0:
+                self._eval_training_record()
         return True
 
     def _update_info_buffer(self, infos):
