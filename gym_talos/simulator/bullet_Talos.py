@@ -332,9 +332,10 @@ class TalosDeburringSimulator:
         """Get contact points between the robot and the environment"""
         return [(i[4], i[6], i[9]) for i in p.getContactPoints()]
 
-    def step(self, torques, oMtool):
+    def step(self, torques, oMtool = None):
         """Do one step of simulation"""
-        self._setVisualObjectPosition(self.tool_visual, oMtool)
+        if oMtool:
+            self._setVisualObjectPosition(self.tool_visual, oMtool)
         self._applyTorques(torques)
         p.stepSimulation()
         self.baseRobot = np.array(
