@@ -57,7 +57,7 @@ def setup_env(
     :return: The environment created
     """
     if env_params["nb_environments"] == 1:
-        return env_class(designer_params, env_params, GUI=GUI)
+        return Monitor(env_class(designer_params, env_params, GUI=GUI))
     return SubprocVecEnv(
         env_params["nb_environments"]
         * [lambda: Monitor(env_class(designer_params, env_params, GUI=False))],
