@@ -131,8 +131,8 @@ class AllCallbacks(BaseCallback):
                     seconds=int(self.num_timesteps_left * time_per_timestep),
                 ),
             )
-            if self._episode_num % self.check_freq == 0:
-                self._eval_training_record()
+            # if self._episode_num % self.check_freq == 0:
+            #     self._eval_training_record()
         return True
 
     def _update_info_buffer(self, infos):

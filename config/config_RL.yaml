@@ -2,13 +2,14 @@ training:
   name: "local_training"
   total_timesteps: 10000000 # Total number of training timesteps
   log_interval: 100 # Number of timesteps between logging events
+  check_freq: 1000 # Number of timesteps between saving checkpoints
 
 SAC:
   model_param:
     {
       policy: "MultiInputPolicy",
       verbose: 2,
-      learning_starts: 1000,
+      learning_starts: 100,
       tensorboard_log: "logs/",
       device: "cpu",
       buffer_size: 1000000,
@@ -40,21 +41,21 @@ environment:
   limitPosScale: 1
   limitVelScale: 1
   torqueScaleCoeff: 1
-  thresholdSuccess: 0.05
+  thresholdSuccess: 0.01
 
   # Stop conditions
   maxTime: 30 # Maximum epoch time in seconds
   lowerLimitPos: [-0.25, -0.05, 0.9]
   upperLimitPos: [0.1, 0.05, 1.3]
   # Target (can be a fixed position or a box or a sphere)
-  targetType: "sphere"
-  targetPosition: [0.25, 0.43, 1.1]
+  targetType: "box"
+  targetPosition: [0.5, 0.3, 1.05]
   targetSizeLow: [-0.1, -0.1, -0.1]
   targetSizeHigh: [0.1, 0.1, 0.1]
-  targetRadius: 0.3
+  targetRadius: 0.2
   
   rewardType: "mix" # "sparse", "dense" or "mix" if want to mix both
-  w_target_reached: 100
+  w_target_reached: 0
   w_target_pos: 10
   w_control_reg: 0.1
   w_penalization_truncation: 4

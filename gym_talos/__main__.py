@@ -56,8 +56,7 @@ else:
 
 total_timesteps = params_training["total_timesteps"]
 log_interval = params_training["log_interval"]
-
-torch.set_num_threads(1)
+check_freq = params_training["check_freq"]
 
 
 ################
