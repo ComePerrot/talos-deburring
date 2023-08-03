@@ -2,13 +2,17 @@ import argparse
 import datetime
 import pathlib
 
-import torch
 import yaml
 from stable_baselines3 import HerReplayBuffer, SAC
 
 from .envs.env_talos_deburring_her import EnvTalosDeburringHer
 
-from .utils.custom_callbacks import AllCallbacks
+from .utils.custom_callbacks import (
+    LoggerCallback,
+    SaveFilesCallback,
+    EvalOnTrainingCallback,
+)
+from stable_baselines3.common.callbacks import CallbackList
 from .utils.loader_and_saver import setup_model, setup_env
 
 ################
@@ -90,22 +94,39 @@ model = setup_model(
 )
 
 # Callbacks
-callback_class = AllCallbacks(
+logger_callback = LoggerCallback(
     config_filename=config_filename,
     training_name=training_name,
-    stats_window_size=100,
-    check_freq=500,
-    verbose=1,
+    check_freq=check_freq,
     total_timesteps=total_timesteps,
     env=env_training,
 )
 
+eval_callback = EvalOnTrainingCallback(
+    env_training,
+    eval_freq=check_freq,
+    n_eval_episodes=30,
+    deterministic=True,
+    render=False,
+)
+save_files_callback = SaveFilesCallback(
+    config_filename=config_filename,
+    training_name=training_name,
+)
+
+callback_list = CallbackList(
+    [
+        save_files_callback,
+        logger_callback,
+        eval_callback,
+    ],
+)
 # Train Agent
 model.learn(
     total_timesteps=total_timesteps,
     tb_log_name=training_name,
     log_interval=log_interval,
-    callback=callback_class,
+    callback=callback_list,
 )
 
 env_training.close()
