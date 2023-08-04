@@ -174,7 +174,7 @@ class EnvTalosMPC(gym.Env):
         self.oMtarget.translation[1] = self.target_handler.position_target[1]
         self.oMtarget.translation[2] = self.target_handler.position_target[2]
 
-        self.simulator.reset(self.oMtarget)
+        self.simulator.reset(target_pos = self.oMtarget.translation)
 
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured)
