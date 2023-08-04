@@ -80,7 +80,7 @@ def setup_model(
     :return: The model created
     """
     if type(replay_buffer_class) == type(HerReplayBuffer):
-        model_params = {
+        output_model_params = {
             **{
                 "replay_buffer_class": replay_buffer_class,
                 "env": env_training,
@@ -89,10 +89,10 @@ def setup_model(
             **model_params["HerReplayBuffer_param"],
         }
     else:
-        model_params = {
+        output_model_params = {
             **{
                 "env": env_training,
-            }
+            },
             ** model_params["model_param"],
         }
-    return model_class(**model_params)
+    return model_class(**output_model_params)
