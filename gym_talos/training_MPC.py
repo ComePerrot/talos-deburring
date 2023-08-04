@@ -1,17 +1,22 @@
 import argparse
 import datetime
 import pathlib
-import shutil
 import numpy as np
-import time
-
 import torch
 import yaml
+
 from stable_baselines3 import SAC
+from stable_baselines3.common.callbacks import CallbackList
 from stable_baselines3.common.env_util import SubprocVecEnv
 from stable_baselines3.common.monitor import Monitor
 
 from .envs.env_talos_mpc_deburring import EnvTalosMPC
+from .utils.loader_and_saver import setup_model
+from .utils.custom_callbacks import (
+    LoggerCallback,
+    SaveFilesCallback,
+    EvalOnTrainingCallback,
+)
 
 ################
 #  PARAMETERS  #
@@ -43,14 +48,24 @@ training_id = args.identication
 with config_filename.open() as config_file:
     params = yaml.safe_load(config_file)
 
-params_designer = params["robot_designer"]
 params_env = params["environment"]
+params_designer = params["robot_designer"]
+params_OCP = params["OCP"]
+params_model = params["SAC"]
 params_training = params["training"]
 
-# parameter OCP
-OCPparams = params["OCP"]
-OCPparams["state_weights"] = np.array(OCPparams["state_weights"])
-OCPparams["control_weights"] = np.array(OCPparams["control_weights"])
+
+model_class = SAC
+
+#   training parameters
+number_environments = params_env["nb_environment"]
+check_freq = params_training["check_freq"]
+total_timesteps = params_training["total_timesteps"]
+log_interval = params_training["log_interval"]
+
+#   OCP parameters
+params_OCP["state_weights"] = np.array(params_OCP["state_weights"])
+params_OCP["control_weights"] = np.array(params_OCP["control_weights"])
 
 
 # Setting names and log locations
@@ -63,47 +78,58 @@ if training_id:
 else:
     training_name = current_date + "_" + params_training["name"]
 
-log_dir = "./logs/"
-
-number_environments = params_training["environment_quantity"]
-total_timesteps = params_training["total_timesteps"]
-verbose = params_training["verbose"]
-
 torch.set_num_threads(1)
 
 ##############
 #  TRAINING  #
 ##############
-# Create environment
+# Environment
 if number_environments == 1:
-    env_training = EnvTalosMPC(params_env, params_designer, OCPparams, GUI=False)
+    env_training = Monitor(
+        EnvTalosMPC(params_env, params_designer, params_OCP, GUI=False),
+    )
 else:
     env_training = SubprocVecEnv(
         number_environments
         * [
             lambda: Monitor(
-                EnvTalosMPC(params_env, params_designer, OCPparams, GUI=False),
+                EnvTalosMPC(params_env, params_designer, params_OCP, GUI=False),
             ),
         ],
     )
 
-# Create Agent
-model = SAC(
-    "MlpPolicy",
+# Agent
+model = setup_model(
+    model_class=model_class,
+    model_params=params_model,
+    env_training=env_training,
+)
+
+# Callbacks
+eval_callback = EvalOnTrainingCallback(
     env_training,
-    verbose=verbose,
-    tensorboard_log=log_dir,
-    device="cpu",
+    eval_freq=check_freq,
+    n_eval_episodes=5,
+    deterministic=True,
+    render=False,
+)
+save_files_callback = SaveFilesCallback(
+    config_filename=config_filename,
+    training_name=training_name,
+)
+
+callback_list = CallbackList(
+    [
+        save_files_callback,
+        # eval_callback,
+    ],
 )
 
 # Train Agent
 model.learn(
     total_timesteps=total_timesteps,
     tb_log_name=training_name,
+    log_interval=log_interval,
+    callback=callback_list,
 )
-
 env_training.close()
-
-# Save agent and config file
-model.save(model.logger.dir + "/" + training_name)
-shutil.copy(config_filename, model.logger.dir + "/" + training_name + ".yaml")
