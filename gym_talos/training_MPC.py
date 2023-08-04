@@ -89,6 +89,10 @@ model = setup_model(
 )
 
 # Callbacks
+save_files_callback = SaveFilesCallback(
+    config_filename=config_filename,
+    training_name=training_name,
+)
 eval_callback = EvalOnTrainingCallback(
     env_training,
     eval_freq=check_freq,
@@ -96,15 +100,11 @@ eval_callback = EvalOnTrainingCallback(
     deterministic=True,
     render=False,
 )
-save_files_callback = SaveFilesCallback(
-    config_filename=config_filename,
-    training_name=training_name,
-)
 
 callback_list = CallbackList(
     [
         save_files_callback,
-        # eval_callback,
+        eval_callback,
     ],
 )
 
