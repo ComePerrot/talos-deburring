@@ -9,7 +9,6 @@ from gym_talos.utils.create_target import TargetGoal
 
 class EnvTalosMPC(gym.Env):
     def __init__(self, params_robot, params_env, GUI=False) -> None:
-
         params_designer = params_robot["designer"]
         param_ocp = params_robot["OCP"]
         param_ocp["state_weights"] = np.array(param_ocp["state_weights"])
@@ -96,6 +95,7 @@ class EnvTalosMPC(gym.Env):
         #   Reward parameters
         self.distanceThreshold = params_env["distanceThreshold"]
         self.weight_success = params_env["w_success"]
+        self.weight_distance = params_env["w_distance"]
         self.weight_truncation = params_env["w_penalization_truncation"]
 
     def _init_env_variables(self, action_dimension, observation_dimension):
@@ -174,7 +174,7 @@ class EnvTalosMPC(gym.Env):
         self.oMtarget.translation[1] = self.target_handler.position_target[1]
         self.oMtarget.translation[2] = self.target_handler.position_target[2]
 
-        self.simulator.reset(target_pos = self.oMtarget.translation)
+        self.simulator.reset(target_pos=self.oMtarget.translation)
 
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured)
@@ -286,13 +286,18 @@ class EnvTalosMPC(gym.Env):
             self.pinWrapper.get_end_effector_frame().translation
             - self.target_handler.position_target,
         )
+
+        reward_distance = distance_tool_target + 1
+
         if distance_tool_target < self.distanceThreshold:
             reward_success = 1
         else:
             reward_success = 0
 
         return (
-            self.weight_success * reward_success + self.weight_truncation * reward_dead
+            self.weight_success * reward_success
+            + self.weight_distance * reward_distance
+            + self.weight_truncation * reward_dead
         )
 
     def _checkTermination(self, x_measured):

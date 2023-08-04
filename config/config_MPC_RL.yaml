@@ -1,7 +1,7 @@
 training:
   name: "test"
   total_timesteps: 10000 # Total number of training timesteps
-  log_interval: 100 # Number of episodes between logging events
+  log_interval: 10 # Number of episodes between logging events
   check_freq: 1000 # Number of timesteps between saving checkpoints
 
 SAC:
@@ -14,14 +14,15 @@ environment:
   numOCPSteps: 10
   normalizeObs: True
   # Stop conditions
-  maxTime: 5 # Maximum epoch time in seconds
+  maxTime: 4 # Maximum epoch time in seconds
   minHeight: 0.8 # if 0 no check is performed on the height of the robot
   # Target
   targetType: "fixed"
   targetPosition: [0.6, 0.4, 1.1]
   # Reward parameters
-  distanceThreshold: 0.01
-  w_success: 1
+  distanceThreshold: 0.005
+  w_success: 10
+  w_distance: 1
   w_penalization_truncation: 100
 
 robot:
