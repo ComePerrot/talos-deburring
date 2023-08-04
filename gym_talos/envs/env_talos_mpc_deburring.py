@@ -8,7 +8,13 @@ from gym_talos.utils.create_target import TargetGoal
 
 
 class EnvTalosMPC(gym.Env):
-    def __init__(self, params_env, params_designer, param_ocp, GUI=False) -> None:
+    def __init__(self, params_robot, params_env, GUI=False) -> None:
+
+        params_designer = params_robot["designer"]
+        param_ocp = params_robot["OCP"]
+        param_ocp["state_weights"] = np.array(param_ocp["state_weights"])
+        param_ocp["control_weights"] = np.array(param_ocp["control_weights"])
+
         self._init_parameters(params_env, param_ocp)
 
         self.target_handler = TargetGoal(params_env)

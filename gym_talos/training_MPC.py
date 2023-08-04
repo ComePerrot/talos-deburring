@@ -1,17 +1,14 @@
 import argparse
 import datetime
 import pathlib
-import numpy as np
 import torch
 import yaml
 
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CallbackList
-from stable_baselines3.common.env_util import SubprocVecEnv
-from stable_baselines3.common.monitor import Monitor
 
 from .envs.env_talos_mpc_deburring import EnvTalosMPC
-from .utils.loader_and_saver import setup_model
+from .utils.loader_and_saver import setup_env, setup_model
 from .utils.custom_callbacks import (
     LoggerCallback,
     SaveFilesCallback,
@@ -21,6 +18,10 @@ from .utils.custom_callbacks import (
 ################
 #  PARAMETERS  #
 ################
+
+env_class = EnvTalosMPC
+model_class = SAC
+
 # Parse command line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -48,25 +49,15 @@ training_id = args.identication
 with config_filename.open() as config_file:
     params = yaml.safe_load(config_file)
 
+params_robot = params["robot"]
 params_env = params["environment"]
-params_designer = params["robot_designer"]
-params_OCP = params["OCP"]
 params_model = params["SAC"]
 params_training = params["training"]
 
-
-model_class = SAC
-
 #   training parameters
-number_environments = params_env["nb_environment"]
 check_freq = params_training["check_freq"]
 total_timesteps = params_training["total_timesteps"]
 log_interval = params_training["log_interval"]
-
-#   OCP parameters
-params_OCP["state_weights"] = np.array(params_OCP["state_weights"])
-params_OCP["control_weights"] = np.array(params_OCP["control_weights"])
-
 
 # Setting names and log locations
 now = datetime.datetime.now()
@@ -84,19 +75,11 @@ torch.set_num_threads(1)
 #  TRAINING  #
 ##############
 # Environment
-if number_environments == 1:
-    env_training = Monitor(
-        EnvTalosMPC(params_env, params_designer, params_OCP, GUI=False),
-    )
-else:
-    env_training = SubprocVecEnv(
-        number_environments
-        * [
-            lambda: Monitor(
-                EnvTalosMPC(params_env, params_designer, params_OCP, GUI=False),
-            ),
-        ],
-    )
+env_training = setup_env(
+    env_class=env_class,
+    env_params=params_env,
+    designer_params=params_robot,
+)
 
 # Agent
 model = setup_model(
