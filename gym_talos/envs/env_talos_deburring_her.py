@@ -245,15 +245,13 @@ class EnvTalosDeburringHer(gym.Env):
         torques = self._scaleAction(action)
 
         for _ in range(self.numSimulationSteps):
-            self.simulator.step(torques)
+            self.simulator.step(torques, base_pose=self.pinWrapper.get_ZMP())
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(
             x_measured,
             self.simulator.getContactPoints(),
             self.simulator.getRobotPos(),
         )
-        if self.GUI:
-            self.simulator.createBaseRobotVisual(self.pinWrapper.get_ZMP())
         self.rCoM = self.pinWrapper.get_CoM()
         ob = self._getObservation(x_measured)  # position velocity joint and goal
         truncated = self._checkTruncation(x_measured)
