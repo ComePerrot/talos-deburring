@@ -190,14 +190,14 @@ class TalosDeburringSimulator:
             shapeType=p.GEOM_SPHERE,
             rgbaColor=[0, 0, 1, 0.5],
             visualFramePosition=[0.0, 0.0, 0.0],
-            radius=RADIUS,
+            radius=RADIUS * 3,
             halfExtents=[0.0, 0.0, 0.0],
         )
         blueCapsule = p.createVisualShape(
             shapeType=p.GEOM_CAPSULE,
             rgbaColor=[0, 0, 1, 1.0],
             visualFramePosition=[0.0, 0.0, 0.0],
-            radius=RADIUS / 3,
+            radius=RADIUS * 3,
             length=LENGTH,
             halfExtents=[0.0, 0.0, 0.0],
         )

@@ -245,7 +245,11 @@ class EnvTalosDeburringHer(gym.Env):
         torques = self._scaleAction(action)
 
         for _ in range(self.numSimulationSteps):
-            self.simulator.step(torques, base_pose=self.pinWrapper.get_ZMP())
+            self.simulator.step(
+                torques,
+                base_pose=self.pinWrapper.get_CoM(),
+                oMtool=self.pinWrapper.oMtool,
+            )
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(
             x_measured,
@@ -347,7 +351,7 @@ class EnvTalosDeburringHer(gym.Env):
         Returns:
             True if the environment has been terminated, False otherwise
         """
-        return self.timer > (self.maxStep - 1) or self.on_target > 100
+        return self.timer > (self.maxStep - 1) or self.on_target > 1000
 
     def _checkTruncation(self, x_measured):
         """Checks the truncation conditions.

@@ -118,6 +118,7 @@ callback_list = CallbackList(
     [
         save_files_callback,
         logger_callback,
+        # Issue in pfcalcul for using the following callback (prob matplotlib) ?
         eval_callback,
     ],
 )
