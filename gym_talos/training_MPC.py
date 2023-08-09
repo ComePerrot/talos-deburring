@@ -79,6 +79,7 @@ env_training = setup_env(
     env_class=env_class,
     env_params=params_env,
     designer_params=params_robot,
+    GUI = False,
 )
 
 # Agent
