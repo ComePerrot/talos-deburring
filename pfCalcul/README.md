@@ -81,7 +81,7 @@ ssh -L 16006:127.0.0.1:6006 $USER@pfcalcul.laas.fr
 ```bash
 cd /pfcalcul/work/$USER
 source tensorboard/bin/activate # Activate virtual env containing tensorboard
-tensorboard --bind_all --logdir logs
+tensorboard --logdir logs
 ```
 
 - The tensorboard can be viewed on the local machine at:

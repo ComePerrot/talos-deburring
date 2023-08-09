@@ -160,10 +160,16 @@ class TalosDeburringSimulator:
         Initialize the joint controlled
         :param rmodelComplete Complete model of the robot
         """
-        self.qC0 = np.empty(len(self.bullet_controlledJoints))
+
+        if self.has_free_flyer:
+            shift = 7
+            self.qC0 = np.empty(len(self.bullet_controlledJoints) + 7)
+        else:
+            shift = 0
+            self.qC0 = np.empty(len(self.bullet_controlledJoints))
         self.dict_pos = {}
         for i in range(len(self.bullet_controlledJoints)):
-            self.qC0[i] = p.getJointState(
+            self.qC0[i + shift] = p.getJointState(
                 self.robotId,
                 self.bullet_controlledJoints[i],
             )[0]

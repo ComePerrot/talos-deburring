@@ -137,8 +137,7 @@ class TalosDesigner:
         )
         self._calculate_CoM(x_measured)
         self._calculate_ZMP(external_forces)
-
-        self.oMtool = self.rdata.oMf[self.endEffectorId]
+        self._calculate_end_effector()
 
     def _calculate_CoM(self, x_measured):
         """Compute the CoM position from the robot state"""
@@ -167,12 +166,17 @@ class TalosDesigner:
         except:  # noqa: E722
             self._ZMP = self._CoM
 
+    def _calculate_end_effector(self):
+        oMtool = self.rdata.oMf[self.endEffectorId]
+        self._oMtool = self.world_bullet_SE3_origin_robot_pin * oMtool
+
     def get_end_effector_pos(self):
         """Compute the end effector position from the robot state"""
-        return (
-            self.world_bullet_SE3_origin_robot_pin.rotation @ self.oMtool.translation
-            + self.world_bullet_SE3_origin_robot_pin.translation
-        )
+        return self._oMtool.translation
+
+    def get_end_effector_complete(self):
+        """Compute the end effector position from the robot state"""
+        return self._oMtool
 
     def get_CoM(self):
         """Return the CoM position from the robot state"""

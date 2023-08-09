@@ -121,6 +121,10 @@ class EnvTalosDeburringHer(gym.Env):
             self.weight_alive = params_env["w_alive"]
         except KeyError:
             self.weight_alive = 1
+        try:
+            self.time_success = params_env["timeSuccess"]
+        except KeyError:
+            self.time_success = 100
         if self.reward_type == "dense":
             self.compute_reward = self.compute_reward_dense
         elif self.reward_type == "sparse":
@@ -248,7 +252,7 @@ class EnvTalosDeburringHer(gym.Env):
             self.simulator.step(
                 torques,
                 base_pose=self.pinWrapper.get_CoM(),
-                oMtool=self.pinWrapper.oMtool,
+                oMtool=self.pinWrapper.get_end_effector_complete(),
             )
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(
@@ -314,6 +318,8 @@ class EnvTalosDeburringHer(gym.Env):
             * self.mat_dt_init
             * (self.simulator.qC0 - ob["observation"][: self.rmodel.nq]),
         )
+
+        # len_to_init = 0
         dst = np.linalg.norm(ob["achieved_goal"] - ob["desired_goal"])
 
         bool_check = dst < self.threshold_success
@@ -351,7 +357,7 @@ class EnvTalosDeburringHer(gym.Env):
         Returns:
             True if the environment has been terminated, False otherwise
         """
-        return self.timer > (self.maxStep - 1) or self.on_target > 1000
+        return self.timer > (self.maxStep - 1) or self.on_target > self.time_success
 
     def _checkTruncation(self, x_measured):
         """Checks the truncation conditions.
@@ -402,9 +408,9 @@ class EnvTalosDeburringHer(gym.Env):
         Returns:
             True if the environment has been successful, False otherwise.
         """
-        if self.on_target > 100:
+        if self.on_target > self.time_success:
             print("sequence done with success")
-        return self.on_target > 100
+        return self.on_target > self.time_success
 
     def _scaleAction(self, action):
         """Scales normalized actions to obtain robot torques
@@ -415,7 +421,12 @@ class EnvTalosDeburringHer(gym.Env):
         Returns:
             torque array
         """
-        return self.torqueScale * action
+
+        return (
+            self.torqueScale[6:] * action[7:]
+            if self.simulator.has_free_flyer
+            else self.torqueScale * action
+        )
 
     def _init_obsNormalizer(self):
         """Initializes the observation normalizer using robot model limits"""
