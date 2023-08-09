@@ -6,17 +6,14 @@ from deburring_mpc import RobotDesigner, OCP
 from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
 from gym_talos.utils.create_target import TargetGoal
 
-from IPython import embed
-
-
 class EnvTalosMPC(gym.Env):
     def __init__(self, params_robot, params_env, GUI=False) -> None:
         params_designer = params_robot["designer"]
-        param_ocp = params_robot["OCP"]
-        param_ocp["state_weights"] = np.array(param_ocp["state_weights"])
-        param_ocp["control_weights"] = np.array(param_ocp["control_weights"])
+        self.param_ocp = params_robot["OCP"]
+        self.param_ocp["state_weights"] = np.array(self.param_ocp["state_weights"])
+        self.param_ocp["control_weights"] = np.array(self.param_ocp["control_weights"])
 
-        self._init_parameters(params_env, param_ocp)
+        self._init_parameters(params_env, self.param_ocp)
 
         self.target_handler = TargetGoal(params_env)
         self.target_handler.create_target()
@@ -40,8 +37,8 @@ class EnvTalosMPC(gym.Env):
         self.arm_joint_ID = self.rmodel.names.tolist().index("arm_left_1_joint") - 2 + 7
 
         # OCP
-        self._init_ocp(param_ocp)
-        self.horizon_length = param_ocp["horizon_length"]
+        self._init_ocp(self.param_ocp)
+        self.horizon_length = self.param_ocp["horizon_length"]
 
         # Simulator
         self.simulator = TalosDeburringSimulator(
@@ -71,8 +68,8 @@ class EnvTalosMPC(gym.Env):
 
         self.ddp = self.crocoWrapper.solver
 
-        self.X_warm = self.ddp.xs
-        self.U_warm = self.ddp.us
+        # self.X_warm = self.ddp.xs
+        # self.U_warm = self.ddp.us
 
         # Problem can be modified here to fit the needs of the RL
 
@@ -182,8 +179,10 @@ class EnvTalosMPC(gym.Env):
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured)
 
-        self.crocoWrapper.reset(x_measured, self.oMtarget)
-        self.crocoWrapper.set_warm_start(self.X_warm, self.U_warm)
+        self._init_ocp(self.param_ocp)
+
+        # self.crocoWrapper.reset(x_measured, self.oMtarget)
+        # self.crocoWrapper.set_warm_start(self.X_warm, self.U_warm)
 
         return self._getObservation(x_measured), {}
 
