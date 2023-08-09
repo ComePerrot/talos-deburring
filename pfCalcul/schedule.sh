@@ -12,6 +12,7 @@
 # Sleep time depends on task ID to prevent all tasks from starting simultaneously
 sleep ${SLURM_ARRAY_TASK_ID} &&
     apptainer run --no-home \
+        --app mpc \
         --bind /pfcalcul/work/$USER/logs:/logs \
         --bind /pfcalcul/work/$USER/config:/config \
         rl.sif
