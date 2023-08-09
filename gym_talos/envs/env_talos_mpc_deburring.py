@@ -6,6 +6,8 @@ from deburring_mpc import RobotDesigner, OCP
 from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
 from gym_talos.utils.create_target import TargetGoal
 
+from IPython import embed
+
 
 class EnvTalosMPC(gym.Env):
     def __init__(self, params_robot, params_env, GUI=False) -> None:
@@ -97,6 +99,7 @@ class EnvTalosMPC(gym.Env):
         self.weight_success = params_env["w_success"]
         self.weight_distance = params_env["w_distance"]
         self.weight_truncation = params_env["w_penalization_truncation"]
+        self.weight_energy = params_env["w_penalization_torque"]
 
     def _init_env_variables(self, action_dimension, observation_dimension):
         """Initialize internal variables of the environment
@@ -178,6 +181,7 @@ class EnvTalosMPC(gym.Env):
 
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured)
+
         self.crocoWrapper.reset(x_measured, self.oMtarget)
         self.crocoWrapper.set_warm_start(self.X_warm, self.U_warm)
 
@@ -206,6 +210,8 @@ class EnvTalosMPC(gym.Env):
         posture_reference = self.q0
         posture_reference[self.arm_joint_ID : self.arm_joint_ID + 4] = arm_reference
 
+        torque_sum = 0
+
         for _ in range(self.numOCPSteps):
             x0 = self.simulator.getRobotState()
             oMtool = self.pinWrapper.get_end_effector_frame()
@@ -217,7 +223,10 @@ class EnvTalosMPC(gym.Env):
                     + self.crocoWrapper.gain
                     @ self.crocoWrapper.state.diff(x_measured, x0)
                 )
+
                 self.simulator.step(torques, oMtool)
+
+            torque_sum += np.linalg.norm(torques)
 
             x_measured = self.simulator.getRobotState()
 
@@ -229,13 +238,19 @@ class EnvTalosMPC(gym.Env):
                 self.horizon_length - 1,
                 posture_reference,
             )
+            self.crocoWrapper.change_posture_reference(
+                self.horizon_length,
+                posture_reference,
+            )
 
             self.crocoWrapper.solve(x_measured)
+
+        avg_torque_norm = torque_sum / (self.numOCPSteps * self.numSimulationSteps)
 
         observation = self._getObservation(x_measured)
         terminated = self._checkTermination(x_measured)
         truncated = self._checkTruncation(x_measured)
-        reward = self._getReward(torques, x_measured, terminated, truncated)
+        reward = self._getReward(avg_torque_norm, x_measured, terminated, truncated)
 
         return observation, reward, terminated, truncated, {}
 
@@ -258,7 +273,7 @@ class EnvTalosMPC(gym.Env):
             observation = x_measured
         return np.float32(observation)
 
-    def _getReward(self, torques, x_measured, terminated, truncated):
+    def _getReward(self, avg_torque_norm, x_measured, terminated, truncated):
         """Compute step reward
 
         The reward is composed of:
@@ -276,19 +291,24 @@ class EnvTalosMPC(gym.Env):
         Returns:
             Scalar reward
         """
+        # Penalization of failure
         if truncated:
             reward_dead = -1
         else:
             reward_dead = 0
 
-        # target distance
-        distance_tool_target = -np.linalg.norm(
+        # penalization of expanded energy
+        reward_torque = -avg_torque_norm
+
+        # distance to target
+        distance_tool_target = np.linalg.norm(
             self.pinWrapper.get_end_effector_frame().translation
             - self.target_handler.position_target,
         )
 
-        reward_distance = distance_tool_target + 1
+        reward_distance = -distance_tool_target + 1
 
+        # Success evaluation
         if distance_tool_target < self.distanceThreshold:
             reward_success = 1
         else:
@@ -298,6 +318,7 @@ class EnvTalosMPC(gym.Env):
             self.weight_success * reward_success
             + self.weight_distance * reward_distance
             + self.weight_truncation * reward_dead
+            + self.weight_energy * reward_torque
         )
 
     def _checkTermination(self, x_measured):
