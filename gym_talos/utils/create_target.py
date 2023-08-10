@@ -73,6 +73,19 @@ class TargetGoal:
             msg = "Unknown target type"
             raise ValueError(msg)
 
+    def generate_target(self, n=1):
+        """Generate n target positions for the environment"""
+        if self._type_target == "fixed":
+            targets = np.tile(self._range_target, (n, 1))
+        elif self._type_target == "box":
+            targets = np.array([self.create_box() for _ in range(n)])
+        elif self._type_target == "sphere":
+            targets = np.array([self.create_sphere() for _ in range(n)])
+        else:
+            msg = "Unknown target type"
+            raise ValueError(msg)
+        return targets
+
     def _sort_datas(self, params_env):
         """
         Sort datas for the target

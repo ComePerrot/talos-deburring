@@ -41,8 +41,8 @@ environment:
   limitPosScale: 1
   limitVelScale: 1
   torqueScaleCoeff: 1
-  thresholdSuccess: 0.01
-  timeSuccess: 1000
+  thresholdSuccess: 0.05
+  timeSuccess: 2500
 
   # Stop conditions
   maxTime: 300 # Maximum epoch time in seconds
@@ -68,6 +68,8 @@ environment:
   w_control_reg: 0.07
   # Coeff of velocity reward : 1 if alive else 0 times w_penalization_truncation
   w_penalization_truncation: 7
+  # Coeff of timeon target reward : 1 if on target else 0 times w_time_on_target
+  w_time_on_target: 0
 
 
 robot_designer:

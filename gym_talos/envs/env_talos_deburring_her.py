@@ -118,9 +118,9 @@ class EnvTalosDeburringHer(gym.Env):
         except KeyError:
             self.reward_type = "dense"
         try:
-            self.weight_alive = params_env["w_alive"]
+            self.weight_time_on_target = params_env["w_time_on_target"]
         except KeyError:
-            self.weight_alive = 1
+            self.weight_time_on_target = 0.1
         try:
             self.time_success = params_env["timeSuccess"]
         except KeyError:
@@ -131,6 +131,8 @@ class EnvTalosDeburringHer(gym.Env):
             self.compute_reward = self.compute_reward_sparse
         elif self.reward_type == "mix":
             self.compute_reward = self.compute_reward_mix
+        elif self.reward_type == "increase":
+            self.compute_reward = self.compute_reward_increase
         self.target = TargetGoal(params_env=params_env)
 
     def _init_env_variables(self, action_dimension, observation_dimension):
@@ -203,6 +205,7 @@ class EnvTalosDeburringHer(gym.Env):
                 Defaults to None.
             options: Additional information can be specified to reset the environment.
                 Defaults to None.
+                target: Desired position of the target. If not specified, a random
 
         Returns:
             Observation of the initial state.
@@ -264,7 +267,6 @@ class EnvTalosDeburringHer(gym.Env):
         ob = self._getObservation(x_measured)  # position velocity joint and goal
         truncated = self._checkTruncation(x_measured)
         reward, infos = self._reward(torques, ob, truncated)
-        self.on_target += 1 if infos["on_target"] else 0
         terminated = self._checkTermination()
         if terminated or truncated:
             infos["is_success"] = self._checkSuccess()
@@ -324,13 +326,23 @@ class EnvTalosDeburringHer(gym.Env):
 
         bool_check = dst < self.threshold_success
         infos = {}
-        infos["param_rew"] = np.array(
-            [np.linalg.norm(torques), len_to_init, not truncated],
-        )
         infos["tor"] = np.linalg.norm(torques)
         infos["init"] = len_to_init
         infos["dst"] = dst
         infos["on_target"] = bool_check
+        if infos["on_target"]:
+            self.on_target += 1
+        else:
+            self.on_target = 0
+        infos["time_on_target"] = self.on_target
+        if self.reward_type == "increase":
+            infos["param_rew"] = np.array(
+                [np.linalg.norm(torques), len_to_init, not truncated, self.on_target],
+            )
+        else:
+            infos["param_rew"] = np.array(
+                [np.linalg.norm(torques), len_to_init, not truncated],
+            )
         ach_goal = np.empty((1, 3))
         des_goal = np.empty((1, 3))
         ach_goal[0, :] = ob["achieved_goal"]
@@ -517,9 +529,6 @@ class EnvTalosDeburringHer(gym.Env):
             [
                 [
                     -self.weight_command,
-                    # -1,
-                    # self.weight_alive,
-                    # 0,
                     0,
                     0,
                     self.weight_target_reached,
@@ -604,6 +613,39 @@ class EnvTalosDeburringHer(gym.Env):
         )
         info_matrix = np.concatenate(
             (info_matrix, bool_target),
+            axis=1,
+        )
+        return info_matrix @ coeff_matrix
+
+    def compute_reward_increase(
+        self,
+        achieved_goal: np.ndarray,
+        desired_goal: np.ndarray,
+        info: dict,
+    ) -> float:
+        dst = np.array([np.linalg.norm(achieved_goal - desired_goal, axis=-1)]).T
+        coeff_matrix = np.array(
+            [
+                [
+                    -self.weight_command,
+                    # corresponds to the command penalization
+                    -1,
+                    # corresponds to the lenght to init penalization
+                    self.weight_truncation,
+                    # corresponds to the truncation penalization
+                    self.weight_time_on_target,
+                    # corresponds to the time target is reached
+                    -self.weight_target,
+                    # corresponds to the distance to target
+                ],
+            ],
+        ).T
+        info_matrix = np.empty((achieved_goal.shape[0], 4))
+
+        for i, inf in enumerate(info):
+            info_matrix[i] = inf["param_rew"]
+        info_matrix = np.concatenate(
+            (info_matrix, dst),
             axis=1,
         )
         return info_matrix @ coeff_matrix

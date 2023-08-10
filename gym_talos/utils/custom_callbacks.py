@@ -147,6 +147,7 @@ class LoggerCallback(BaseCallback):
         if self.locals["dones"][0]:
             self._episode_num += 1
             self._ep_end_buffer.extend([self.locals["infos"][0]["dst"]])
+            print(self.locals["infos"][0]["dst"])
             self._ep_dst_min_buffer.extend([self._dst_min])
             self._dst_min = None
             if (

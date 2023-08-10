@@ -33,5 +33,5 @@ while True:
         i += 1
         action, _ = model.predict(obs, deterministic=True)
         obs, reward, terminated, truncated, _ = envDisplay.step(action)
-        if terminated or truncated or i > 500:
+        if terminated or truncated:
             done = True
