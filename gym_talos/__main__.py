@@ -11,6 +11,7 @@ from .utils.custom_callbacks import (
     LoggerCallback,
     SaveFilesCallback,
     EvalOnTrainingCallback,
+    ActivateJudgmentCallback,
 )
 from stable_baselines3.common.callbacks import CallbackList
 from .utils.loader_and_saver import setup_model, setup_env
@@ -61,6 +62,7 @@ else:
 total_timesteps = params_training["total_timesteps"]
 log_interval = params_training["log_interval"]
 check_freq = params_training["check_freq"]
+judgment_timestep = params_training["judgment_timestep"]
 
 
 ################
@@ -114,12 +116,19 @@ save_files_callback = SaveFilesCallback(
     training_name=training_name,
 )
 
+judgment_callback = ActivateJudgmentCallback(
+    env=env_training,
+    judgment_timestep=judgment_timestep,
+)
+
+
 callback_list = CallbackList(
     [
         save_files_callback,
         logger_callback,
         # Issue in pfcalcul for using the following callback (prob matplotlib) ?
         eval_callback,
+        judgment_callback,
     ],
 )
 # Train Agent

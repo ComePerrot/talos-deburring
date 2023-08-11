@@ -77,6 +77,7 @@ class EnvTalosDeburringHer(gym.Env):
         self.weight_command = params_env["w_control_reg"]
         self.weight_truncation = params_env["w_penalization_truncation"]
         self.GUI = GUI
+        self.is_able_to_judge = False
         try:
             self.random_init_robot = params_env["randomInit"]
         except KeyError:
@@ -155,11 +156,11 @@ class EnvTalosDeburringHer(gym.Env):
             self._init_targetNormalizer()
 
         self.torqueScale = self.torqueScaleCoeff * np.array(self.rmodel.effortLimit)
-        action_dim = action_dimension
         self.action_space = gym.spaces.Box(
             low=-1,
             high=1,
-            shape=(action_dim,),
+            shape=(action_dimension + 1,),
+            # shape=(action_dimension,),
             dtype=np.float32,
         )
 
@@ -232,6 +233,13 @@ class EnvTalosDeburringHer(gym.Env):
         }
         return self._getObservation(x_measured), infos
 
+    def activate_judgment(self):
+        """Activates the button
+
+        Activates the button in the simulator
+        """
+        self.is_able_to_judge = True
+
     def step(self, action):
         """Execute a step of the environment
 
@@ -249,8 +257,11 @@ class EnvTalosDeburringHer(gym.Env):
             Boolean indicating this rollout is done
         """
         self.timer += 1
-        torques = self._scaleAction(action)
-
+        torques = self._scaleAction(action[:-1])
+        # unreachable = action[-1] > 0
+        unreachable = False if not self.is_able_to_judge else action[-1] > 0
+        # torques = self._scaleAction(action)
+        # unreachable = False
         for _ in range(self.numSimulationSteps):
             self.simulator.step(
                 torques,
@@ -266,8 +277,8 @@ class EnvTalosDeburringHer(gym.Env):
         self.rCoM = self.pinWrapper.get_CoM()
         ob = self._getObservation(x_measured)  # position velocity joint and goal
         truncated = self._checkTruncation(x_measured)
-        reward, infos = self._reward(torques, ob, truncated)
-        terminated = self._checkTermination()
+        reward, infos = self._reward(torques, ob, truncated, unreachable)
+        terminated = self._checkTermination(unreachable)
         if terminated or truncated:
             infos["is_success"] = self._checkSuccess()
         return ob, reward, terminated, truncated, infos
@@ -297,7 +308,7 @@ class EnvTalosDeburringHer(gym.Env):
         final_obs.spaces["desired_goal"] = np.array(desired_goal)
         return collections.OrderedDict(final_obs)
 
-    def _reward(self, torques, ob, truncated):
+    def _reward(self, torques, ob, truncated, unreachable):
         """Compute step reward
 
         The reward is composed of:
@@ -323,7 +334,6 @@ class EnvTalosDeburringHer(gym.Env):
 
         # len_to_init = 0
         dst = np.linalg.norm(ob["achieved_goal"] - ob["desired_goal"])
-
         bool_check = dst < self.threshold_success
         infos = {}
         infos["tor"] = np.linalg.norm(torques)
@@ -354,10 +364,11 @@ class EnvTalosDeburringHer(gym.Env):
                 info=np.array([infos]),
             ),
         )
-
+        if unreachable:
+            return 2, infos
         return reward, infos
 
-    def _checkTermination(self):
+    def _checkTermination(self, unreachable):
         """Check the termination conditions.
 
         Environment is terminated when the task has been successfully carried out.
@@ -369,7 +380,11 @@ class EnvTalosDeburringHer(gym.Env):
         Returns:
             True if the environment has been terminated, False otherwise
         """
-        return self.timer > (self.maxStep - 1) or self.on_target > self.time_success
+        return (
+            self.timer > (self.maxStep - 1)
+            or self.on_target > self.time_success
+            or unreachable
+        )
 
     def _checkTruncation(self, x_measured):
         """Checks the truncation conditions.

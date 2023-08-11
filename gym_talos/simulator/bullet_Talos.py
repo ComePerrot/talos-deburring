@@ -190,20 +190,20 @@ class TalosDeburringSimulator:
             tool: Boolean to activate display of the tool. Defaults to True.
             base: Boolean to activate display of the base. Defaults to True.
         """
-        RADIUS = 0.01
+        RADIUS = 0.005
         LENGTH = 0.01
         blueSphere = p.createVisualShape(
             shapeType=p.GEOM_SPHERE,
             rgbaColor=[0, 0, 1, 0.5],
             visualFramePosition=[0.0, 0.0, 0.0],
-            radius=RADIUS * 3,
+            radius=RADIUS,
             halfExtents=[0.0, 0.0, 0.0],
         )
         blueCapsule = p.createVisualShape(
             shapeType=p.GEOM_CAPSULE,
             rgbaColor=[0, 0, 1, 1.0],
             visualFramePosition=[0.0, 0.0, 0.0],
-            radius=RADIUS * 3,
+            radius=RADIUS / 3,
             length=LENGTH,
             halfExtents=[0.0, 0.0, 0.0],
         )

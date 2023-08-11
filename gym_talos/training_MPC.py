@@ -98,7 +98,7 @@ eval_callback = EvalOnTrainingCallback(
     eval_freq=check_freq,
     n_eval_episodes=5,
     deterministic=True,
-    render=False,
+    render=True,
 )
 
 callback_list = CallbackList(

@@ -1,8 +1,9 @@
 training:
-  name: "local_training"
+  name: "local_2_10_1e-1_4"
   total_timesteps: 10000000 # Total number of training timesteps
   log_interval: 100 # Number of timesteps between logging events
   check_freq: 1000 # Number of timesteps between saving events
+  judgment_timestep: 200000 # Number of timesteps before agent is able to say if position is reachable or not
 
 SAC:
   model_param:
@@ -18,6 +19,7 @@ SAC:
       gamma: 0.95,
       batch_size: 128,
       tau: 0.01,
+      gradient_steps: 1,
       ent_coef: "auto_0.04",
       policy_kwargs: {
         net_arch: [512, 512, 512],
@@ -33,7 +35,7 @@ SAC:
 
 
 environment:
-  nb_environments: 10 # Number of environments used to collect data
+  nb_environments: 1 # Number of environments used to collect data
   numSimulationSteps: 10
   timeStepSimulation: 1e-3
   normalizeObs: False
@@ -49,14 +51,14 @@ environment:
   lowerLimitPos: [-0.25, -0.05, 0.9]
   upperLimitPos: [0.1, 0.05, 1.3]
   # Target (can be a fixed position or a box or a sphere)
-  targetType: "box"
+  targetType: "sphere"
   # if fixed position only this parameter is used
   targetPosition: [0.4, 0.3, 1.05]
   # if box, around the targetPosition
   targetSizeLow: [-0.1, -0.1, -0.1]
   targetSizeHigh: [0.1, 0.1, 0.1]
   # if sphere, around the targetPosition
-  targetRadius: 0.2
+  targetRadius: 0.1
   
   rewardType: "mix" # "sparse", "dense" or "mix" if want to mix both
   # Currently, w_target_reached does not seems to work if not 0 (TO check), so equivalent to dense rn

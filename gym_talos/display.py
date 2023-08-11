@@ -23,8 +23,6 @@ envDisplay = EnvTalosDeburringHer(
 
 model = SAC.load(model_path, env=envDisplay)
 
-envDisplay.maxTime = 500
-
 while True:
     obs, info = envDisplay.reset()
     done = False
@@ -32,6 +30,8 @@ while True:
     while not done:
         i += 1
         action, _ = model.predict(obs, deterministic=True)
-        obs, reward, terminated, truncated, _ = envDisplay.step(action)
+        obs, reward, terminated, truncated, infos = envDisplay.step(action)
         if terminated or truncated:
             done = True
+            print("Time", i)
+            print("Infos", infos)

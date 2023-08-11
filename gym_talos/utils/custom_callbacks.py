@@ -96,6 +96,36 @@ class EvalOnTrainingCallback(EvalCallback):
         self.best_model_save_path = self.locals["self"].logger.dir
 
 
+class ActivateJudgmentCallback(BaseCallback):
+    """
+    Callback for activating the button in the GUI
+
+    :param env: The environment used for initialization
+    :param n_timestemps_activation: The number of timesteps until activation
+    """
+
+    def __init__(self, env, judgment_timestep: int = 100000):
+        super().__init__()
+        self.env = env
+        if isinstance(self.env, gym.Env):
+            self.judgment_timestep = judgment_timestep
+        elif isinstance(self.env, SubprocVecEnv):
+            self.judgment_timestep = judgment_timestep * self.env.num_envs
+
+    def _on_step(self) -> bool:
+        """
+        This method will be called by the model after each call to `env.step()`.
+        :return: (bool) If the callback returns False, training is aborted early.
+        """
+        if self.num_timesteps == self.judgment_timestep:
+            if isinstance(self.env, gym.Env):
+                self.env.activate_judgment()
+            elif isinstance(self.env, SubprocVecEnv):
+                self.env.env_method("activate_judgment")
+
+        return True
+
+
 class LoggerCallback(BaseCallback):
     def __init__(
         self,
@@ -147,7 +177,6 @@ class LoggerCallback(BaseCallback):
         if self.locals["dones"][0]:
             self._episode_num += 1
             self._ep_end_buffer.extend([self.locals["infos"][0]["dst"]])
-            print(self.locals["infos"][0]["dst"])
             self._ep_dst_min_buffer.extend([self._dst_min])
             self._dst_min = None
             if (
