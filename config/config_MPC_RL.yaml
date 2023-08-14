@@ -13,6 +13,13 @@ environment:
   timeStepSimulation: 1e-3
   numOCPSteps: 10
   normalizeObs: True
+  controlled_joints_names:
+    [
+      # arm_left_1_joint,
+      # arm_left_2_joint,
+      arm_left_3_joint,
+      # arm_left_4_joint,
+    ]
   # Stop conditions
   maxTime: 4 # Maximum epoch time in seconds
   minHeight: 0.8 # if 0 no check is performed on the height of the robot
@@ -22,7 +29,7 @@ environment:
   # Reward parameters
   distanceThreshold: 0.005
   w_success: 10
-  w_distance: 2
+  w_distance: 5
   w_penalization_truncation: 100
   w_penalization_torque: 0.001
 

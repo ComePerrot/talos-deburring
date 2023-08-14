@@ -6,6 +6,7 @@ from deburring_mpc import RobotDesigner, OCP
 from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
 from gym_talos.utils.create_target import TargetGoal
 
+
 class EnvTalosMPC(gym.Env):
     def __init__(self, params_robot, params_env, GUI=False) -> None:
         params_designer = params_robot["designer"]
@@ -34,7 +35,11 @@ class EnvTalosMPC(gym.Env):
 
         self.rmodel = self.pinWrapper.get_rmodel()
 
-        self.arm_joint_ID = self.rmodel.names.tolist().index("arm_left_1_joint") - 2 + 7
+        self.rl_controlled_IDs = np.array([
+            self.rmodel.names.tolist().index(joint_name) - 2 + 7
+            for joint_name in self.rl_controlled_joints
+        ])
+        self.action_dimension = len(self.rl_controlled_IDs)
 
         # OCP
         self._init_ocp(self.param_ocp)
@@ -49,9 +54,8 @@ class EnvTalosMPC(gym.Env):
             dt=self.timeStepSimulation,
         )
 
-        action_dimension = 4
         observation_dimension = len(self.simulator.getRobotState())
-        self._init_env_variables(action_dimension, observation_dimension)
+        self._init_env_variables(self.action_dimension, observation_dimension)
 
         self.target_handler = TargetGoal(params_env)
 
@@ -79,6 +83,7 @@ class EnvTalosMPC(gym.Env):
         Args:
             params_env: kwargs for the environment
         """
+        self.rl_controlled_joints = params_env["controlled_joints_names"]
         # Simulation timings
         self.timeStepSimulation = float(params_env["timeStepSimulation"])
         self.timeStepOCP = float(param_ocp["time_step"])
@@ -207,7 +212,8 @@ class EnvTalosMPC(gym.Env):
         arm_reference = self._actScaler(action)
 
         posture_reference = self.q0
-        posture_reference[self.arm_joint_ID : self.arm_joint_ID + 4] = arm_reference
+        for i in range(self.action_dimension):
+            posture_reference[self.rl_controlled_IDs[i]] = arm_reference[i]
 
         torque_sum = 0
 
@@ -369,25 +375,16 @@ class EnvTalosMPC(gym.Env):
         # Explicitely casting from numpy.bool_ to bool
         return bool(truncation_balance or truncation_limits)
 
-    def _scaleAction(self, action):
-        """Scales normalized actions to obtain robot torques
-
-        Args:
-            action: normalized action array
-
-        Returns:
-            torque array
-        """
-        return self.torqueScale * action
-
     def _init_actScaler(self):
         """Initializes the action scaler using robot model limits"""
-        self.lowerActLim = self.rmodel.lowerPositionLimit[
-            self.arm_joint_ID : self.arm_joint_ID + 4
-        ]
-        self.upperActLim = self.rmodel.upperPositionLimit[
-            self.arm_joint_ID : self.arm_joint_ID + 4
-        ]
+        self.lowerActLim = np.array([
+            self.rmodel.lowerPositionLimit[joint_ID]
+            for joint_ID in self.rl_controlled_IDs
+        ])
+        self.upperActLim = np.array([
+            self.rmodel.upperPositionLimit[joint_ID]
+            for joint_ID in self.rl_controlled_IDs
+        ])
 
         self.avgAct = (self.upperActLim + self.lowerActLim) / 2
         self.diffAct = self.upperActLim - self.lowerActLim
