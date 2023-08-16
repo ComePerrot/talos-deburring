@@ -1,3 +1,4 @@
+from typing import Tuple
 import numpy as np
 
 
@@ -5,20 +6,22 @@ class TargetGoal:
     """
     Create a target position for the environment
 
-    :param type: (str) type of target to create
-    :param range: (np.array) range of the target
+    :param _type_target: (str) type of target to create
+    :param _range_target: (np.array) range of the target
         adapted to the target type
-    :param position: (np.array) position of the target
+    :param _position_target: (np.array) position of the target
+    :param _upperPositionLimit: (np.array) upper limit of the target
+    :param _lowerPositionLimit: (np.array) lower limit of the target
     """
 
-    def __init__(self, params_env):
+    def __init__(self, params_env: dict) -> None:
         self._type_target, self._range_target = self._sort_datas(params_env)
         self._upperPositionLimit = None
         self._lowerPositionLimit = None
-        self.position_target = None
+        self._position_target = None
         self._init_scaling()
 
-    def _init_scaling(self):
+    def _init_scaling(self) -> None:
         """Initialize the scaling of the target"""
         if self._type_target == "fixed":
             self._upperPositionLimit = self._range_target + np.ones(3)
@@ -34,8 +37,12 @@ class TargetGoal:
                 3
             ] * np.ones(3)
 
-    def create_sphere(self):
-        """Create a sphere target position for the environment"""
+    def create_sphere(self) -> np.ndarray:
+        """
+        Create a sphere target position for the environment
+
+        :return: (np.array) position of the target
+        """
         phi = np.random.uniform(0, 2 * np.pi)
         theta = np.arccos(np.random.uniform(-1, 1))
         u = np.random.uniform(0, self._range_target[3])
@@ -47,8 +54,12 @@ class TargetGoal:
             ],
         )
 
-    def create_box(self):
-        """Create a box target position for the environment"""
+    def create_box(self) -> np.ndarray:
+        """
+        Create a box target position for the environment
+
+        :return: (np.array) position of the target
+        """
         size_low = self._range_target[3:6]
         size_high = self._range_target[6:9]
 
@@ -60,20 +71,24 @@ class TargetGoal:
             ],
         )
 
-    def create_target(self):
+    def create_target(self) -> None:
         """Create a target position for the environment"""
 
         if self._type_target == "fixed":
-            self.position_target = self._range_target
+            self._position_target = self._range_target
         elif self._type_target == "box":
-            self.position_target = self.create_box()
+            self._position_target = self.create_box()
         elif self._type_target == "sphere":
-            self.position_target = self.create_sphere()
+            self._position_target = self.create_sphere()
         else:
             msg = "Unknown target type"
             raise ValueError(msg)
 
-    def generate_target(self, n=1):
+    def set_target(self, target) -> None:
+        """Set the target position for the environment manually"""
+        self._position_target = target
+
+    def generate_target(self, n=1) -> np.ndarray:
         """Generate n target positions for the environment"""
         if self._type_target == "fixed":
             targets = np.tile(self._range_target, (n, 1))
@@ -86,7 +101,7 @@ class TargetGoal:
             raise ValueError(msg)
         return targets
 
-    def _sort_datas(self, params_env):
+    def _sort_datas(self, params_env: dict) -> Tuple(str, np.ndarray):
         """
         Sort datas for the target
 
@@ -113,6 +128,10 @@ class TargetGoal:
             )
         msg = "Unknown target type"
         raise ValueError(msg)
+
+    @property
+    def position_target(self):
+        return self._position_target
 
     @property
     def type_target(self):
