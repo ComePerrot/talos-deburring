@@ -97,8 +97,6 @@ model = setup_model(
 
 # Callbacks
 logger_callback = LoggerCallback(
-    config_filename=config_filename,
-    training_name=training_name,
     check_freq=check_freq,
     total_timesteps=total_timesteps,
     env=env_training,
@@ -126,7 +124,6 @@ callback_list = CallbackList(
     [
         save_files_callback,
         logger_callback,
-        # Issue in pfcalcul for using the following callback (prob matplotlib) ?
         eval_callback,
         judgment_callback,
     ],
