@@ -21,13 +21,16 @@ from .create_target import TargetGoal
 class SaveFilesCallback(BaseCallback):
     """
     Callback for saving a model at its termination and the config file
+
+    :param config_filename: The name of the config file
+    :param training_name: The name of the training
     """
 
     def __init__(
         self,
         config_filename: Optional[str] = None,
         training_name: Optional[str] = None,
-    ):
+    ) -> None:
         super().__init__()
         self.config_filename = config_filename
         self.training_name = training_name
@@ -59,6 +62,17 @@ class EvalOnTrainingCallback(EvalCallback):
     """
     Callback for evaluating a model on the training environment
     Based on EvalCallback, just modified to save the model in the right folder
+
+    :param eval_env: The environment used for initialization
+    :param callback_on_new_best: Callback called when a new best model is found
+    :param callback_after_eval: Callback called after evaluating the model
+    :param n_eval_episodes: The number of episodes to evaluate the agent
+    :param eval_freq: Evaluate the agent every ``eval_freq`` timesteps
+    (this may vary a little) due to combined time stepping)
+    :param deterministic: Whether to use deterministic or stochastic actions
+    :param render: Whether to render or not the environment during evaluation
+    :param verbose: The verbosity level: 0 none, 1 training information, 2 debug
+    :param warn: Allow warnings to be printed
     """
 
     def __init__(
@@ -68,13 +82,11 @@ class EvalOnTrainingCallback(EvalCallback):
         callback_after_eval: Optional[BaseCallback] = None,
         n_eval_episodes: int = 5,
         eval_freq: int = 10000,
-        # log_path: Optional[str] = None,
-        # best_model_save_path: Optional[str] = None,
         deterministic: bool = True,
         render: bool = False,
         verbose: int = 1,
         warn: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             eval_env=eval_env,
             callback_on_new_best=callback_on_new_best,
@@ -104,7 +116,11 @@ class ActivateJudgmentCallback(BaseCallback):
     :param n_timestemps_activation: The number of timesteps until activation
     """
 
-    def __init__(self, env, judgment_timestep: int = 100000):
+    def __init__(
+        self,
+        env: Union[gym.Env, SubprocVecEnv],
+        judgment_timestep: int = 100000,
+    ):
         super().__init__()
         self.env = env
         if isinstance(self.env, gym.Env):
@@ -127,19 +143,23 @@ class ActivateJudgmentCallback(BaseCallback):
 
 
 class LoggerCallback(BaseCallback):
+    """
+    Callback for logging the training
+
+    :param check_freq: The frequency of the logging
+    :param total_timesteps: The total number of timesteps
+    :param env: The environment used for initialization
+    """
+
     def __init__(
         self,
-        config_filename: Optional[str] = None,
-        training_name: Optional[str] = None,
         check_freq: int = 1000,
         total_timesteps: int = 1000000,
         env: gym.Env = None,
-    ):
+    ) -> None:
         super().__init__()
         self.time = time.time()
         self.check_freq = check_freq
-        self.config_filename = config_filename
-        self.training_name = training_name
         self.best_mean_reward = -np.inf
         self.env = env
         self.eval_on_training = None
@@ -158,10 +178,6 @@ class LoggerCallback(BaseCallback):
         """
         temp = self.check_freq // self.locals["log_interval"]
         self.check_freq = temp * self.locals["log_interval"]
-        # self.eval_on_training = EvalOnTraining(
-        #     eval_env=self.env,
-        #     n_eval_episodes=100,
-        # )
 
     def _on_step(self) -> bool:
         """
@@ -186,7 +202,11 @@ class LoggerCallback(BaseCallback):
                 self._dump_logs()
         return True
 
-    def _eval_training_record(self):
+    def _eval_training_record(self) -> None:
+        """
+        This method will evaluate the agent during training (unused)
+        """
+
         (
             eval_reward,
             eval_min_dt,
@@ -230,14 +250,12 @@ class LoggerCallback(BaseCallback):
                     seconds=int(self.num_timesteps_left * time_per_timestep),
                 ),
             )
-            # if self._episode_num % self.check_freq == 0:
-            #     self._eval_training_record()
         return True
 
-    def _update_info_buffer(self, infos):
+    def _update_info_buffer(self, infos: dict) -> None:
         """
         Update the buffer for episode infos.
-        :param infos: ([dict]) List of infos
+        :param infos: List of infos
         """
         temp_dict = {
             "torque": infos["tor"],
@@ -261,7 +279,7 @@ class EvalOnTraining:
     :param n_eval_episodes: The number of episodes to evaluate the agent
     """
 
-    def __init__(self, eval_env, n_eval_episodes=100):
+    def __init__(self, eval_env: gym.Env, n_eval_episodes: int = 100) -> None:
         self.eval_env = eval_env
         self.n_eval_episodes = n_eval_episodes
         if isinstance(self.eval_env, gym.Env):
@@ -274,7 +292,10 @@ class EvalOnTraining:
         self.targets = []
         self._define_targets()
 
-    def _define_targets(self):
+    def _define_targets(self) -> None:
+        """
+        This method will define the targets for the evaluation
+        """
         for _ in range(self.n_eval_episodes):
             self.target_builder.create_target()
             self.targets.append(self.target_builder.position_target)
