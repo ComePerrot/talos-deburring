@@ -5,12 +5,16 @@ from stable_baselines3 import SAC
 
 from .envs.env_talos_deburring_her import EnvTalosDeburringHer
 
-training_name = "2023-07-03_long_training_12"
+# The name of the file who needs to be displayed
+training_name = "2023-08-16_local_2_10_1e-1_4_1"
 train_name = "_".join(training_name.split("_")[:-1])
 
-
+# The path to the file
 log_dir = Path("logs")
-model_path = log_dir / training_name / f"{train_name}.zip"
+
+# Depends on the version of the files, sometimes best_model, sometimes complete model
+# model_path = log_dir / training_name / f"{train_name}.zip"
+model_path = log_dir / training_name / "best_model.zip"
 config_path = log_dir / training_name / f"{train_name}.yaml"
 with config_path.open() as config_file:
     params = yaml.safe_load(config_file)

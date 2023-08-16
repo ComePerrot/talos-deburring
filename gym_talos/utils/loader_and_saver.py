@@ -93,6 +93,6 @@ def setup_model(
             **{
                 "env": env_training,
             },
-            ** model_params["model_param"],
+            **model_params["model_param"],
         }
     return model_class(**output_model_params)
