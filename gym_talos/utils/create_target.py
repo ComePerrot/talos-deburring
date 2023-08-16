@@ -101,7 +101,7 @@ class TargetGoal:
             raise ValueError(msg)
         return targets
 
-    def _sort_datas(self, params_env: dict) -> Tuple(str, np.ndarray):
+    def _sort_datas(self, params_env: dict) -> Tuple[str, np.ndarray]:
         """
         Sort datas for the target
 
