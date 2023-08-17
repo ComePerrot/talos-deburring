@@ -35,10 +35,12 @@ class EnvTalosMPC(gym.Env):
 
         self.rmodel = self.pinWrapper.get_rmodel()
 
-        self.rl_controlled_IDs = np.array([
-            self.rmodel.names.tolist().index(joint_name) - 2 + 7
-            for joint_name in self.rl_controlled_joints
-        ])
+        self.rl_controlled_IDs = np.array(
+            [
+                self.rmodel.names.tolist().index(joint_name) - 2 + 7
+                for joint_name in self.rl_controlled_joints
+            ],
+        )
         self.action_dimension = len(self.rl_controlled_IDs)
 
         # OCP
@@ -54,7 +56,9 @@ class EnvTalosMPC(gym.Env):
             dt=self.timeStepSimulation,
         )
 
-        observation_dimension = len(self.simulator.getRobotState())
+        observation_dimension = len(self.simulator.getRobotState()) + len(
+            self.target_handler.position_target,
+        )
         self._init_env_variables(self.action_dimension, observation_dimension)
 
         self.target_handler = TargetGoal(params_env)
@@ -135,7 +139,6 @@ class EnvTalosMPC(gym.Env):
 
         observation_dim = observation_dimension
         if self.normalizeObs:
-            observation_dim = len(self.simulator.getRobotState())
             self.observation_space = gym.spaces.Box(
                 low=-1,
                 high=1,
@@ -143,7 +146,6 @@ class EnvTalosMPC(gym.Env):
                 dtype=np.float64,
             )
         else:
-            observation_dim = len(self.simulator.getRobotState())
             self.observation_space = gym.spaces.Box(
                 low=-5,
                 high=5,
@@ -272,10 +274,9 @@ class EnvTalosMPC(gym.Env):
         """
         # x_meas_reduced = x_measured[7:self.rmodel.nq,self.rmodel.nq+6:]
         # x_meas_reduced = x_measured[self.rmodel.nq+6:]
+        observation = np.concatenate((x_measured,self.target_handler.position_target))
         if self.normalizeObs:
-            observation = self._obsNormalizer(x_measured)
-        else:
-            observation = x_measured
+            observation = self._obsNormalizer(observation)
         return np.float32(observation)
 
     def _getReward(self, avg_torque_norm, x_measured, terminated, truncated):
@@ -377,14 +378,18 @@ class EnvTalosMPC(gym.Env):
 
     def _init_actScaler(self):
         """Initializes the action scaler using robot model limits"""
-        self.lowerActLim = np.array([
-            self.rmodel.lowerPositionLimit[joint_ID]
-            for joint_ID in self.rl_controlled_IDs
-        ])
-        self.upperActLim = np.array([
-            self.rmodel.upperPositionLimit[joint_ID]
-            for joint_ID in self.rl_controlled_IDs
-        ])
+        self.lowerActLim = np.array(
+            [
+                self.rmodel.lowerPositionLimit[joint_ID]
+                for joint_ID in self.rl_controlled_IDs
+            ],
+        )
+        self.upperActLim = np.array(
+            [
+                self.rmodel.upperPositionLimit[joint_ID]
+                for joint_ID in self.rl_controlled_IDs
+            ],
+        )
 
         self.avgAct = (self.upperActLim + self.lowerActLim) / 2
         self.diffAct = self.upperActLim - self.lowerActLim
@@ -402,32 +407,34 @@ class EnvTalosMPC(gym.Env):
 
     def _init_obsNormalizer(self):
         """Initializes the observation normalizer using robot model limits"""
-        self.lowerObsLim = np.concatenate(
+        lowerObsLim = np.concatenate(
             (
                 self.rmodel.lowerPositionLimit,
                 -self.rmodel.velocityLimit,
+                self.target_handler.lowerPositionLimit,
             ),
         )
-        self.lowerObsLim[:7] = -5
-        self.lowerObsLim[
+        lowerObsLim[:7] = -5
+        lowerObsLim[
             self.pinWrapper.get_rmodel().nq : self.pinWrapper.get_rmodel().nq + 6
         ] = -5
 
-        self.upperObsLim = np.concatenate(
+        upperObsLim = np.concatenate(
             (
                 self.rmodel.upperPositionLimit,
                 self.rmodel.velocityLimit,
+                self.target_handler.upperPositionLimit,
             ),
         )
-        self.upperObsLim[:7] = 5
-        self.upperObsLim[
+        upperObsLim[:7] = 5
+        upperObsLim[
             self.pinWrapper.get_rmodel().nq : self.pinWrapper.get_rmodel().nq + 6
         ] = 5
 
-        self.avgObs = (self.upperObsLim + self.lowerObsLim) / 2
-        self.diffObs = self.upperObsLim - self.lowerObsLim
+        self.avgObs = (upperObsLim + lowerObsLim) / 2
+        self.diffObs = upperObsLim - lowerObsLim
 
-    def _obsNormalizer(self, x_measured):
+    def _obsNormalizer(self, observation):
         """Normalizes the observation taken from the simulator
 
         Args:
@@ -436,4 +443,4 @@ class EnvTalosMPC(gym.Env):
         Returns:
             normalized observation
         """
-        return (x_measured - self.avgObs) / self.diffObs
+        return (observation - self.avgObs) / self.diffObs

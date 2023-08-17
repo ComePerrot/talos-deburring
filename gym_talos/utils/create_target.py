@@ -27,8 +27,8 @@ class TargetGoal:
             self._upperPositionLimit = self._range_target + np.ones(3)
             self._lowerPositionLimit = self._range_target - np.ones(3)
         elif self._type_target == "box":
-            self._upperPositionLimit = self._range_target[:3] + self._range_target[3:6]
-            self._lowerPositionLimit = self._range_target[:3] - self._range_target[6:]
+            self._lowerPositionLimit = self._range_target[:3] + self._range_target[3:6]
+            self._upperPositionLimit = self._range_target[:3] + self._range_target[6:9]
         elif self._type_target == "sphere":
             self._upperPositionLimit = self._range_target[:3] + self._range_target[
                 3

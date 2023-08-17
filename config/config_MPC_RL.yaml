@@ -17,15 +17,17 @@ environment:
     [
       # arm_left_1_joint,
       # arm_left_2_joint,
-      arm_left_3_joint,
-      # arm_left_4_joint,
+      # arm_left_3_joint,
+      arm_left_4_joint,
     ]
   # Stop conditions
   maxTime: 4 # Maximum epoch time in seconds
   minHeight: 0.8 # if 0 no check is performed on the height of the robot
   # Target
-  targetType: "fixed"
+  targetType: "box"
   targetPosition: [0.6, 0.4, 1.1]
+  targetSizeLow: [-0.1, -0.1, -0.1]
+  targetSizeHigh: [0.1, 0.1, 0.1]
   # Reward parameters
   distanceThreshold: 0.005
   w_success: 10
