@@ -153,6 +153,9 @@ class EnvTalosMPC(gym.Env):
                 dtype=np.float64,
             )
 
+        self.distance_tool_target = None
+        self.reach_time = None
+
     def close(self):
         """Properly shuts down the environment.
 
@@ -191,7 +194,12 @@ class EnvTalosMPC(gym.Env):
         # self.crocoWrapper.reset(x_measured, self.oMtarget)
         # self.crocoWrapper.set_warm_start(self.X_warm, self.U_warm)
 
-        return self._getObservation(x_measured), {}
+        self.distance_tool_target = None
+        self.reach_time = None
+
+        infos = {"dst": self.distance_tool_target, "time": self.reach_time}
+
+        return self._getObservation(x_measured), infos
 
     def step(self, action):
         """Execute a step of the environment
@@ -259,7 +267,9 @@ class EnvTalosMPC(gym.Env):
         truncated = self._checkTruncation(x_measured)
         reward = self._getReward(avg_torque_norm, x_measured, terminated, truncated)
 
-        return observation, reward, terminated, truncated, {}
+        infos = {"dst": self.distance_tool_target, "time": self.reach_time}
+
+        return observation, reward, terminated, truncated, infos
 
     def _getObservation(self, x_measured):
         """Formats observations
@@ -274,7 +284,7 @@ class EnvTalosMPC(gym.Env):
         """
         # x_meas_reduced = x_measured[7:self.rmodel.nq,self.rmodel.nq+6:]
         # x_meas_reduced = x_measured[self.rmodel.nq+6:]
-        observation = np.concatenate((x_measured,self.target_handler.position_target))
+        observation = np.concatenate((x_measured, self.target_handler.position_target))
         if self.normalizeObs:
             observation = self._obsNormalizer(observation)
         return np.float32(observation)
@@ -307,17 +317,22 @@ class EnvTalosMPC(gym.Env):
         reward_torque = -avg_torque_norm
 
         # distance to target
-        distance_tool_target = np.linalg.norm(
+        self.distance_tool_target = np.linalg.norm(
             self.pinWrapper.get_end_effector_frame().translation
             - self.target_handler.position_target,
         )
 
-        reward_distance = -distance_tool_target + 1
+        reward_distance = -self.distance_tool_target + 1
 
         # Success evaluation
-        if distance_tool_target < self.distanceThreshold:
+        if self.distance_tool_target < self.distanceThreshold:
+            if  self.reach_time is None:
+                self.reach_time = self.timer
+
             reward_success = 1
         else:
+            self.reach_time = None
+
             reward_success = 0
 
         return (
