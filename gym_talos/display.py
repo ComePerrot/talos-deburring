@@ -9,7 +9,7 @@ from .envs.env_talos_mpc_deburring import EnvTalosMPC
 # Script parameters
 envMPC = True
 bestModel = True
-training_name = "2023-08-09_low_freq_1"
+training_name = "2023-08-22_three_joints_several_targets_1"
 
 
 train_name = "_".join(training_name.split("_")[:-1])
@@ -28,6 +28,10 @@ if envMPC:
         params["environment"],
         GUI=True,
     )
+    print(params["environment"]["controlled_joints_names"])
+    envDisplay.simulator.setupPostureVisualizer(
+        params["environment"]["controlled_joints_names"],
+    )
 else:
     envDisplay = EnvTalosDeburringHer(
         params["robot_designer"],
@@ -44,6 +48,7 @@ while True:
     while not done:
         i += 1
         action, _ = model.predict(obs, deterministic=True)
+        envDisplay.simulator.updatePosture(action)
         obs, reward, terminated, truncated, infos = envDisplay.step(action)
         if terminated or truncated:
             done = True

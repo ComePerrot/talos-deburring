@@ -54,8 +54,9 @@ class TalosDeburringSimulator:
         )
 
         # Load robot
+        self.robot_URDF = URDF
         self.robotId = p.loadURDF(
-            URDF,
+            self.robot_URDF,
             self.initial_base_position,
             self.initial_base_orientation,
             useFixedBase=False,
@@ -92,6 +93,45 @@ class TalosDeburringSimulator:
         self._setInitialConfig()
         self._changeFriction(["leg_left_6_joint", "leg_right_6_joint"], 100, 30)
         self._setControlledJoints()
+
+    def setupPostureVisualizer(self, RL_controlled_joints):
+        # Load visual robot
+        self.robotVisual = p.loadURDF(
+            self.robot_URDF,
+            np.array(self.initial_base_position) - np.array(self.localInertiaPos),
+            self.initial_base_orientation,
+            useFixedBase=True,
+        )
+        # Set robot in intial pose
+        for i in range(len(self.initial_joint_positions)):
+            p.resetJointState(
+                self.robotVisual,
+                self.bulletJointsIdInPinOrder[i],
+                self.initial_joint_positions[i],
+            )
+
+        self.RL_joints_id = [
+            self.names2bulletIndices[name] for name in RL_controlled_joints
+        ]
+
+        # Change color and disable collisions
+        color = [0, 0, 1, 0.2]  # second robot is gold
+        # Base
+        p.changeVisualShape(self.robotVisual, -1, rgbaColor=color)
+        p.setCollisionFilterGroupMask(self.robotVisual, -1, 0, 0)
+
+        # Joinst
+        for link_id in range(p.getNumJoints(self.robotVisual)):
+            p.changeVisualShape(self.robotVisual, link_id, rgbaColor=color)
+            p.setCollisionFilterGroupMask(self.robotVisual, link_id, 0, 0)
+
+    def updatePosture(self, action):
+        for i in range(len(action)):
+            p.resetJointState(
+                self.robotVisual,
+                self.RL_joints_id[i],
+                action[i],
+            )
 
     def _setInitialConfig(self):
         """Initialize robot configuration in pyBullet
