@@ -6,14 +6,21 @@ From: ubuntu:20.04
         gnupg2 \
         git
     
-    git clone -b topic/MPC https://github.com/ComePerrot/talos-rl.git
+    git clone -b topic/adelgorgue https://github.com/ComePerrot/talos-rl.git
     apt-key add talos-rl/apptainer/robotpkg.key
     echo "deb [arch=amd64] http://robotpkg.openrobots.org/packages/debian/pub focal robotpkg" > /etc/apt/sources.list.d/robotpkg.list
     
     apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y  \
         cmake \
         python3-pip \
-        robotpkg-py3\*-crocoddyl
+        robotpkg-example-robot-data=4.0.7 \
+        robotpkg-hpp-fcl+doc=2.3.0 \
+        robotpkg-pinocchio=2.6.17 \
+        robotpkg-py3\*-example-robot-data=4.0.7 \
+        robotpkg-py3\*-hpp-fcl=2.3.0 \
+        robotpkg-py3\*-eigenpy=2.9.2 \
+        robotpkg-py3\*-pinocchio=2.6.17 \
+        robotpkg-py3\*-crocoddyl=1.9.0r1
 
     export CMAKE_PREFIX_PATH=/opt/openrobots
 
@@ -24,7 +31,7 @@ From: ubuntu:20.04
 
     cd /
 
-    git clone --recursive -b topic/newBindings https://github.com/ComePerrot/talos-manipulation.git
+    git clone --recursive -b topic/oldCroco https://github.com/ComePerrot/talos-manipulation.git
     cmake -B talos-manipulation/deburring-mpc/build -S talos-manipulation/deburring-mpc \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=/opt/openrobots
