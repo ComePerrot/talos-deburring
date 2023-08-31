@@ -5,6 +5,7 @@ from deburring_mpc import RobotDesigner, OCP
 
 from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
 from gym_talos.utils.create_target import TargetGoal
+from gym_talos.utils.observation_wrapper import observation_wrapper
 
 
 class EnvTalosMPC(gym.Env):
@@ -16,8 +17,17 @@ class EnvTalosMPC(gym.Env):
 
         self._init_parameters(params_env, self.param_ocp)
 
+        # target
         self.target_handler = TargetGoal(params_env)
         self.target_handler.create_target()
+
+        # observation
+        self.observation_handler = observation_wrapper(
+            self.normalizeObs,
+            self.rmodel,
+            self.target_handler,
+            3,
+        )
 
         # Robot wrapper
         self.pinWrapper = RobotDesigner()
@@ -56,9 +66,7 @@ class EnvTalosMPC(gym.Env):
             dt=self.timeStepSimulation,
         )
 
-        observation_dimension = len(self.simulator.getRobotState()) + len(
-            self.target_handler.position_target,
-        )
+        observation_dimension = self.observation_handler.size
         self._init_env_variables(self.action_dimension, observation_dimension)
 
         self.target_handler = TargetGoal(params_env)
@@ -199,7 +207,13 @@ class EnvTalosMPC(gym.Env):
 
         infos = {"dst": self.distance_tool_target, "time": self.reach_time}
 
-        return self._getObservation(x_measured), infos
+        return (
+            self.observation_handler.generate_observation(
+                x_measured,
+                self.oMtarget.translation,
+            ),
+            infos,
+        )
 
     def step(self, action):
         """Execute a step of the environment
@@ -262,7 +276,10 @@ class EnvTalosMPC(gym.Env):
 
         avg_torque_norm = torque_sum / (self.numOCPSteps * self.numSimulationSteps)
 
-        observation = self._getObservation(x_measured)
+        observation = self.observation_handler.generate_observation(
+            x_measured,
+            self.target_handler.position_target,
+        )
         terminated = self._checkTermination(x_measured)
         truncated = self._checkTruncation(x_measured)
         reward = self._getReward(avg_torque_norm, x_measured, terminated, truncated)
@@ -326,7 +343,7 @@ class EnvTalosMPC(gym.Env):
 
         # Success evaluation
         if self.distance_tool_target < self.distanceThreshold:
-            if  self.reach_time is None:
+            if self.reach_time is None:
                 self.reach_time = self.timer
 
             reward_success = 1
