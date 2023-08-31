@@ -13,10 +13,11 @@ environment:
   timeStepSimulation: 1e-3
   numOCPSteps: 10
   normalizeObs: True
+  historyObs: 3
   controlled_joints_names:
     [
-      # arm_left_1_joint,
-      # arm_left_2_joint,
+      arm_left_1_joint,
+      arm_left_2_joint,
       # arm_left_3_joint,
       arm_left_4_joint,
     ]

@@ -21,14 +21,6 @@ class EnvTalosMPC(gym.Env):
         self.target_handler = TargetGoal(params_env)
         self.target_handler.create_target()
 
-        # observation
-        self.observation_handler = observation_wrapper(
-            self.normalizeObs,
-            self.rmodel,
-            self.target_handler,
-            3,
-        )
-
         # Robot wrapper
         self.pinWrapper = RobotDesigner()
         self.pinWrapper.initialize(params_designer)
@@ -56,6 +48,14 @@ class EnvTalosMPC(gym.Env):
         # OCP
         self._init_ocp(self.param_ocp)
         self.horizon_length = self.param_ocp["horizon_length"]
+
+        # observation
+        self.observation_handler = observation_wrapper(
+            self.normalizeObs,
+            self.rmodel,
+            self.target_handler,
+            self.historyObs,
+        )
 
         # Simulator
         self.simulator = TalosDeburringSimulator(
@@ -101,7 +101,7 @@ class EnvTalosMPC(gym.Env):
         self.timeStepOCP = float(param_ocp["time_step"])
 
         self.numOCPSteps = params_env["numOCPSteps"]
-
+        self.historyObs = params_env["historyObs"]
         self.normalizeObs = params_env["normalizeObs"]
 
         #   Stop conditions
@@ -130,34 +130,29 @@ class EnvTalosMPC(gym.Env):
             / (self.numOCPSteps * self.timeStepSimulation * self.numSimulationSteps),
         )
 
-        if self.normalizeObs:
-            self._init_obsNormalizer()
-
         self._init_actScaler()
 
         self.q0 = self.pinWrapper.get_x0().copy()
 
-        action_dim = action_dimension
         self.action_space = gym.spaces.Box(
             low=-1,
             high=1,
-            shape=(action_dim,),
+            shape=(action_dimension,),
             dtype=np.float32,
         )
 
-        observation_dim = observation_dimension
         if self.normalizeObs:
             self.observation_space = gym.spaces.Box(
                 low=-1,
                 high=1,
-                shape=(observation_dim,),
+                shape=(observation_dimension,),
                 dtype=np.float64,
             )
         else:
             self.observation_space = gym.spaces.Box(
                 low=-5,
                 high=5,
-                shape=(observation_dim,),
+                shape=(observation_dimension,),
                 dtype=np.float64,
             )
 
@@ -208,7 +203,7 @@ class EnvTalosMPC(gym.Env):
         infos = {"dst": self.distance_tool_target, "time": self.reach_time}
 
         return (
-            self.observation_handler.generate_observation(
+            self.observation_handler.reset(
                 x_measured,
                 self.oMtarget.translation,
             ),
@@ -287,24 +282,6 @@ class EnvTalosMPC(gym.Env):
         infos = {"dst": self.distance_tool_target, "time": self.reach_time}
 
         return observation, reward, terminated, truncated, infos
-
-    def _getObservation(self, x_measured):
-        """Formats observations
-
-        Normalizes the observation obtained from the simulator if nomalizeObs = True
-
-        Args:
-            x_measured: observation array obtained from the simulator
-
-        Returns:
-            Fromated observations
-        """
-        # x_meas_reduced = x_measured[7:self.rmodel.nq,self.rmodel.nq+6:]
-        # x_meas_reduced = x_measured[self.rmodel.nq+6:]
-        observation = np.concatenate((x_measured, self.target_handler.position_target))
-        if self.normalizeObs:
-            observation = self._obsNormalizer(observation)
-        return np.float32(observation)
 
     def _getReward(self, avg_torque_norm, x_measured, terminated, truncated):
         """Compute step reward
@@ -436,43 +413,3 @@ class EnvTalosMPC(gym.Env):
             unnormalized reference
         """
         return action * self.diffAct + self.avgAct
-
-    def _init_obsNormalizer(self):
-        """Initializes the observation normalizer using robot model limits"""
-        lowerObsLim = np.concatenate(
-            (
-                self.rmodel.lowerPositionLimit,
-                -self.rmodel.velocityLimit,
-                self.target_handler.lowerPositionLimit,
-            ),
-        )
-        lowerObsLim[:7] = -5
-        lowerObsLim[
-            self.pinWrapper.get_rmodel().nq : self.pinWrapper.get_rmodel().nq + 6
-        ] = -5
-
-        upperObsLim = np.concatenate(
-            (
-                self.rmodel.upperPositionLimit,
-                self.rmodel.velocityLimit,
-                self.target_handler.upperPositionLimit,
-            ),
-        )
-        upperObsLim[:7] = 5
-        upperObsLim[
-            self.pinWrapper.get_rmodel().nq : self.pinWrapper.get_rmodel().nq + 6
-        ] = 5
-
-        self.avgObs = (upperObsLim + lowerObsLim) / 2
-        self.diffObs = upperObsLim - lowerObsLim
-
-    def _obsNormalizer(self, observation):
-        """Normalizes the observation taken from the simulator
-
-        Args:
-            x_measured: observation array obtained from the simulator
-
-        Returns:
-            normalized observation
-        """
-        return (observation - self.avgObs) / self.diffObs

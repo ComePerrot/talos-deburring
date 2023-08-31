@@ -52,9 +52,7 @@ class observation_wrapper:
             ),
         )
         lower_state_lim[:7] = -5
-        lower_state_lim[
-            self.pinWrapper.get_rmodel().nq : self.pinWrapper.get_rmodel().nq + 6
-        ] = -5
+        lower_state_lim[rmodel.nq : rmodel.nq + 6] = -5
 
         upper_state_lim = np.concatenate(
             (
@@ -63,9 +61,7 @@ class observation_wrapper:
             ),
         )
         upper_state_lim[:7] = 5
-        upper_state_lim[
-            self.pinWrapper.get_rmodel().nq : self.pinWrapper.get_rmodel().nq + 6
-        ] = 5
+        upper_state_lim[rmodel.nq : rmodel.nq + 6] = 5
 
         self.avg_state = (upper_state_lim + lower_state_lim) / 2
         self.diff_state = upper_state_lim - lower_state_lim
