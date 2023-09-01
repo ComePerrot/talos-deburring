@@ -13,7 +13,8 @@ environment:
   timeStepSimulation: 1e-3
   numOCPSteps: 10
   normalizeObs: True
-  historyObs: 3
+  historyObs: 0
+  predictionSize: 3
   controlled_joints_names:
     [
       arm_left_1_joint,

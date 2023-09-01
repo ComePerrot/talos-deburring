@@ -55,6 +55,7 @@ class EnvTalosMPC(gym.Env):
             self.rmodel,
             self.target_handler,
             self.historyObs,
+            self.predictionSize,
         )
 
         # Simulator
@@ -66,7 +67,7 @@ class EnvTalosMPC(gym.Env):
             dt=self.timeStepSimulation,
         )
 
-        observation_dimension = self.observation_handler.size
+        observation_dimension = self.observation_handler.observation_size
         self._init_env_variables(self.action_dimension, observation_dimension)
 
         self.target_handler = TargetGoal(params_env)
@@ -102,6 +103,7 @@ class EnvTalosMPC(gym.Env):
 
         self.numOCPSteps = params_env["numOCPSteps"]
         self.historyObs = params_env["historyObs"]
+        self.predictionSize = params_env["predictionSize"]
         self.normalizeObs = params_env["normalizeObs"]
 
         #   Stop conditions
@@ -206,6 +208,7 @@ class EnvTalosMPC(gym.Env):
             self.observation_handler.reset(
                 x_measured,
                 self.oMtarget.translation,
+                self.crocoWrapper.solver.xs,
             ),
             infos,
         )
@@ -271,9 +274,9 @@ class EnvTalosMPC(gym.Env):
 
         avg_torque_norm = torque_sum / (self.numOCPSteps * self.numSimulationSteps)
 
-        observation = self.observation_handler.generate_observation(
+        observation = self.observation_handler.get_observation(
             x_measured,
-            self.target_handler.position_target,
+            self.crocoWrapper.solver.xs,
         )
         terminated = self._checkTermination(x_measured)
         truncated = self._checkTruncation(x_measured)
