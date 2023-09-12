@@ -9,7 +9,7 @@ from .envs.env_talos_mpc_deburring import EnvTalosMPC
 # Script parameters
 envMPC = True
 bestModel = True
-training_name = "2023-08-22_three_joints_several_targets_1"
+training_name = "2023-09-04_severalJoints_severalTargets_predictions_1"
 
 
 train_name = "_".join(training_name.split("_")[:-1])

@@ -404,7 +404,7 @@ class EnvTalosMPC(gym.Env):
         )
 
         self.avgAct = (self.upperActLim + self.lowerActLim) / 2
-        self.diffAct = self.upperActLim - self.lowerActLim
+        self.diffAct = (self.upperActLim - self.lowerActLim) / 2
 
     def _actScaler(self, action):
         """Scale the action given by the agent
