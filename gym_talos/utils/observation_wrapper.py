@@ -119,14 +119,14 @@ class observation_wrapper:
         upper_state_lim[rmodel.nq : rmodel.nq + 6] = 5
 
         self.avg_state = (upper_state_lim + lower_state_lim) / 2
-        self.diff_state = upper_state_lim - lower_state_lim
+        self.diff_state = upper_state_lim - lower_state_lim / 2
 
         # target
         lower_target_lim = target_handler.lowerPositionLimit
         upper_target_lim = target_handler.upperPositionLimit
 
         self.avg_target = (upper_target_lim + lower_target_lim) / 2
-        self.diff_target = upper_target_lim - lower_target_lim
+        self.diff_target = upper_target_lim - lower_target_lim / 2
 
     def normalize_state(self, state):
         """Normalizes the given robot state taken from the simulator

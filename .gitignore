@@ -3,5 +3,6 @@ pyRL
 envRL
 envMPRL
 logs*
+archives*
 __pycache__
 *.sif*
