@@ -36,7 +36,7 @@ class action_wrapper:
         )
 
         self.avgAct = (self.upperActLim + self.lowerActLim) / 2
-        self.diffAct = self.upperActLim - self.lowerActLim / 2
+        self.diffAct = (self.upperActLim - self.lowerActLim) / 2
 
     def _check_scaling(self):
         """Checks range of scaled action
@@ -52,7 +52,7 @@ class action_wrapper:
             msg = "Scaling of action is not inside of the model limits"
             raise ValueError(msg)
 
-    def _actScaler(self, action):
+    def action(self, action):
         """Scale the action given by the agent based on the chosen scaling mode
 
         Args:

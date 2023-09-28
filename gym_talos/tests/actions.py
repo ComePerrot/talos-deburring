@@ -24,6 +24,9 @@ class ActionTestCase(unittest.TestCase):
         self.action_wrapper = action_wrapper(
             rl_controlled_IDs,
             rmodel,
+            scaling_factor=1,
+            scaling_mode="full_range",
+            initial_pose=None,
         )
 
     def test_upper_bound(self):
@@ -33,9 +36,26 @@ class ActionTestCase(unittest.TestCase):
                 for joint_ID in self.action_wrapper.rl_controlled_IDs
             ],
         )
-        scaled_action = self.action_wrapper.action(np.ones(4))
+        scaled_action = self.action_wrapper.action(
+            np.ones(len(self.action_wrapper.rl_controlled_IDs)),
+        )
 
-        self.assertEqual(scaled_action, upper_limit)
+        for i in range(len(scaled_action)):
+            self.assertAlmostEqual(scaled_action[i], upper_limit[i], 8)
+
+    def test_lower_bound(self):
+        lower_limit = np.array(
+            [
+                self.action_wrapper.rmodel.lowerPositionLimit[joint_ID]
+                for joint_ID in self.action_wrapper.rl_controlled_IDs
+            ],
+        )
+        scaled_action = self.action_wrapper.action(
+            -np.ones(len(self.action_wrapper.rl_controlled_IDs)),
+        )
+
+        for i in range(len(scaled_action)):
+            self.assertAlmostEqual(scaled_action[i], lower_limit[i], 8)
 
 
 if __name__ == "__main__":
