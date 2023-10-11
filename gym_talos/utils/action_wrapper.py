@@ -18,7 +18,7 @@ class action_wrapper:
         self._init_actScaler()
         if scaling_mode == "differential":
             # Check scaling
-            pass
+            self._check_scaling()
 
     def _init_actScaler(self):
         """Initializes the action scaler using robot model limits"""
@@ -44,8 +44,8 @@ class action_wrapper:
         Checks that the scaled action stays inside the kinematic limits of the
         robot (only used when the scaling mode is differential)
         """
-        upper_action = self.initial_pose + self.diffAct * self.scaling_factor
-        lower_action = self.initial_pose - self.diffAct * self.scaling_factor
+        upper_action = self.q0 + self.diffAct * self.scaling_factor
+        lower_action = self.q0 - self.diffAct * self.scaling_factor
         if (upper_action > self.upperActLim).any() or (
             lower_action < self.lowerActLim
         ).any():
@@ -64,8 +64,8 @@ class action_wrapper:
         scaled_action = action * self.diffAct * self.scaling_factor
         if self.scaling_mode == "full_range":
             reference = self.avgAct + scaled_action
-        elif self.scaling_mode == "differential" and self.initial_pose is not None:
-            reference = self.initial_pose + scaled_action
+        elif self.scaling_mode == "differential" and self.q0 is not None:
+            reference = self.q0 + scaled_action
         else:
             msg = "Invalid scaling mode or missing initial pose."
             raise ValueError(msg)

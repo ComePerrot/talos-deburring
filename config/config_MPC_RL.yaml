@@ -1,17 +1,22 @@
 training:
-  name: "one_joint_several_targets"
-  total_timesteps: 100000 # Total number of training timesteps
-  log_interval: 20 # Number of episodes between logging events
+  name: "test_4joints"
+  total_timesteps: 150000 # Total number of training timesteps
+  log_interval: 10 # Number of episodes between logging events
   check_freq: 1000 # Number of timesteps between saving checkpoints
 
 SAC:
   model_param:
-    { policy: "MlpPolicy", tensorboard_log: "logs/", device: "cpu", verbose: 2 }
+    policy: "MlpPolicy"
+    tensorboard_log: "logs/"
+    device: "cpu"
+    verbose: 2
 
 environment:
   nb_environments: 1 # Number of environments used to collect data
   timeStepSimulation: 1e-3
   numOCPSteps: 10
+  actionType: "full_range" # full_range / differential
+  actionScale: 1
   normalizeObs: True
   historyObs: 0
   predictionSize: 3

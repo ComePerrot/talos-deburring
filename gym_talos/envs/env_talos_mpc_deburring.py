@@ -6,14 +6,13 @@ from deburring_mpc import RobotDesigner, OCP
 from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
 from gym_talos.utils.create_target import TargetGoal
 from gym_talos.utils.observation_wrapper import observation_wrapper
+from gym_talos.utils.action_wrapper import action_wrapper
 
 
 class EnvTalosMPC(gym.Env):
     def __init__(self, params_robot, params_env, GUI=False) -> None:
         params_designer = params_robot["designer"]
         self.param_ocp = params_robot["OCP"]
-        self.param_ocp["state_weights"] = np.array(self.param_ocp["state_weights"])
-        self.param_ocp["control_weights"] = np.array(self.param_ocp["control_weights"])
 
         self._init_parameters(params_env, self.param_ocp)
 
@@ -70,9 +69,19 @@ class EnvTalosMPC(gym.Env):
         observation_dimension = self.observation_handler.observation_size
         self._init_env_variables(self.action_dimension, observation_dimension)
 
-        self.target_handler = TargetGoal(params_env)
+        # action
+        self.action_handler = action_wrapper(
+            self.rl_controlled_IDs,
+            self.rmodel,
+            scaling_factor=params_env["actionScale"],
+            scaling_mode=params_env["actionType"],
+            initial_pose=[self.q0[i] for i in self.rl_controlled_IDs],
+        )
 
     def _init_ocp(self, param_ocp):
+        self.param_ocp["state_weights"] = np.array(self.param_ocp["state_weights"])
+        self.param_ocp["control_weights"] = np.array(self.param_ocp["control_weights"])
+
         self.oMtarget = pin.SE3.Identity()
         self.oMtarget.translation[0] = self.target_handler.position_target[0]
         self.oMtarget.translation[1] = self.target_handler.position_target[1]
@@ -131,8 +140,6 @@ class EnvTalosMPC(gym.Env):
             self.maxTime
             / (self.numOCPSteps * self.timeStepSimulation * self.numSimulationSteps),
         )
-
-        self._init_actScaler()
 
         self.q0 = self.pinWrapper.get_x0().copy()
 
@@ -231,7 +238,7 @@ class EnvTalosMPC(gym.Env):
             Boolean indicating this rollout is done
         """
         self.timer += 1
-        arm_reference = self._actScaler(action)
+        arm_reference = self.action_handler.action(action)
 
         posture_reference = self.q0
         for i in range(self.action_dimension):
@@ -387,32 +394,3 @@ class EnvTalosMPC(gym.Env):
 
         # Explicitely casting from numpy.bool_ to bool
         return bool(truncation_balance or truncation_limits)
-
-    def _init_actScaler(self):
-        """Initializes the action scaler using robot model limits"""
-        self.lowerActLim = np.array(
-            [
-                self.rmodel.lowerPositionLimit[joint_ID]
-                for joint_ID in self.rl_controlled_IDs
-            ],
-        )
-        self.upperActLim = np.array(
-            [
-                self.rmodel.upperPositionLimit[joint_ID]
-                for joint_ID in self.rl_controlled_IDs
-            ],
-        )
-
-        self.avgAct = (self.upperActLim + self.lowerActLim) / 2
-        self.diffAct = (self.upperActLim - self.lowerActLim) / 2
-
-    def _actScaler(self, action):
-        """Scale the action given by the agent
-
-        Args:
-            action: normalized action given by the agent
-
-        Returns:
-            unnormalized reference
-        """
-        return action * self.diffAct + self.avgAct
