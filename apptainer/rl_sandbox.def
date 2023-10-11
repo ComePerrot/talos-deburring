@@ -6,7 +6,7 @@ From: ubuntu:20.04
         gnupg2 \
         git
     
-    git clone -b topic/adelgorgue https://github.com/ComePerrot/talos-rl.git
+    git clone -b topic/MPC https://github.com/ComePerrot/talos-rl.git
     apt-key add talos-rl/apptainer/robotpkg.key
     echo "deb [arch=amd64] http://robotpkg.openrobots.org/packages/debian/pub focal robotpkg" > /etc/apt/sources.list.d/robotpkg.list
     
