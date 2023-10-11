@@ -4,7 +4,7 @@ import pinocchio as pin
 from deburring_mpc import OCP, RobotDesigner
 
 
-class mpc_wrapper:
+class MPController:
     def __init__(self, x_initial, target_pos, params_designer, param_ocp):
         self.time = 0
         self.num_control_knots = 10
