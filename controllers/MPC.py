@@ -1,26 +1,15 @@
 import numpy as np
 import pinocchio as pin
 
-from deburring_mpc import OCP, RobotDesigner
+from deburring_mpc import OCP
 
 
 class MPController:
-    def __init__(self, x_initial, target_pos, params_designer, param_ocp):
+    def __init__(self, pinWrapper, x_initial, target_pos, param_ocp):
         self.time = 0
         self.num_control_knots = 10
 
-        self.pinWrapper = RobotDesigner()
-        self.pinWrapper.initialize(params_designer)
-
-        gripper_SE3_tool = pin.SE3.Identity()
-        gripper_SE3_tool.translation[0] = params_designer["toolPosition"][0]
-        gripper_SE3_tool.translation[1] = params_designer["toolPosition"][1]
-        gripper_SE3_tool.translation[2] = params_designer["toolPosition"][2]
-        self.pinWrapper.add_end_effector_frame(
-            "deburring_tool",
-            "gripper_left_fingertip_3_link",
-            gripper_SE3_tool,
-        )
+        self.pinWrapper = pinWrapper
 
         self.param_ocp["state_weights"] = np.array(self.param_ocp["state_weights"])
         self.param_ocp["control_weights"] = np.array(self.param_ocp["control_weights"])
@@ -37,7 +26,7 @@ class MPController:
 
         self.x0 = x_initial
 
-    def step(self, x_measured):
+    def step(self, x_measured, reference_posture=None):
         self.time += 1
 
         # Compute torque to be applied by adding Riccati term
@@ -53,6 +42,16 @@ class MPController:
 
             self.crocoWrapper.recede()
             self.crocoWrapper.change_goal_cost_activation(self.horizon_length - 1, True)
+
+            if reference_posture is not None:
+                self.crocoWrapper.change_posture_reference(
+                    self.horizon_length - 1,
+                    reference_posture,
+                )
+                self.crocoWrapper.change_posture_reference(
+                    self.horizon_length,
+                    reference_posture,
+                )
 
             self.crocoWrapper.solve(x_measured)
 
