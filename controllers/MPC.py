@@ -6,7 +6,6 @@ from deburring_mpc import OCP
 
 class MPController:
     def __init__(self, pinWrapper, x_initial, target_pos, param_ocp):
-        self.time = 0
         self.num_control_knots = 10
 
         self.pinWrapper = pinWrapper
@@ -27,32 +26,23 @@ class MPController:
         self.x0 = x_initial
 
     def step(self, x_measured, reference_posture=None):
-        self.time += 1
+        self.x0 = x_measured
 
-        # Compute torque to be applied by adding Riccati term
-        torques = (
-            self.crocoWrapper.torque
-            + self.crocoWrapper.gain @ self.crocoWrapper.state.diff(x_measured, self.x0)
-        )
+        self.pinWrapper.update_reduced_model(x_measured)
 
-        if self.time % self.num_control_knots == 0:
-            self.x0 = x_measured
+        self.crocoWrapper.recede()
+        self.crocoWrapper.change_goal_cost_activation(self.horizon_length - 1, True)
 
-            self.pinWrapper.update_reduced_model(x_measured)
+        if reference_posture is not None:
+            self.crocoWrapper.change_posture_reference(
+                self.horizon_length - 1,
+                reference_posture,
+            )
+            self.crocoWrapper.change_posture_reference(
+                self.horizon_length,
+                reference_posture,
+            )
 
-            self.crocoWrapper.recede()
-            self.crocoWrapper.change_goal_cost_activation(self.horizon_length - 1, True)
+        self.crocoWrapper.solve(x_measured)
 
-            if reference_posture is not None:
-                self.crocoWrapper.change_posture_reference(
-                    self.horizon_length - 1,
-                    reference_posture,
-                )
-                self.crocoWrapper.change_posture_reference(
-                    self.horizon_length,
-                    reference_posture,
-                )
-
-            self.crocoWrapper.solve(x_measured)
-
-        return torques
+        return (self.crocoWrapper.torque, self.x0, self.crocoWrapper.gain)
