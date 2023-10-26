@@ -10,8 +10,8 @@ class MPController:
 
         self.pinWrapper = pinWrapper
 
-        self.param_ocp["state_weights"] = np.array(self.param_ocp["state_weights"])
-        self.param_ocp["control_weights"] = np.array(self.param_ocp["control_weights"])
+        param_ocp["state_weights"] = np.array(param_ocp["state_weights"])
+        param_ocp["control_weights"] = np.array(param_ocp["control_weights"])
 
         self.oMtarget = pin.SE3.Identity()
         self.oMtarget.translation[0] = target_pos[0]
@@ -22,6 +22,8 @@ class MPController:
 
         self.crocoWrapper = OCP(param_ocp, self.pinWrapper)
         self.crocoWrapper.initialize(x_initial, self.oMtarget)
+
+        self.horizon_length = param_ocp["horizon_length"]
 
         self.x0 = x_initial
 

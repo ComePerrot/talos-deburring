@@ -44,7 +44,7 @@ def main():
         controlledJointsIDs=pinWrapper.get_controlled_joints_ids(),
         toolPlacement=pinWrapper.get_end_effector_frame(),
         targetPlacement=oMtarget,
-        enableGUI=False,
+        enableGUI=True,
     )
 
     # CONTROLLERS
@@ -52,7 +52,7 @@ def main():
     #       Action wrapper
     kwargs_action = dict(
         rl_controlled_IDs=[16, 17, 19],
-        rmodl=pinWrapper.get_rmodel(),
+        rmodel=pinWrapper.get_rmodel(),
         scaling_factor=1,
         scaling_mode="full_range",
         initial_pose=None,
@@ -65,7 +65,7 @@ def main():
         history_size=0,
         prediction_size=0,
     )
-    model_path = "./test"
+    model_path = "config/best_model.zip"
     posture_controller = RLPostureController(
         model_path, kwargs_action, kwargs_observation
     )
@@ -74,7 +74,25 @@ def main():
     mpc = MPController(pinWrapper, pinWrapper.get_x0(), target, params["OCP"])
 
     # RICCATI
-    riccati = RiccatiController()
+    riccati = RiccatiController(
+        state=mpc.crocoWrapper.state,
+        torque=mpc.crocoWrapper.torque,
+        xref=pinWrapper.get_x0(),
+        riccati=mpc.crocoWrapper.gain,
+    )
+
+    Time = 0
+    while True:
+        x_measured = simulator.getRobotState()
+
+        if Time%10 == 0:
+            t0, x0, K0 = mpc.step(x_measured, None)
+            riccati.update_references(t0, x0, K0)
+
+        torques = riccati.step(x_measured)
+        simulator.step(torques, pinWrapper.get_end_effector_frame(), oMtarget)
+
+        Time += 1
 
 
 if __name__ == "__main__":
