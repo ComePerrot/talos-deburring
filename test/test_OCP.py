@@ -13,6 +13,17 @@ from deburring_mpc import OCP, RobotDesigner
 from simulator.bullet_Talos import TalosDeburringSimulator
 from utils.plotter import TalosPlotter
 
+from IPython import embed
+
+from debug_OCP import (
+    plot_costs_from_dic,
+    return_cost_vectors,
+    plot_command,
+    return_command_vector,
+    plot_state_from_dic,
+    return_state_vector,
+)
+
 ################
 #  PARAMETERS  #
 ################
@@ -21,20 +32,20 @@ enableGUI = True
 plotResults = False
 plotCosts = False
 
-targetPos_1 = [0.6, 0.4, 1.1]
+targetPos_1 = [0.611, 0.318, 1.129] #[0.6, 0.4, 1.1]
 targetTolerance = 0.005
 
 # Timing settings
-T_total = 400
+T_total = 1000
 T_init = 0
 
 # Variable Posture
-variablePosture = False
+variablePosture = True
 ref_leftArm = [
-    -0.08419471,
-    0.425144,
-    0.00556666,
-    -1.50516856,
+    0.291,
+    0.344,
+    1.907,
+    -2.085,
     # 0.68574977,
     # 0.18184998,
     # -0.07185897,
@@ -155,91 +166,91 @@ pinWrapper.add_end_effector_frame(
 
 rModel = pinWrapper.get_rmodel()
 
-rModel.lowerPositionLimit = np.array(
-    [
-        # Base
-        -1,
-        -1,
-        -1,
-        -1,
-        -1,
-        -1,
-        -1,
-        # Left leg
-        -0.35,
-        -0.52,
-        -2.10,
-        0.0,
-        -1.31,
-        -0.52,
-        # Right leg
-        -1.57,
-        -0.52,
-        -2.10,
-        0.0,
-        -1.31,
-        -0.52,
-        # Torso
-        -1.3,
-        -0.1,
-        # Left arm
-        -1.57,
-        0.2,
-        -2.44,
-        -2.1,
-        -2.53,
-        -1.3,
-        -0.6,
-        # Right arm
-        -0.4,
-        -2.88,
-        -2.44,
-        -2,
-    ]
-)
+# rModel.lowerPositionLimit = np.array(
+#     [
+#         # Base
+#         -1,
+#         -1,
+#         -1,
+#         -1,
+#         -1,
+#         -1,
+#         -1,
+#         # Left leg
+#         -0.35,
+#         -0.52,
+#         -2.10,
+#         0.0,
+#         -1.31,
+#         -0.52,
+#         # Right leg
+#         -1.57,
+#         -0.52,
+#         -2.10,
+#         0.0,
+#         -1.31,
+#         -0.52,
+#         # Torso
+#         -1.3,
+#         -0.1,
+#         # Left arm
+#         -1.57,
+#         0.2,
+#         -2.44,
+#         -2.1,
+#         -2.53,
+#         -1.3,
+#         -0.6,
+#         # Right arm
+#         -0.4,
+#         -2.88,
+#         -2.44,
+#         -2,
+#     ]
+# )
 
-rModel.upperPositionLimit = np.array(
-    [
-        # Base
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        # Left leg
-        1.57,
-        0.52,
-        0.7,
-        2.62,
-        0.77,
-        0.52,
-        # Right leg
-        0.35,
-        0.52,
-        0.7,
-        2.62,
-        0.77,
-        0.52,
-        # Torso
-        1.3,
-        0.78,
-        # Left arm
-        0.52,
-        2.88,
-        2.44,
-        0,
-        2.53,
-        1.3,
-        0.6,
-        # Right arm
-        1.57,
-        -0.2,
-        2.44,
-        0,
-    ]
-)
+# rModel.upperPositionLimit = np.array(
+#     [
+#         # Base
+#         1,
+#         1,
+#         1,
+#         1,
+#         1,
+#         1,
+#         1,
+#         # Left leg
+#         1.57,
+#         0.52,
+#         0.7,
+#         2.62,
+#         0.77,
+#         0.52,
+#         # Right leg
+#         0.35,
+#         0.52,
+#         0.7,
+#         2.62,
+#         0.77,
+#         0.52,
+#         # Torso
+#         1.3,
+#         0.78,
+#         # Left arm
+#         0.52,
+#         2.88,
+#         2.44,
+#         0,
+#         2.53,
+#         1.3,
+#         0.6,
+#         # Right arm
+#         1.57,
+#         -0.2,
+#         2.44,
+#         0,
+#     ]
+# )
 
 # OCP
 oMtarget = pin.SE3.Identity()
@@ -254,7 +265,6 @@ OCP.initialize(pinWrapper.get_x0(), oMtarget)
 print("OCP successfully loaded")
 
 ddp = OCP.solver
-
 # Simulator
 simulator = TalosDeburringSimulator(
     URDF=URDF,
@@ -273,33 +283,13 @@ plotter = TalosPlotter(pinWrapper.get_rmodel(), T_total)
 #  INITIAL RESOLUTION  #
 ########################
 
-for index in range(horizonLength):
-    OCP.change_goal_cost_activation(index, True)
-
 x_measured = simulator.getRobotState()
 OCP.solve_first(pinWrapper.get_x0())
-
-# Serialize initial resolution data
-xs_init = ddp.xs.tolist()
-us_init = ddp.us.tolist()
-
-
-# plot_state_from_dic(return_state_vector(OCP.solver))
-
-# ref_leftArm = OCP.solver.xs[-1][7 + 14 : 7 + 18]
-
-for index in range(horizonLength):
-    OCP.change_goal_cost_activation(index, False)
-OCP.solve_first(pinWrapper.get_x0())
-
-# Serialize initial resolution data
-xs_init = ddp.xs.tolist()
-us_init = ddp.us.tolist()
 
 ###############
 #  MAIN LOOP  #
 ###############
-NcontrolKnots = 10
+NcontrolKnots = 20
 T = 0
 drilling_state = 0
 targetReached = 0
@@ -315,22 +305,22 @@ x_ref = pinWrapper.get_x0().copy()
 x_ref[7 + 14 : 7 + 18] = ref_leftArm
 
 for T in range(T_total):
+    x0 = simulator.getRobotState()
     # Controller works faster than trajectory generation
     for i_control in range(NcontrolKnots):
-        if i_control == 0:
-            x0 = simulator.getRobotState()
-
         x_measured = simulator.getRobotState()
 
         # Compute torque to be applied by adding Riccati term
         torques = OCP.torque + OCP.gain @ state.diff(x_measured, x0)
 
+        noisy_torques = Y = np.random.normal(torques, 1)
+
         # Apply torque on complete model
         simulator.step(torques, toolPlacement, oMtarget)
 
     # Solve MPC iteration
-    pinWrapper.update_reduced_model(x_measured)
-    OCP.solve(x_measured)
+    pinWrapper.update_reduced_model(x0)
+    OCP.solve(simulator.getRobotState())
 
     # Update tool placement
     toolPlacement = pinWrapper.get_end_effector_frame()
@@ -343,12 +333,11 @@ for T in range(T_total):
         drilling_state = 1
         index = horizonLength + T_init - T
         # OCP.change_goal_cost_activation(index, True)
-
+        OCP.recede()
+        OCP.change_goal_cost_activation(horizonLength - 1, True)
         if variablePosture:
-            OCP.recede()
-            OCP.change_goal_cost_activation(horizonLength - 1, True)
-            for i in range(horizonLength):
-                OCP.change_posture_reference(i, x0)
+                OCP.change_posture_reference(horizonLength - 1, x_ref)
+                OCP.change_posture_reference(horizonLength, x_ref)
         pass
 
     # Checking if target is reached
@@ -381,6 +370,26 @@ for T in range(T_total):
     ).linear
 
     plotter.logEndEffectorSpeed(T, speed)
+
+    truncation_limits_position = (
+        x_measured[: pinWrapper.get_rmodel().nq]
+        > pinWrapper.get_rmodel().upperPositionLimit
+    ).any() or (
+        x_measured[: pinWrapper.get_rmodel().nq]
+        < pinWrapper.get_rmodel().lowerPositionLimit
+    ).any()
+    truncation_limits_speed = (
+        x_measured[-pinWrapper.get_rmodel().nv :]
+        > pinWrapper.get_rmodel().velocityLimit
+    ).any()
+    truncation_limits = truncation_limits_position or truncation_limits_speed
+
+    if truncation_limits_position:
+        print(truncation_limits_position)
+        print(truncation_limits_speed)
+        plot_costs_from_dic(return_cost_vectors(OCP.solver))
+        embed()
+        break
 
     # Check stop condition
     if toolPlacement.translation[1] > 1 or toolPlacement.translation[1] < 0:
