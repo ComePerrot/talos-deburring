@@ -94,6 +94,7 @@ def main():
 
         Time += 1
 
+    simulator.end
 
 if __name__ == "__main__":
     main()
