@@ -14,7 +14,7 @@ from controllers.RL_posture import RLPostureController
 
 def main():
     # PARAMETERS
-    filename = "settings_sobec.yaml"
+    filename = "config/config.yaml"
     with open(filename, "r") as paramFile:
         params = yaml.safe_load(paramFile)
 
@@ -31,11 +31,10 @@ def main():
 
     # Robot handler
     pinWrapper = RobotDesigner()
-    params["robot"]["end_effector_position"] = np.array(params["robot"]["end_effector_position"])
-    print(params["robot"]["end_effector_position"])
+    params["robot"]["end_effector_position"] = np.array(
+        params["robot"]["end_effector_position"]
+    )
     pinWrapper.initialize(params["robot"])
-
-    print(pinWrapper.get_end_effector_frame())
 
     # SIMULATOR
     simulator = TalosDeburringSimulator(
@@ -45,29 +44,30 @@ def main():
         controlledJointsIDs=pinWrapper.get_controlled_joints_ids(),
         toolPlacement=pinWrapper.get_end_effector_frame(),
         targetPlacement=oMtarget,
-        enableGUI=True,
+        enableGUI=False,
     )
 
     # CONTROLLERS
-    # RL Posture controller
+    #   RL Posture controller
+    #       Action wrapper
     kwargs_action = dict(
-        True,
-        pinWrapper.get_rmodel(),
-        target_handler,
-        0,
-        0,
+        rl_controlled_IDs=[16, 17, 19],
+        rmodl=pinWrapper.get_rmodel(),
+        scaling_factor=1,
+        scaling_mode="full_range",
+        initial_pose=None,
     )
-
+    #       Observation wrapper
     kwargs_observation = dict(
-        None,
-        pinWrapper.get_rmodel(),
-        1,
-        "full_range",
-        None,
+        normalize_obs=True,
+        rmodel=pinWrapper.get_rmodel(),
+        target_handler=target_handler,
+        history_size=0,
+        prediction_size=0,
     )
-
+    model_path = "./test"
     posture_controller = RLPostureController(
-        "./test", kwargs_action, kwargs_observation
+        model_path, kwargs_action, kwargs_observation
     )
 
     # MPC
