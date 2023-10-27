@@ -45,6 +45,7 @@ def main():
         toolPlacement=pinWrapper.get_end_effector_frame(),
         targetPlacement=oMtarget,
         enableGUI=True,
+        dt=float(params["timeStepSimulation"]),
     )
 
     # CONTROLLERS
@@ -53,8 +54,8 @@ def main():
     kwargs_action = dict(
         rl_controlled_IDs=[16, 17, 19],
         rmodel=pinWrapper.get_rmodel(),
-        scaling_factor=1,
-        scaling_mode="full_range",
+        scaling_factor=params["RL_posture"]["actionScale"],
+        scaling_mode=params["RL_posture"]["actionType"],
         initial_pose=None,
     )
     #       Observation wrapper
@@ -63,11 +64,11 @@ def main():
         rmodel=pinWrapper.get_rmodel(),
         target_handler=target_handler,
         history_size=0,
-        prediction_size=0,
+        prediction_size=3,
     )
     model_path = "config/best_model.zip"
     posture_controller = RLPostureController(
-        model_path, kwargs_action, kwargs_observation
+        model_path, pinWrapper.get_x0().copy(), kwargs_action, kwargs_observation
     )
 
     # MPC
@@ -81,13 +82,30 @@ def main():
         riccati=mpc.crocoWrapper.gain,
     )
 
+    # Initialization
     Time = 0
+    xfuture_list = mpc.crocoWrapper.solver.xs
+    posture_controller.observation_wrapper.reset(
+        pinWrapper.get_x0(), target, xfuture_list
+    )
+
+    # Timings
+    num_simulation_step = int(
+        float(params["OCP"]["time_step"]) / float(params["timeStepSimulation"])
+    )
+    num_OCP_steps = int(params["RL_posture"]["numOCPSteps"])
+
+    # Control loop
     while True:
         x_measured = simulator.getRobotState()
 
-        if Time%10 == 0:
-            t0, x0, K0 = mpc.step(x_measured, None)
+        if Time % (num_simulation_step * num_OCP_steps) == 0:
+            x_reference = posture_controller.step(x_measured, xfuture_list)
+
+        if Time % num_simulation_step == 0:
+            t0, x0, K0 = mpc.step(x_measured, x_reference)
             riccati.update_references(t0, x0, K0)
+            xfuture_list = mpc.crocoWrapper.solver.xs
 
         torques = riccati.step(x_measured)
         simulator.step(torques, pinWrapper.get_end_effector_frame(), oMtarget)
@@ -95,6 +113,7 @@ def main():
         Time += 1
 
     simulator.end
+
 
 if __name__ == "__main__":
     main()

@@ -1,3 +1,5 @@
+timeStepSimulation: 1e-3
+
 target:
   targetType: "box"
   targetPosition: [0.6, 0.4, 1.1]
@@ -40,6 +42,16 @@ robot:
       arm_right_4_joint,
     ]
   end_effector_position: [0, -0.02, -0.0825]
+
+RL_posture:
+  numOCPSteps: 10
+  controlled_joints_names:
+    [arm_left_1_joint, arm_left_2_joint, arm_left_3_joint, arm_left_4_joint]
+  actionScale: 1
+  actionType: "full_range" # full_range / differential
+  normalizeObs: True
+  historyObs: 0
+  predictionSize: 3
 
 OCP:
   horizon_length: 30
