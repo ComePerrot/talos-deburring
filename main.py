@@ -11,6 +11,7 @@ from controllers.MPC import MPController
 from controllers.Riccati import RiccatiController
 from controllers.RL_posture import RLPostureController
 
+from IPython import embed
 
 def main():
     # PARAMETERS
@@ -20,6 +21,7 @@ def main():
 
     target_handler = TargetGoal(params["target"])
     target_handler.create_target()
+    target_handler.set_target([0.6, 0.4, 1.1])
     target = target_handler.position_target
 
     oMtarget = pin.SE3.Identity()
@@ -52,7 +54,7 @@ def main():
     #   RL Posture controller
     #       Action wrapper
     kwargs_action = dict(
-        rl_controlled_IDs=[16, 17, 19],
+        rl_controlled_IDs=[16, 17, 18, 19],
         rmodel=pinWrapper.get_rmodel(),
         scaling_factor=params["RL_posture"]["actionScale"],
         scaling_mode=params["RL_posture"]["actionType"],
@@ -66,7 +68,7 @@ def main():
         history_size=0,
         prediction_size=3,
     )
-    model_path = "config/best_model.zip"
+    model_path = "config/2023-10-18_4joints_differential_2/best_model.zip"
     posture_controller = RLPostureController(
         model_path, pinWrapper.get_x0().copy(), kwargs_action, kwargs_observation
     )
