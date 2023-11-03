@@ -1,17 +1,10 @@
 import pinocchio as pin
 import numpy as np
 import yaml
+import pickle as pkl
+import matplotlib.pyplot as plt
 
 from deburring_mpc import RobotDesigner
-
-from gym_talos.utils.create_target import TargetGoal
-
-from simulator.bullet_Talos import TalosDeburringSimulator
-from controllers.MPC import MPController
-from controllers.Riccati import RiccatiController
-from controllers.RL_posture import RLPostureController
-
-from IPython import embed
 
 
 def main():
@@ -43,7 +36,6 @@ def main():
         13,
         14,
         15,
-        22,
         23,
         24,
         25,
@@ -54,21 +46,49 @@ def main():
     rmodel_arm = pin.buildReducedModel(
         pinWrapper.get_rmodel(), joints_to_lock, pinWrapper.get_q0()
     )
-    rdata_arm = rmodel_arm.createData()
+    rdata_arm_full = rmodel_arm.createData()
+    rdata_arm_reduced = rmodel_arm.createData()
 
-    pin.rnea(
-        rmodel_arm,
-        rdata_arm,
-        np.array([0, 0, 0, 0, 0, 0]),
-        np.array([0, 0, 0, 0, 0, 0]),
-        np.array([0, 0, 0, 0, 0, 0]),
-    )
+    with open("arm_state.pkl", "rb") as file:
+        q_lists = pkl.load(file)
+        q_arm_list = q_lists[0]
+        q_dot_arm_list = q_lists[1]
 
-    force = rdata_arm.f[1]
+    torque_full_norm_list = np.zeros(len(q_arm_list))
+    torque_reduced_norm_list = np.zeros(len(q_arm_list))
 
-    print(np.linalg.norm(force.angular))
+    for i in range(len(q_arm_list)):
+        q_arm = q_arm_list[i]
+        q_dot_arm = q_dot_arm_list[i]
+        q_ddot_arm = np.diff(q_dot_arm)
+        q_ddot_arm = np.concatenate([[0], q_ddot_arm])
 
-    embed()
+        pin.rnea(
+            rmodel_arm,
+            rdata_arm_full,
+            q_arm,
+            q_dot_arm,
+            q_ddot_arm,
+        )
+        force_full = rdata_arm_full.f[1]
+        torque_full = force_full.angular
+        pin.rnea(
+            rmodel_arm,
+            rdata_arm_reduced,
+            q_arm,
+            np.zeros(7),
+            np.zeros(7),
+        )
+        force_reduced = rdata_arm_reduced.f[1]
+        torque_reduced = force_reduced.angular
+
+        torque_full_norm_list[i] = np.linalg.norm(torque_full)
+        torque_reduced_norm_list[i] = np.linalg.norm(torque_reduced)
+
+    plt.plot(torque_full_norm_list, label="Full torque")
+    plt.plot(torque_reduced_norm_list, label="Reduced torque")
+    plt.legend(loc="best")
+    plt.show()
 
 
 if __name__ == "__main__":
