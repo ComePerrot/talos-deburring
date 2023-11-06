@@ -6,9 +6,10 @@ import matplotlib.pyplot as plt
 
 from deburring_mpc import RobotDesigner
 
-
 def main():
     # PARAMETERS
+    add_weight = True
+
     filename = "config/config.yaml"
     with open(filename, "r") as paramFile:
         params = yaml.safe_load(paramFile)
@@ -46,6 +47,13 @@ def main():
     rmodel_arm = pin.buildReducedModel(
         pinWrapper.get_rmodel(), joints_to_lock, pinWrapper.get_q0()
     )
+
+    if add_weight:
+        joint_id = rmodel_arm.getJointId("arm_left_7_joint")
+        mass_tool = 6
+        tool_inertia = pin.Inertia(mass_tool, np.zeros(3), np.eye(3))
+        rmodel_arm.appendBodyToJoint(joint_id, tool_inertia, pin.SE3.Identity())
+
     rdata_arm_full = rmodel_arm.createData()
     rdata_arm_reduced = rmodel_arm.createData()
 
@@ -65,6 +73,8 @@ def main():
         q_dot_arm = q_dot_arm_list[i]
         q_ddot_arm = np.diff(q_dot_arm)
         q_ddot_arm = np.concatenate([[0], q_ddot_arm])
+
+        pin.computeAllTerms(rmodel_arm, rdata_arm_full, q_arm, q_dot_arm)
 
         pin.rnea(
             rmodel_arm,
@@ -112,12 +122,12 @@ def main():
     plt.ylabel("Torque (Nm)")
     plt.subplot(212)
     plt.plot(
-        np.linalg.norm((torque_full_list - torque_reduced_list),axis=1)/torque_reduced_norm_list
+        np.linalg.norm((torque_full_list - torque_reduced_list), axis=1)
+        / torque_reduced_norm_list
     )
     plt.ylabel("Torque difference (%)")
 
     plt.show()
-
 
 if __name__ == "__main__":
     main()
