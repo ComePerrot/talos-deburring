@@ -54,6 +54,9 @@ def main():
         q_arm_list = q_lists[0]
         q_dot_arm_list = q_lists[1]
 
+    torque_full_list = np.zeros((len(q_arm_list), 3))
+    torque_reduced_list = np.zeros((len(q_arm_list), 3))
+
     torque_full_norm_list = np.zeros(len(q_arm_list))
     torque_reduced_norm_list = np.zeros(len(q_arm_list))
 
@@ -82,12 +85,37 @@ def main():
         force_reduced = rdata_arm_reduced.f[1]
         torque_reduced = force_reduced.angular
 
+        torque_full_list[i] = torque_full
+        torque_reduced_list[i] = torque_reduced
+
         torque_full_norm_list[i] = np.linalg.norm(torque_full)
         torque_reduced_norm_list[i] = np.linalg.norm(torque_reduced)
 
-    plt.plot(torque_full_norm_list, label="Full torque")
-    plt.plot(torque_reduced_norm_list, label="Reduced torque")
+    plt.figure()
+    plt.subplot(311)
+    plt.plot(torque_full_list[:, 0], label="Dynamic torque")
+    plt.plot(torque_reduced_list[:, 0], label="Static torque")
+    plt.subplot(312)
+    plt.plot(torque_full_list[:, 1], label="Dynamic torque")
+    plt.plot(torque_reduced_list[:, 1], label="Static torque")
+    plt.subplot(313)
+    plt.plot(torque_full_list[:, 2], label="Dynamic torque")
+    plt.plot(torque_reduced_list[:, 2], label="Static torque")
     plt.legend(loc="best")
+
+    plt.figure()
+    plt.suptitle("Comparision between the quasi-static and the dynamic torques")
+    plt.subplot(211)
+    plt.plot(torque_full_norm_list, label="Dynamic torque")
+    plt.plot(torque_reduced_norm_list, label="Static torque")
+    plt.legend(loc="best")
+    plt.ylabel("Torque (Nm)")
+    plt.subplot(212)
+    plt.plot(
+        np.linalg.norm((torque_full_list - torque_reduced_list),axis=1)/torque_reduced_norm_list
+    )
+    plt.ylabel("Torque difference (%)")
+
     plt.show()
 
 
