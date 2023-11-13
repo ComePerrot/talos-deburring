@@ -13,6 +13,7 @@ from controllers.RL_posture import RLPostureController
 
 from IPython import embed
 
+
 def main():
     # PARAMETERS
     filename = "config/config.yaml"
@@ -54,7 +55,7 @@ def main():
     #   RL Posture controller
     #       Action wrapper
     kwargs_action = dict(
-        rl_controlled_IDs=[16, 17, 18, 19],
+        rl_controlled_IDs=[16, 17, 19],
         rmodel=pinWrapper.get_rmodel(),
         scaling_factor=params["RL_posture"]["actionScale"],
         scaling_mode=params["RL_posture"]["actionType"],
@@ -68,7 +69,7 @@ def main():
         history_size=0,
         prediction_size=3,
     )
-    model_path = "config/2023-10-18_4joints_differential_2/best_model.zip"
+    model_path = "config/2023-11-08_3joints_fullRange_4/best_model.zip"
     posture_controller = RLPostureController(
         model_path, pinWrapper.get_x0().copy(), kwargs_action, kwargs_observation
     )
@@ -84,21 +85,27 @@ def main():
         riccati=mpc.crocoWrapper.gain,
     )
 
-    # Initialization
-    Time = 0
-    xfuture_list = mpc.crocoWrapper.solver.xs
-    posture_controller.observation_wrapper.reset(
-        pinWrapper.get_x0(), target, xfuture_list
-    )
-
-    # Timings
+    # Parameters
+    error_tolerance = params["toleranceError"]
+    #   Timings
+    maxTime = int(params["maxTime"] / float(params["timeStepSimulation"]))
     num_simulation_step = int(
         float(params["OCP"]["time_step"]) / float(params["timeStepSimulation"])
     )
     num_OCP_steps = int(params["RL_posture"]["numOCPSteps"])
 
+    # Initialization
+    #   Reset Variables
+    Time = 0
+    target_reached = False
+    reach_time = None
+    xfuture_list = mpc.crocoWrapper.solver.xs
+    posture_controller.observation_wrapper.reset(
+        pinWrapper.get_x0(), target, xfuture_list
+    )
+
     # Control loop
-    while True:
+    while Time < maxTime:
         x_measured = simulator.getRobotState()
 
         if Time % (num_simulation_step * num_OCP_steps) == 0:
@@ -114,7 +121,20 @@ def main():
 
         Time += 1
 
+        error_placement_tool = np.linalg.norm(
+            pinWrapper.get_end_effector_frame().translation - oMtarget.translation
+        )
+
+        if error_placement_tool < error_tolerance:
+            if not target_reached:
+                target_reached = True
+                reach_time = Time
+        else:
+            target_reached = False
+
     simulator.end
+
+    print(reach_time)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,6 @@
+maxTime: 10
 timeStepSimulation: 1e-3
+toleranceError: 0.005
 
 target:
   targetType: "box"
@@ -46,7 +48,12 @@ robot:
 RL_posture:
   numOCPSteps: 10
   controlled_joints_names:
-    [arm_left_1_joint, arm_left_2_joint, arm_left_3_joint, arm_left_4_joint]
+    [
+      arm_left_1_joint,
+      arm_left_2_joint,
+      # arm_left_3_joint,
+      arm_left_4_joint
+    ]
   actionScale: 1
   actionType: "full_range" # full_range / differential
   normalizeObs: True
