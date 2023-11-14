@@ -2,52 +2,25 @@ import pinocchio as pin
 import numpy as np
 import yaml
 
-from deburring_mpc import RobotDesigner
-
-from gym_talos.utils.create_target import TargetGoal
-
-from simulator.bullet_Talos import TalosDeburringSimulator
 from controllers.MPC import MPController
 from controllers.Riccati import RiccatiController
 from controllers.RL_posture import RLPostureController
 
-class bench_MPRL:
-    def __init__():
-        # PARAMETERS
-        filename = "config/config.yaml"
-        with open(filename, "r") as paramFile:
-            params = yaml.safe_load(paramFile)
 
-        target_handler = TargetGoal(params["target"])
-        target_handler.create_target()
-        target_handler.set_target([0.6, 0.4, 1.1])
-        target = target_handler.position_target
+class bench_MPRL:
+    def __init__(self, filename, pinWrapper, simulator, target_handler):
+        # PARAMETERS
+        with open(filename, "r") as paramFile:
+            self.params = yaml.safe_load(paramFile)
 
         oMtarget = pin.SE3.Identity()
-        oMtarget.translation[0] = target[0]
-        oMtarget.translation[1] = target[1]
-        oMtarget.translation[2] = target[2]
-
         oMtarget.rotation = np.array([[0, 0, -1], [0, -1, 0], [-1, 0, 0]])
 
         # Robot handler
-        pinWrapper = RobotDesigner()
-        params["robot"]["end_effector_position"] = np.array(
-            params["robot"]["end_effector_position"]
-        )
-        pinWrapper.initialize(params["robot"])
+        self.pinWrapper = pinWrapper
 
         # SIMULATOR
-        simulator = TalosDeburringSimulator(
-            URDF=pinWrapper.get_settings()["urdf_path"],
-            initialConfiguration=pinWrapper.get_q0_complete(),
-            robotJointNames=pinWrapper.get_rmodel_complete().names,
-            controlledJointsIDs=pinWrapper.get_controlled_joints_ids(),
-            toolPlacement=pinWrapper.get_end_effector_frame(),
-            targetPlacement=oMtarget,
-            enableGUI=True,
-            dt=float(params["timeStepSimulation"]),
-        )
+        self.simulator = simulator
 
         # CONTROLLERS
         #   RL Posture controller
@@ -55,8 +28,8 @@ class bench_MPRL:
         kwargs_action = dict(
             rl_controlled_IDs=[16, 17, 19],
             rmodel=pinWrapper.get_rmodel(),
-            scaling_factor=params["RL_posture"]["actionScale"],
-            scaling_mode=params["RL_posture"]["actionType"],
+            scaling_factor=self.params["RL_posture"]["actionScale"],
+            scaling_mode=self.params["RL_posture"]["actionType"],
             initial_pose=None,
         )
         #       Observation wrapper
@@ -68,72 +41,80 @@ class bench_MPRL:
             prediction_size=3,
         )
         model_path = "config/2023-11-08_3joints_fullRange_4/best_model.zip"
-        posture_controller = RLPostureController(
+        self.posture_controller = RLPostureController(
             model_path, pinWrapper.get_x0().copy(), kwargs_action, kwargs_observation
         )
 
         # MPC
-        mpc = MPController(pinWrapper, pinWrapper.get_x0(), target, params["OCP"])
+        self.mpc = MPController(
+            pinWrapper,
+            pinWrapper.get_x0(),
+            pin.SE3.Identity().translation(),
+            self.params["OCP"],
+        )
 
         # RICCATI
-        riccati = RiccatiController(
-            state=mpc.crocoWrapper.state,
-            torque=mpc.crocoWrapper.torque,
-            xref=pinWrapper.get_x0(),
-            riccati=mpc.crocoWrapper.gain,
+        self.riccati = RiccatiController(
+            state=self.mpc.crocoWrapper.state,
+            torque=self.mpc.crocoWrapper.torque,
+            xref=self.pinWrapper.get_x0(),
+            riccati=self.mpc.crocoWrapper.gain,
         )
 
         # Parameters
-        error_tolerance = params["toleranceError"]
+        self.error_tolerance = self.params["toleranceError"]
         #   Timings
-        maxTime = int(params["maxTime"] / float(params["timeStepSimulation"]))
-        num_simulation_step = int(
-            float(params["OCP"]["time_step"]) / float(params["timeStepSimulation"])
+        self.maxTime = int(
+            self.params["maxTime"] / float(self.params["timeStepSimulation"])
         )
-        num_OCP_steps = int(params["RL_posture"]["numOCPSteps"])
+        self.num_simulation_step = int(
+            float(self.params["OCP"]["time_step"])
+            / float(self.params["timeStepSimulation"])
+        )
+        self.num_OCP_steps = int(self.params["RL_posture"]["numOCPSteps"])
 
     def reset():
+        pass
 
-    def run():
+    def run(self, target_position):
+        self.target_handler.set_target(target_position)
         # Initialization
         #   Reset Variables
         Time = 0
         target_reached = False
         reach_time = None
-        xfuture_list = mpc.crocoWrapper.solver.xs
-        posture_controller.observation_wrapper.reset(
-            pinWrapper.get_x0(), target, xfuture_list
+        xfuture_list = self.mpc.crocoWrapper.solver.xs
+        self.posture_controller.observation_wrapper.reset(
+            self.pinWrapper.get_x0(), target_position, xfuture_list
         )
 
         # Control loop
-        while Time < maxTime:
-            x_measured = simulator.getRobotState()
+        while Time < self.maxTime:
+            x_measured = self.simulator.getRobotState()
 
-            if Time % (num_simulation_step * num_OCP_steps) == 0:
-                x_reference = posture_controller.step(x_measured, xfuture_list)
+            if Time % (self.num_simulation_step * self.num_OCP_steps) == 0:
+                x_reference = self.posture_controller.step(x_measured, xfuture_list)
 
-            if Time % num_simulation_step == 0:
-                t0, x0, K0 = mpc.step(x_measured, x_reference)
-                riccati.update_references(t0, x0, K0)
-                xfuture_list = mpc.crocoWrapper.solver.xs
+            if Time % self.num_simulation_step == 0:
+                t0, x0, K0 = self.mpc.step(x_measured, x_reference)
+                self.riccati.update_references(t0, x0, K0)
+                xfuture_list = self.mpc.crocoWrapper.solver.xs
 
-            torques = riccati.step(x_measured)
-            simulator.step(torques, pinWrapper.get_end_effector_frame(), oMtarget)
+            torques = self.riccati.step(x_measured)
+            self.simulator.step(
+                torques, self.pinWrapper.get_end_effector_frame(), self.oMtarget
+            )
 
             Time += 1
 
             error_placement_tool = np.linalg.norm(
-                pinWrapper.get_end_effector_frame().translation - oMtarget.translation
+                self.pinWrapper.get_end_effector_frame().translation
+                - self.oMtarget.translation
             )
 
-            if error_placement_tool < error_tolerance:
+            if error_placement_tool < self.error_tolerance:
                 if not target_reached:
                     target_reached = True
                     reach_time = Time
             else:
                 target_reached = False
-
-        simulator.end
-
-        print(reach_time)
-
