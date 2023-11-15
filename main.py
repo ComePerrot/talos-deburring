@@ -7,6 +7,7 @@ from gym_talos.utils.create_target import TargetGoal
 
 from simulator.bullet_Talos import TalosDeburringSimulator
 from factory.benchmark_MPRL import bench_MPRL
+from factory.benchmark_MPC import bench_MPC
 
 def main():
     # PARAMETERS
@@ -36,8 +37,12 @@ def main():
     )
 
     MPRL = bench_MPRL(filename, target_handler, pinWrapper, simulator)
+    MPC = bench_MPC(filename, target_handler, pinWrapper, simulator)
 
     MPRL.run(target)
+
+    target_2 = [0.6, 0.4, 1.5]
+    MPC.run(target_2)
 
     simulator.end
 
