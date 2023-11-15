@@ -8,21 +8,22 @@ from controllers.RL_posture import RLPostureController
 
 
 class bench_MPRL:
-    def __init__(self, filename, pinWrapper, simulator, target_handler):
+    def __init__(self, filename, target_handler, pinWrapper, simulator):
         # PARAMETERS
         with open(filename, "r") as paramFile:
             self.params = yaml.safe_load(paramFile)
 
-        oMtarget = pin.SE3.Identity()
-        oMtarget.rotation = np.array([[0, 0, -1], [0, -1, 0], [-1, 0, 0]])
+        # Target
+        self.oMtarget = pin.SE3.Identity()
+        self.oMtarget.rotation = np.array([[0, 0, -1], [0, -1, 0], [-1, 0, 0]])
 
         # Robot handler
         self.pinWrapper = pinWrapper
 
-        # SIMULATOR
+        # Simulator
         self.simulator = simulator
 
-        # CONTROLLERS
+        # Controllers
         #   RL Posture controller
         #       Action wrapper
         kwargs_action = dict(
@@ -49,7 +50,7 @@ class bench_MPRL:
         self.mpc = MPController(
             pinWrapper,
             pinWrapper.get_x0(),
-            pin.SE3.Identity().translation(),
+            self.oMtarget.translation,
             self.params["OCP"],
         )
 
@@ -64,20 +65,23 @@ class bench_MPRL:
         # Parameters
         self.error_tolerance = self.params["toleranceError"]
         #   Timings
-        self.maxTime = int(
-            self.params["maxTime"] / float(self.params["timeStepSimulation"])
-        )
-        self.num_simulation_step = int(
-            float(self.params["OCP"]["time_step"])
-            / float(self.params["timeStepSimulation"])
-        )
+        time_step_simulation = float(self.params["timeStepSimulation"])
+        time_step_OCP = float(self.params["OCP"]["time_step"])
+        self.maxTime = int(self.params["maxTime"] / time_step_simulation)
+        self.num_simulation_step = int(time_step_OCP / time_step_simulation)
         self.num_OCP_steps = int(self.params["RL_posture"]["numOCPSteps"])
 
-    def reset():
-        pass
+    def reset(self, target_position):
+        for i in range(3):
+            self.oMtarget.translation[i] = target_position[i]
+        # Reset simulator
+        self.simulator.reset(target_pos=target_position)
+        # Reset OCP
+        self.mpc.change_target(self.pinWrapper.get_x0(), target_position)
 
     def run(self, target_position):
-        self.target_handler.set_target(target_position)
+        self.reset(target_position)
+
         # Initialization
         #   Reset Variables
         Time = 0
@@ -116,5 +120,6 @@ class bench_MPRL:
                 if not target_reached:
                     target_reached = True
                     reach_time = Time
+                    print(reach_time)
             else:
                 target_reached = False

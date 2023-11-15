@@ -9,23 +9,31 @@ class MPController:
         self.num_control_knots = 10
 
         self.pinWrapper = pinWrapper
+        self.param_ocp = param_ocp
 
-        param_ocp["state_weights"] = np.array(param_ocp["state_weights"])
-        param_ocp["control_weights"] = np.array(param_ocp["control_weights"])
+        self.param_ocp["state_weights"] = np.array(self.param_ocp["state_weights"])
+        self.param_ocp["control_weights"] = np.array(self.param_ocp["control_weights"])
 
+        
         self.oMtarget = pin.SE3.Identity()
-        self.oMtarget.translation[0] = target_pos[0]
-        self.oMtarget.translation[1] = target_pos[1]
-        self.oMtarget.translation[2] = target_pos[2]
+        for i in range(3):
+            self.oMtarget.translation[i] = target_pos[i]
 
         self.oMtarget.rotation = np.array([[0, 0, -1], [0, -1, 0], [-1, 0, 0]])
 
-        self.crocoWrapper = OCP(param_ocp, self.pinWrapper)
+        self.crocoWrapper = OCP(self.param_ocp, self.pinWrapper)
         self.crocoWrapper.initialize(x_initial, self.oMtarget)
 
         self.horizon_length = param_ocp["horizon_length"]
 
         self.x0 = x_initial
+
+    def change_target(self, x_initial, target_position):
+        for i in range(3):
+            self.oMtarget.translation[i] = target_position[i]
+
+        self.crocoWrapper = OCP(self.param_ocp, self.pinWrapper)
+        self.crocoWrapper.initialize(x_initial, self.oMtarget)
 
     def step(self, x_measured, reference_posture=None):
         self.x0 = x_measured

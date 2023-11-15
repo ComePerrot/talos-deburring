@@ -1,4 +1,3 @@
-import pinocchio as pin
 import numpy as np
 import yaml
 
@@ -7,12 +6,7 @@ from deburring_mpc import RobotDesigner
 from gym_talos.utils.create_target import TargetGoal
 
 from simulator.bullet_Talos import TalosDeburringSimulator
-from controllers.MPC import MPController
-from controllers.Riccati import RiccatiController
-from controllers.RL_posture import RLPostureController
-
-from IPython import embed
-
+from factory.benchmark_MPRL import bench_MPRL
 
 def main():
     # PARAMETERS
@@ -25,13 +19,6 @@ def main():
     target_handler.set_target([0.6, 0.4, 1.1])
     target = target_handler.position_target
 
-    oMtarget = pin.SE3.Identity()
-    oMtarget.translation[0] = target[0]
-    oMtarget.translation[1] = target[1]
-    oMtarget.translation[2] = target[2]
-
-    oMtarget.rotation = np.array([[0, 0, -1], [0, -1, 0], [-1, 0, 0]])
-
     # Robot handler
     pinWrapper = RobotDesigner()
     params["robot"]["end_effector_position"] = np.array(
@@ -42,99 +29,17 @@ def main():
     # SIMULATOR
     simulator = TalosDeburringSimulator(
         URDF=pinWrapper.get_settings()["urdf_path"],
-        initialConfiguration=pinWrapper.get_q0_complete(),
-        robotJointNames=pinWrapper.get_rmodel_complete().names,
+        rmodelComplete=pinWrapper.get_rmodel_complete(),
         controlledJointsIDs=pinWrapper.get_controlled_joints_ids(),
-        toolPlacement=pinWrapper.get_end_effector_frame(),
-        targetPlacement=oMtarget,
         enableGUI=True,
         dt=float(params["timeStepSimulation"]),
     )
 
-    # CONTROLLERS
-    #   RL Posture controller
-    #       Action wrapper
-    kwargs_action = dict(
-        rl_controlled_IDs=[16, 17, 19],
-        rmodel=pinWrapper.get_rmodel(),
-        scaling_factor=params["RL_posture"]["actionScale"],
-        scaling_mode=params["RL_posture"]["actionType"],
-        initial_pose=None,
-    )
-    #       Observation wrapper
-    kwargs_observation = dict(
-        normalize_obs=True,
-        rmodel=pinWrapper.get_rmodel(),
-        target_handler=target_handler,
-        history_size=0,
-        prediction_size=3,
-    )
-    model_path = "config/2023-11-08_3joints_fullRange_4/best_model.zip"
-    posture_controller = RLPostureController(
-        model_path, pinWrapper.get_x0().copy(), kwargs_action, kwargs_observation
-    )
+    MPRL = bench_MPRL(filename, target_handler, pinWrapper, simulator)
 
-    # MPC
-    mpc = MPController(pinWrapper, pinWrapper.get_x0(), target, params["OCP"])
-
-    # RICCATI
-    riccati = RiccatiController(
-        state=mpc.crocoWrapper.state,
-        torque=mpc.crocoWrapper.torque,
-        xref=pinWrapper.get_x0(),
-        riccati=mpc.crocoWrapper.gain,
-    )
-
-    # Parameters
-    error_tolerance = params["toleranceError"]
-    #   Timings
-    maxTime = int(params["maxTime"] / float(params["timeStepSimulation"]))
-    num_simulation_step = int(
-        float(params["OCP"]["time_step"]) / float(params["timeStepSimulation"])
-    )
-    num_OCP_steps = int(params["RL_posture"]["numOCPSteps"])
-
-    # Initialization
-    #   Reset Variables
-    Time = 0
-    target_reached = False
-    reach_time = None
-    xfuture_list = mpc.crocoWrapper.solver.xs
-    posture_controller.observation_wrapper.reset(
-        pinWrapper.get_x0(), target, xfuture_list
-    )
-
-    # Control loop
-    while Time < maxTime:
-        x_measured = simulator.getRobotState()
-
-        if Time % (num_simulation_step * num_OCP_steps) == 0:
-            x_reference = posture_controller.step(x_measured, xfuture_list)
-
-        if Time % num_simulation_step == 0:
-            t0, x0, K0 = mpc.step(x_measured, x_reference)
-            riccati.update_references(t0, x0, K0)
-            xfuture_list = mpc.crocoWrapper.solver.xs
-
-        torques = riccati.step(x_measured)
-        simulator.step(torques, pinWrapper.get_end_effector_frame(), oMtarget)
-
-        Time += 1
-
-        error_placement_tool = np.linalg.norm(
-            pinWrapper.get_end_effector_frame().translation - oMtarget.translation
-        )
-
-        if error_placement_tool < error_tolerance:
-            if not target_reached:
-                target_reached = True
-                reach_time = Time
-        else:
-            target_reached = False
+    MPRL.run(target)
 
     simulator.end
-
-    print(reach_time)
 
 
 if __name__ == "__main__":
