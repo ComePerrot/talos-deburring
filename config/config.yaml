@@ -1,4 +1,5 @@
-maxTime: 10
+numberTargets: 10
+maxTime: 5
 timeStepSimulation: 1e-3
 toleranceError: 0.005
 

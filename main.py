@@ -17,8 +17,7 @@ def main():
 
     target_handler = TargetGoal(params["target"])
     target_handler.create_target()
-    target_handler.set_target([0.6, 0.4, 1.1])
-    target = target_handler.position_target
+    targets = target_handler.generate_target(params["numberTargets"])
 
     # Robot handler
     pinWrapper = RobotDesigner()
@@ -39,10 +38,9 @@ def main():
     MPRL = bench_MPRL(filename, target_handler, pinWrapper, simulator)
     MPC = bench_MPC(filename, target_handler, pinWrapper, simulator)
 
-    MPRL.run(target)
-
-    target_2 = [0.6, 0.4, 1.5]
-    MPC.run(target_2)
+    for target in targets:
+        MPRL.run(target)
+        MPC.run(target)
 
     simulator.end
 
