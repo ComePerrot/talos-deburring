@@ -42,11 +42,10 @@ class bench_MPC:
         # Parameters
         self.error_tolerance = self.params["toleranceError"]
         #   Timings
-        time_step_simulation = float(self.params["timeStepSimulation"])
+        self.time_step_simulation = float(self.params["timeStepSimulation"])
         time_step_OCP = float(self.params["OCP"]["time_step"])
-        self.maxTime = int(self.params["maxTime"] / time_step_simulation)
-        self.num_simulation_step = int(time_step_OCP / time_step_simulation)
-        self.num_OCP_steps = int(self.params["RL_posture"]["numOCPSteps"])
+        self.maxTime = int(self.params["maxTime"] / self.time_step_simulation)
+        self.num_simulation_step = int(time_step_OCP / self.time_step_simulation)
 
     def reset(self, target_position):
         for i in range(3):
@@ -88,7 +87,10 @@ class bench_MPC:
             if error_placement_tool < self.error_tolerance:
                 if not target_reached:
                     target_reached = True
-                    reach_time = Time
-                    print(reach_time)
+                    reach_time = Time/self.time_step_simulation
             else:
                 target_reached = False
+
+        # Results
+
+        return(reach_time, error_placement_tool)

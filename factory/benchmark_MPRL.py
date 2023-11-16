@@ -41,7 +41,7 @@ class bench_MPRL:
             history_size=0,
             prediction_size=3,
         )
-        model_path = "config/2023-11-08_3joints_fullRange_4/best_model.zip"
+        model_path = "config/2023-11-08_3joints_fullRange_3/best_model.zip"
         self.posture_controller = RLPostureController(
             model_path, pinWrapper.get_x0().copy(), kwargs_action, kwargs_observation
         )
@@ -65,10 +65,10 @@ class bench_MPRL:
         # Parameters
         self.error_tolerance = self.params["toleranceError"]
         #   Timings
-        time_step_simulation = float(self.params["timeStepSimulation"])
+        self.time_step_simulation = float(self.params["timeStepSimulation"])
         time_step_OCP = float(self.params["OCP"]["time_step"])
-        self.maxTime = int(self.params["maxTime"] / time_step_simulation)
-        self.num_simulation_step = int(time_step_OCP / time_step_simulation)
+        self.maxTime = int(self.params["maxTime"] / self.time_step_simulation)
+        self.num_simulation_step = int(time_step_OCP / self.time_step_simulation)
         self.num_OCP_steps = int(self.params["RL_posture"]["numOCPSteps"])
 
     def reset(self, target_position):
@@ -119,7 +119,10 @@ class bench_MPRL:
             if error_placement_tool < self.error_tolerance:
                 if not target_reached:
                     target_reached = True
-                    reach_time = Time
-                    print(reach_time)
+                    reach_time = Time/self.time_step_simulation
             else:
                 target_reached = False
+
+        # Results
+
+        return(reach_time, error_placement_tool)

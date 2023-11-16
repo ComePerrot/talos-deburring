@@ -39,7 +39,9 @@ def main():
     MPC = bench_MPC(filename, target_handler, pinWrapper, simulator)
 
     for target in targets:
-        MPRL.run(target)
+        reach_time, reach_error = MPRL.run(target)
+        print(reach_time)
+        print(reach_error)
         MPC.run(target)
 
     simulator.end
