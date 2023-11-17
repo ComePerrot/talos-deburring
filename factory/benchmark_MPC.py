@@ -1,32 +1,14 @@
-import pinocchio as pin
-import numpy as np
-import yaml
-
+from factory.benchmark_base import bench_base
 from controllers.MPC import MPController
 from controllers.Riccati import RiccatiController
 
 
-class bench_MPC:
-    def __init__(self, filename, target_handler, pinWrapper, simulator):
-        # PARAMETERS
-        with open(filename, "r") as paramFile:
-            self.params = yaml.safe_load(paramFile)
-
-        # Target
-        self.oMtarget = pin.SE3.Identity()
-        self.oMtarget.rotation = np.array([[0, 0, -1], [0, -1, 0], [-1, 0, 0]])
-
-        # Robot handler
-        self.pinWrapper = pinWrapper
-
-        # Simulator
-        self.simulator = simulator
-
-        # Controllers
+class bench_MPC(bench_base):
+    def _define_controller(self):
         # MPC
         self.mpc = MPController(
-            pinWrapper,
-            pinWrapper.get_x0(),
+            self.pinWrapper,
+            self.pinWrapper.get_x0(),
             self.oMtarget.translation,
             self.params["OCP"],
         )
@@ -39,58 +21,18 @@ class bench_MPC:
             riccati=self.mpc.crocoWrapper.gain,
         )
 
-        # Parameters
-        self.error_tolerance = self.params["toleranceError"]
-        #   Timings
-        self.time_step_simulation = float(self.params["timeStepSimulation"])
         time_step_OCP = float(self.params["OCP"]["time_step"])
-        self.maxTime = int(self.params["maxTime"] / self.time_step_simulation)
         self.num_simulation_step = int(time_step_OCP / self.time_step_simulation)
 
-    def reset(self, target_position):
-        for i in range(3):
-            self.oMtarget.translation[i] = target_position[i]
-        # Reset simulator
-        self.simulator.reset(target_pos=target_position)
+    def _reset_controller(self):
         # Reset OCP
-        self.mpc.change_target(self.pinWrapper.get_x0(), target_position)
+        self.mpc.change_target(self.pinWrapper.get_x0(), self.oMtarget.translation)
 
-    def run(self, target_position):
-        self.reset(target_position)
+    def _run_controller(self, Time, x_measured):
+        if Time % self.num_simulation_step == 0:
+            t0, x0, K0 = self.mpc.step(x_measured, None)
+            self.riccati.update_references(t0, x0, K0)
 
-        # Initialization
-        #   Reset Variables
-        Time = 0
-        target_reached = False
-        reach_time = None
+        torques = self.riccati.step(x_measured)
 
-        # Control loop
-        while Time < self.maxTime:
-            x_measured = self.simulator.getRobotState()
-
-            if Time % self.num_simulation_step == 0:
-                t0, x0, K0 = self.mpc.step(x_measured, None)
-                self.riccati.update_references(t0, x0, K0)
-
-            torques = self.riccati.step(x_measured)
-            self.simulator.step(
-                torques, self.pinWrapper.get_end_effector_frame(), self.oMtarget
-            )
-
-            Time += 1
-
-            error_placement_tool = np.linalg.norm(
-                self.pinWrapper.get_end_effector_frame().translation
-                - self.oMtarget.translation
-            )
-
-            if error_placement_tool < self.error_tolerance:
-                if not target_reached:
-                    target_reached = True
-                    reach_time = Time/self.time_step_simulation
-            else:
-                target_reached = False
-
-        # Results
-
-        return(reach_time, error_placement_tool)
+        return torques

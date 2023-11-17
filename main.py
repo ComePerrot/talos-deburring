@@ -36,7 +36,7 @@ def main():
     )
 
     MPRL = bench_MPRL(filename, target_handler, pinWrapper, simulator)
-    MPC = bench_MPC(filename, target_handler, pinWrapper, simulator)
+    MPC = bench_MPC(filename, pinWrapper, simulator)
 
     for target in targets:
         reach_time, reach_error = MPRL.run(target)
