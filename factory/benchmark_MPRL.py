@@ -26,8 +26,15 @@ class bench_MPRL:
         # Controllers
         #   RL Posture controller
         #       Action wrapper
+        controlled_joints_names = self.params["RL_posture"]["controlled_joints_names"]
+        rl_controlled_IDs = np.array(
+            [
+                self.pinWrapper.get_rmodel().names.tolist().index(joint_name) - 2 + 7
+                for joint_name in controlled_joints_names
+            ],
+        )
         kwargs_action = dict(
-            rl_controlled_IDs=[16, 17, 19],
+            rl_controlled_IDs=rl_controlled_IDs,
             rmodel=pinWrapper.get_rmodel(),
             scaling_factor=self.params["RL_posture"]["actionScale"],
             scaling_mode=self.params["RL_posture"]["actionType"],
@@ -41,7 +48,7 @@ class bench_MPRL:
             history_size=0,
             prediction_size=3,
         )
-        model_path = "config/2023-11-08_3joints_fullRange_3/best_model.zip"
+        model_path = self.params["RL_posture"]["model_path"]
         self.posture_controller = RLPostureController(
             model_path, pinWrapper.get_x0().copy(), kwargs_action, kwargs_observation
         )
@@ -119,10 +126,10 @@ class bench_MPRL:
             if error_placement_tool < self.error_tolerance:
                 if not target_reached:
                     target_reached = True
-                    reach_time = Time/self.time_step_simulation
+                    reach_time = Time / self.time_step_simulation
             else:
                 target_reached = False
 
         # Results
 
-        return(reach_time, error_placement_tool)
+        return (reach_time, error_placement_tool)
