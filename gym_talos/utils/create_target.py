@@ -1,5 +1,6 @@
 from typing import Tuple
 import numpy as np
+import itertools
 
 
 class TargetGoal:
@@ -128,6 +129,21 @@ class TargetGoal:
             )
         msg = "Unknown target type"
         raise ValueError(msg)
+
+    def generate_target_list(self, sample_sizes):
+        if self._type_target == "box":
+            iterator_list = [
+                np.linspace(
+                    self._lowerPositionLimit[i],
+                    self._upperPositionLimit[i],
+                    sample_sizes[i],
+                )
+                for i in range(3)
+            ]
+            return list(itertools.product(*iterator_list))
+        else:  # noqa: RET505
+            msg = "Target type must be box for evaluation"
+            raise ValueError(msg)
 
     @property
     def position_target(self):
