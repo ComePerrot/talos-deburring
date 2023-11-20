@@ -62,7 +62,7 @@ class bench_base:
             if error_placement_tool < self.error_tolerance:
                 if not target_reached:
                     target_reached = True
-                    reach_time = Time / self.time_step_simulation
+                    reach_time = Time * self.time_step_simulation
             else:
                 target_reached = False
 

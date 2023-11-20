@@ -1,5 +1,5 @@
-numberTargets: 10
-maxTime: 5
+numberTargets: 2
+maxTime: 4
 timeStepSimulation: 1e-3
 toleranceError: 0.005
 
@@ -47,6 +47,7 @@ robot:
   end_effector_position: [0, -0.02, -0.0825]
 
 RL_posture:
+  model_path: "config/2023-11-08_3joints_fullRange_3/2023-11-08_3joints_fullRange"
   numOCPSteps: 10
   controlled_joints_names:
     [
