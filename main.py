@@ -17,7 +17,7 @@ def main():
 
     target_handler = TargetGoal(params["target"])
     target_handler.create_target()
-    targets = target_handler.generate_target(params["numberTargets"])
+    targets = target_handler.generate_target_list([3,3,3])
 
     # Robot handler
     pinWrapper = RobotDesigner()
@@ -31,18 +31,33 @@ def main():
         URDF=pinWrapper.get_settings()["urdf_path"],
         rmodelComplete=pinWrapper.get_rmodel_complete(),
         controlledJointsIDs=pinWrapper.get_controlled_joints_ids(),
-        enableGUI=True,
+        enableGUI=False,
         dt=float(params["timeStepSimulation"]),
     )
 
     MPRL = bench_MPRL(filename, target_handler, pinWrapper, simulator)
     MPC = bench_MPC(filename, pinWrapper, simulator)
 
-    for target in targets:
-        reach_time, reach_error = MPRL.run(target)
-        print(reach_time)
-        print(reach_error)
-        MPC.run(target)
+    for controller in [MPC, MPRL]:
+        for target in targets:
+            (
+                reach_time,
+                error_placement_tool,
+                limit_position,
+                limit_speed,
+                limit_command,
+            ) = controller.run(target)
+
+            print(target)
+            if (limit_position or limit_speed or limit_command):
+                if limit_position:
+                    print("Position limit infriged")
+                elif limit_speed:
+                    print("Speed limit infriged")
+                else:
+                    print("Control limit infriged")
+            else:
+                print(reach_time, error_placement_tool)
 
     simulator.end
 

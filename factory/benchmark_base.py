@@ -48,6 +48,12 @@ class bench_base:
 
             torques = self._run_controller(Time, x_measured)
 
+            limit_position, limit_speed, limit_command = self._check_limits(
+                x_measured, torques
+            )
+            if limit_position or limit_speed or limit_command:
+                break
+
             self.simulator.step(
                 torques, self.pinWrapper.get_end_effector_frame(), self.oMtarget
             )
@@ -66,7 +72,31 @@ class bench_base:
             else:
                 target_reached = False
 
-        return (reach_time, error_placement_tool)
+        return (
+            reach_time,
+            error_placement_tool,
+            limit_position,
+            limit_speed,
+            limit_command,
+        )
+
+    def _check_limits(self, x, torques):
+        # Limits
+        limit_position = (
+            x[: self.pinWrapper.get_rmodel().nq]
+            > self.pinWrapper.get_rmodel().upperPositionLimit
+        ).any() or (
+            x[: self.pinWrapper.get_rmodel().nq]
+            < self.pinWrapper.get_rmodel().lowerPositionLimit
+        ).any()
+        limit_speed = (
+            np.abs(x[-self.pinWrapper.get_rmodel().nv :])
+            > self.pinWrapper.get_rmodel().velocityLimit
+        ).any()
+        limit_command = (
+            np.abs(torques) > self.pinWrapper.get_rmodel().effortLimit[6:]
+        ).any()
+        return (limit_position, limit_speed, limit_command)
 
     def _define_controller(self):
         raise NotImplementedError()
