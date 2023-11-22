@@ -8,6 +8,8 @@ from gym_talos.utils.create_target import TargetGoal
 from simulator.bullet_Talos import TalosDeburringSimulator
 from factory.benchmark_MPRL import bench_MPRL
 from factory.benchmark_MPC import bench_MPC
+from factory.benchmark_MPC_variablePosture import bench_MPC_variablePosture
+
 
 def main():
     # PARAMETERS
@@ -17,7 +19,7 @@ def main():
 
     target_handler = TargetGoal(params["target"])
     target_handler.create_target()
-    targets = target_handler.generate_target_list([3,3,3])
+    targets = target_handler.generate_target_list([3, 3, 3])
 
     # Robot handler
     pinWrapper = RobotDesigner()
@@ -37,8 +39,10 @@ def main():
 
     MPRL = bench_MPRL(filename, target_handler, pinWrapper, simulator)
     MPC = bench_MPC(filename, pinWrapper, simulator)
+    MPC_variablePosture = bench_MPC_variablePosture(filename, pinWrapper, simulator)
 
-    for controller in [MPC, MPRL]:
+    for controller in [MPC, MPRL, MPC_variablePosture]:
+        print(type(controller).__name__)
         for target in targets:
             (
                 reach_time,
@@ -49,7 +53,7 @@ def main():
             ) = controller.run(target)
 
             print(target)
-            if (limit_position or limit_speed or limit_command):
+            if limit_position or limit_speed or limit_command:
                 if limit_position:
                     print("Position limit infriged")
                 elif limit_speed:
