@@ -24,6 +24,9 @@ class bench_MPC(bench_base):
         time_step_OCP = float(self.params["OCP"]["time_step"])
         self.num_simulation_step = int(time_step_OCP / self.time_step_simulation)
 
+        self.x_list = []
+        self.u_list = []
+
     def _reset_controller(self):
         # Reset OCP
         self.mpc.change_target(self.pinWrapper.get_x0(), self.oMtarget.translation)
@@ -34,5 +37,8 @@ class bench_MPC(bench_base):
             self.riccati.update_references(t0, x0, K0)
 
         torques = self.riccati.step(x_measured)
+
+        self.x_list.append(x_measured)
+        self.u_list.append(torques)
 
         return torques
