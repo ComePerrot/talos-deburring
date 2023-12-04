@@ -1,0 +1,20 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  mirror:
+    name: Mirror to gitlab
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: yesolutions/mirror-action@master
+        with:
+          REMOTE: 'https://gitlab.laas.fr/cperrot/benchmark-manipulation'
+          GIT_USERNAME: ${{ secrets.gitlab_username }}
+          GIT_PASSWORD: ${{ secrets.gitlab_token }}
