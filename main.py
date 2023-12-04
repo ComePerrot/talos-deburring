@@ -19,7 +19,7 @@ def main():
 
     target_handler = TargetGoal(params["target"])
     target_handler.create_target()
-    targets = target_handler.generate_target_list([3, 3, 3])
+    targets = target_handler.generate_target_list(params["numberTargets"])
 
     # Robot handler
     pinWrapper = RobotDesigner()
@@ -33,7 +33,7 @@ def main():
         URDF=pinWrapper.get_settings()["urdf_path"],
         rmodelComplete=pinWrapper.get_rmodel_complete(),
         controlledJointsIDs=pinWrapper.get_controlled_joints_ids(),
-        enableGUI=False,
+        enableGUI=params["GUI"],
         dt=float(params["timeStepSimulation"]),
     )
 
@@ -41,7 +41,7 @@ def main():
     MPC = bench_MPC(filename, pinWrapper, simulator)
     MPC_variablePosture = bench_MPC_variablePosture(filename, pinWrapper, simulator)
 
-    for controller in [MPC, MPRL, MPC_variablePosture]:
+    for controller in [MPRL]:
         print(type(controller).__name__)
         for target in targets:
             (
