@@ -16,7 +16,7 @@ from factory.benchmark_MPC import bench_MPC
 
 
 target = [0.5, 0.3, 1.05]
-test_type = "bench" # "gym" or "bench" or "bench with gym"
+test_type = "gym" # "gym" or "bench" or "bench with gym"
 
 print(test_type)
 
@@ -29,8 +29,7 @@ def run_gym(target):
         i += 1
         action, _ = model.predict(obs, deterministic=True)
         obs, reward, terminated, truncated, infos = envDisplay.step(
-            [0.25847, 0.173046, -0.52536],
-            # action,
+            action,
         )
         if truncated:
             done = True
@@ -64,8 +63,8 @@ if test_type == "gym":
     
     run_gym(target)
 
-    x0 = envDisplay.x0_data
-    u0 = envDisplay.u0_data
+    with open("gym_data.pkl", "wb") as file:
+        pkl.dump([envDisplay.x_list, envDisplay.u_list, envDisplay.xref_list], file)
 
 elif test_type == "bench":
     filename_bench = "config/config.yaml"
@@ -97,7 +96,7 @@ elif test_type == "bench":
         limit_position,
         limit_speed,
         limit_command,
-    ) = MPC.run(target)
+    ) = MPRL.run(target)
 
     if limit_position or limit_speed:
         if limit_position:
@@ -108,7 +107,7 @@ elif test_type == "bench":
         print(reach_time, error_placement_tool)
 
     with open("bench_data.pkl", "wb") as file:
-        pkl.dump([MPC.x_list, MPC.u_list], file)
+        pkl.dump([MPRL.x_list, MPRL.u_list, MPRL.xref_list], file)
 
 elif test_type == "bench with gym":
     filename_bench = "config/config.yaml"

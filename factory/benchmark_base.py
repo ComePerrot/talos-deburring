@@ -48,17 +48,11 @@ class bench_base:
 
             torques = self._run_controller(Time, x_measured)
 
-            limit_position, limit_speed, limit_command = self._check_limits(
-                x_measured, torques
-            )
-            if limit_position or limit_speed or limit_command:
-                break
-
-            self.simulator.step(
-                torques, self.pinWrapper.get_end_effector_frame(), self.oMtarget
-            )
+            self.simulator.step(torques, self.pinWrapper.get_end_effector_frame())
 
             Time += 1
+
+            self.pinWrapper.update_reduced_model(self.simulator.getRobotState())
 
             error_placement_tool = np.linalg.norm(
                 self.pinWrapper.get_end_effector_frame().translation
@@ -71,6 +65,13 @@ class bench_base:
                     reach_time = Time * self.time_step_simulation
             else:
                 target_reached = False
+                reach_time = None
+
+            limit_position, limit_speed, limit_command = self._check_limits(
+                x_measured, torques
+            )
+            if limit_position or limit_speed:  # or limit_command:
+                break
 
         return (
             reach_time,
