@@ -191,7 +191,10 @@ class EnvTalosMPC(gym.Env):
         """
         self.timer = 0
 
-        self.target_handler.create_target()
+        if "target" in options.keys():
+            self.target_handler.set_target(options["target"])
+        else:
+            self.target_handler.create_target()
         self.oMtarget.translation[0] = self.target_handler.position_target[0]
         self.oMtarget.translation[1] = self.target_handler.position_target[1]
         self.oMtarget.translation[2] = self.target_handler.position_target[2]
@@ -250,6 +253,19 @@ class EnvTalosMPC(gym.Env):
             x0 = self.simulator.getRobotState()
             oMtool = self.pinWrapper.get_end_effector_frame()
 
+            self.crocoWrapper.recede()
+            self.crocoWrapper.change_goal_cost_activation(self.horizon_length - 1, True)
+            self.crocoWrapper.change_posture_reference(
+                self.horizon_length - 1,
+                posture_reference,
+            )
+            self.crocoWrapper.change_posture_reference(
+                self.horizon_length,
+                posture_reference,
+            )
+
+            self.crocoWrapper.solve(x0)
+
             for _ in range(self.numSimulationSteps):
                 x_measured = self.simulator.getRobotState()
                 torques = (
@@ -262,22 +278,8 @@ class EnvTalosMPC(gym.Env):
 
             torque_sum += np.linalg.norm(torques)
 
-            x_measured = self.simulator.getRobotState()
-
-            self.pinWrapper.update_reduced_model(x_measured)
-
-            self.crocoWrapper.recede()
-            self.crocoWrapper.change_goal_cost_activation(self.horizon_length - 1, True)
-            self.crocoWrapper.change_posture_reference(
-                self.horizon_length - 1,
-                posture_reference,
-            )
-            self.crocoWrapper.change_posture_reference(
-                self.horizon_length,
-                posture_reference,
-            )
-
-            self.crocoWrapper.solve(x_measured)
+        x_measured = self.simulator.getRobotState()
+        self.pinWrapper.update_reduced_model(x_measured)
 
         avg_torque_norm = torque_sum / (self.numOCPSteps * self.numSimulationSteps)
 
