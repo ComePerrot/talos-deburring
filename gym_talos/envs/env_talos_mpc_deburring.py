@@ -190,6 +190,8 @@ class EnvTalosMPC(gym.Env):
             Observation of the initial state.
         """
         self.timer = 0
+        if options is None:
+            options = {}
 
         if "target" in options.keys():
             self.target_handler.set_target(options["target"])
