@@ -1,8 +1,9 @@
 training:
-  name: "test_4joints"
-  total_timesteps: 150000 # Total number of training timesteps
-  log_interval: 10 # Number of episodes between logging events
-  check_freq: 1000 # Number of timesteps between saving checkpoints
+  name: "test"
+  total_timesteps: 100000 # Total number of training timesteps
+  log_interval: 50 # Number of episodes between logging events
+  check_freq: 2000 # Number of timesteps between saving checkpoints
+  number_eval: 50
 
 SAC:
   model_param:

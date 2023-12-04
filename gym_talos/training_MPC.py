@@ -58,6 +58,7 @@ params_training = params["training"]
 check_freq = params_training["check_freq"]
 total_timesteps = params_training["total_timesteps"]
 log_interval = params_training["log_interval"]
+number_eval = params_training["number_eval"]
 
 # Setting names and log locations
 now = datetime.datetime.now()
@@ -97,7 +98,7 @@ save_files_callback = SaveFilesCallback(
 eval_callback = EvalOnTrainingCallback(
     env_training,
     eval_freq=check_freq,
-    n_eval_episodes=5,
+    n_eval_episodes=number_eval,
     deterministic=True,
     render=False,
 )
