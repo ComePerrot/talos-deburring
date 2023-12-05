@@ -73,7 +73,7 @@ OCP:
   w_gripper_pos: 5
   w_gripper_rot: 30
   w_gripper_vel: 2
-  limit_scale: 1
+  limit_scale: 0.95
   state_weights:
     [
       500,

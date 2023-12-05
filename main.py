@@ -13,6 +13,7 @@ from factory.benchmark_MPC_variablePosture import bench_MPC_variablePosture
 
 def main():
     # PARAMETERS
+    verbose = 0
     filename = "config/config.yaml"
     with open(filename, "r") as paramFile:
         params = yaml.safe_load(paramFile)
@@ -41,8 +42,11 @@ def main():
     MPC = bench_MPC(filename, pinWrapper, simulator)
     MPC_variablePosture = bench_MPC_variablePosture(filename, pinWrapper, simulator)
 
-    for controller in [MPRL]:
+    for controller in [MPC, MPRL, MPC_variablePosture]:
         print(type(controller).__name__)
+        catastrophic_failure = 0
+        failure = 0
+        success = 0
         for target in targets:
             (
                 reach_time,
@@ -52,16 +56,27 @@ def main():
                 limit_command,
             ) = controller.run(target)
 
-            print(target)
+            if verbose==1:
+                print(np.array(target))
             if limit_position or limit_speed or limit_command:
-                if limit_position:
-                    print("Position limit infriged")
-                elif limit_speed:
-                    print("Speed limit infriged")
-                else:
-                    print("Control limit infriged")
+                catastrophic_failure += 1
+                if verbose == 1:
+                    if limit_position:
+                        print("Position limit infriged")
+                    elif limit_speed:
+                        print("Speed limit infriged")
+                    else:
+                        print("Control limit infriged")
             else:
-                print(reach_time, error_placement_tool)
+                if verbose == 1:
+                    print(reach_time, error_placement_tool)
+                if reach_time is not None:
+                    success += 1
+                else:
+                    failure += 1
+        print("Catastrophic failure: " + str(catastrophic_failure))
+        print("Failure: " + str(failure))
+        print("success: " + str(success))
 
     simulator.end
 
