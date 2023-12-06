@@ -252,35 +252,30 @@ class EnvTalosMPC(gym.Env):
         torque_sum = 0
 
         for _ in range(self.numOCPSteps):
-            x0 = self.simulator.getRobotState()
+            x0 = x_measured = self.simulator.getRobotState()
             oMtool = self.pinWrapper.get_end_effector_frame()
 
-            self.crocoWrapper.recede()
-            self.crocoWrapper.change_goal_cost_activation(self.horizon_length - 1, True)
-            self.crocoWrapper.change_posture_reference(
-                self.horizon_length - 1,
-                posture_reference,
-            )
-            self.crocoWrapper.change_posture_reference(
-                self.horizon_length,
-                posture_reference,
-            )
-
+            self._update_ocp(posture_reference)
             self.crocoWrapper.solve(x0)
 
             for _ in range(self.numSimulationSteps):
-                x_measured = self.simulator.getRobotState()
                 torques = (
                     self.crocoWrapper.torque
                     + self.crocoWrapper.gain
                     @ self.crocoWrapper.state.diff(x_measured, x0)
                 )
 
+                torque_sum += np.linalg.norm(torques)
+
                 self.simulator.step(torques, oMtool)
+                x_measured = self.simulator.getRobotState()
 
-            torque_sum += np.linalg.norm(torques)
+                if self._checkTruncation(x_measured, torques):
+                    break
+            else:
+                continue
+            break
 
-        x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured)
 
         avg_torque_norm = torque_sum / (self.numOCPSteps * self.numSimulationSteps)
@@ -292,10 +287,21 @@ class EnvTalosMPC(gym.Env):
         terminated = self._checkTermination(x_measured)
         truncated = self._checkTruncation(x_measured, torques)
         reward = self._getReward(avg_torque_norm, x_measured, terminated, truncated)
-
         infos = {"dst": self.distance_tool_target, "time": self.reach_time}
 
         return observation, reward, terminated, truncated, infos
+
+    def _update_ocp(self, posture_reference):
+        self.crocoWrapper.recede()
+        self.crocoWrapper.change_goal_cost_activation(self.horizon_length - 1, True)
+        self.crocoWrapper.change_posture_reference(
+            self.horizon_length - 1,
+            posture_reference,
+        )
+        self.crocoWrapper.change_posture_reference(
+            self.horizon_length,
+            posture_reference,
+        )
 
     def _getReward(self, avg_torque_norm, x_measured, terminated, truncated):
         """Compute step reward
