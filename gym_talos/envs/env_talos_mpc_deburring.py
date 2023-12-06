@@ -290,7 +290,7 @@ class EnvTalosMPC(gym.Env):
             self.crocoWrapper.solver.xs,
         )
         terminated = self._checkTermination(x_measured)
-        truncated = self._checkTruncation(x_measured)
+        truncated = self._checkTruncation(x_measured, torques)
         reward = self._getReward(avg_torque_norm, x_measured, terminated, truncated)
 
         infos = {"dst": self.distance_tool_target, "time": self.reach_time}
@@ -364,7 +364,7 @@ class EnvTalosMPC(gym.Env):
         """
         return self.timer > (self.maxStep - 1)
 
-    def _checkTruncation(self, x_measured):
+    def _checkTruncation(self, x_measured, torques):
         """Checks the truncation conditions.
 
         Environment is truncated when a constraint is infriged.
@@ -392,9 +392,17 @@ class EnvTalosMPC(gym.Env):
             x_measured[: self.rmodel.nq] > self.rmodel.upperPositionLimit
         ).any() or (x_measured[: self.rmodel.nq] < self.rmodel.lowerPositionLimit).any()
         truncation_limits_speed = (
-            x_measured[-self.rmodel.nv :] > self.rmodel.velocityLimit
+            np.abs(x_measured[-self.rmodel.nv :]) > self.rmodel.velocityLimit
         ).any()
-        truncation_limits = truncation_limits_position or truncation_limits_speed
+        truncation_limits_command = (
+            np.abs(torques) > self.rmodel.effortLimit[6:]
+        ).any()
+
+        truncation_limits = (
+            truncation_limits_position
+            or truncation_limits_speed
+            or truncation_limits_command
+        )
 
         # Explicitely casting from numpy.bool_ to bool
         return bool(truncation_balance or truncation_limits)
