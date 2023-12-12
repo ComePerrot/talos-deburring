@@ -70,7 +70,7 @@ class bench_base:
             limit_position, limit_speed, limit_command = self._check_limits(
                 x_measured, torques
             )
-            if limit_position or limit_speed:  # or limit_command:
+            if limit_position or limit_speed or limit_command:
                 break
 
         return (

@@ -42,9 +42,11 @@ def main():
     MPC = bench_MPC(filename, pinWrapper, simulator)
     MPC_variablePosture = bench_MPC_variablePosture(filename, pinWrapper, simulator)
 
-    for controller in [MPC, MPRL, MPC_variablePosture]:
+    for controller in [MPC_variablePosture]:
         print(type(controller).__name__)
-        catastrophic_failure = 0
+        catastrophic_failure_position = 0
+        catastrophic_failure_speed = 0
+        catastrophic_failure_torque = 0
         failure = 0
         success = 0
         for target in targets:
@@ -56,10 +58,16 @@ def main():
                 limit_command,
             ) = controller.run(target)
 
-            if verbose==1:
+            if verbose == 1:
                 print(np.array(target))
             if limit_position or limit_speed or limit_command:
-                catastrophic_failure += 1
+                if limit_position:
+                    catastrophic_failure_position += 1
+                elif limit_speed:
+                    catastrophic_failure_speed += 1
+                else:
+                    catastrophic_failure_torque += 1
+
                 if verbose == 1:
                     if limit_position:
                         print("Position limit infriged")
@@ -74,7 +82,10 @@ def main():
                     success += 1
                 else:
                     failure += 1
-        print("Catastrophic failure: " + str(catastrophic_failure))
+        print("Catastrophic failure:")
+        print(" - Position: " + str(catastrophic_failure_position))
+        print(" - Speed: " + str(catastrophic_failure_speed))
+        print(" - Torque: " + str(catastrophic_failure_torque))
         print("Failure: " + str(failure))
         print("success: " + str(success))
 
