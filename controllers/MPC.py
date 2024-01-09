@@ -3,7 +3,6 @@ import pinocchio as pin
 
 from deburring_mpc import OCP
 
-
 class MPController:
     def __init__(self, pinWrapper, x_initial, target_pos, param_ocp):
         self.num_control_knots = 10

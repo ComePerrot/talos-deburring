@@ -2,7 +2,6 @@ import pinocchio as pin
 import numpy as np
 import yaml
 
-
 class bench_base:
     def __init__(self, filename, pinWrapper, simulator):
         # PARAMETERS
@@ -82,22 +81,39 @@ class bench_base:
         )
 
     def _check_limits(self, x, torques):
-        # Limits
-        limit_position = (
-            x[: self.pinWrapper.get_rmodel().nq]
-            > self.pinWrapper.get_rmodel().upperPositionLimit
-        ).any() or (
-            x[: self.pinWrapper.get_rmodel().nq]
-            < self.pinWrapper.get_rmodel().lowerPositionLimit
-        ).any()
-        limit_speed = (
-            np.abs(x[-self.pinWrapper.get_rmodel().nv :])
-            > self.pinWrapper.get_rmodel().velocityLimit
-        ).any()
-        limit_command = (
-            np.abs(torques) > self.pinWrapper.get_rmodel().effortLimit[6:]
-        ).any()
-        return (limit_position, limit_speed, limit_command)
+        exceeded_position_list = []
+        exceeded_speed_list = []
+        exceeded_torque_list = []
+
+        rmodel = self.pinWrapper.get_rmodel()
+
+        for jointName in rmodel.names[2:]:
+            id = rmodel.getJointId(jointName) - 2
+            
+            position = x[7 + id]
+            speed = x[rmodel.nq + 6 + id]
+            torque = torques[id]
+
+            if (position > rmodel.upperPositionLimit[7 + id]) or (
+                position < rmodel.lowerPositionLimit[7 + id]
+            ):
+                if position > rmodel.upperPositionLimit[7 + id]:
+                    exceeded_position_list.append(
+                        (jointName, position, rmodel.upperPositionLimit[7 + id])
+                    )
+                else:
+                    exceeded_position_list.append(
+                        (jointName, position, rmodel.lowerPositionLimit[7 + id])
+                    )
+            if np.abs(speed) > rmodel.velocityLimit[6 + id]:
+                exceeded_speed_list.append(
+                    (jointName, speed, rmodel.velocityLimit[6 + id])
+                )
+            if np.abs(torque) > rmodel.effortLimit[6 + id]:
+                exceeded_torque_list.append(
+                    jointName, torque, rmodel.effortLimit[6 + id]
+                )
+        return (exceeded_position_list, exceeded_speed_list, exceeded_torque_list)
 
     def _define_controller(self):
         raise NotImplementedError()
