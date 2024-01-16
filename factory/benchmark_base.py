@@ -2,6 +2,7 @@ import pinocchio as pin
 import numpy as np
 import yaml
 
+
 class bench_base:
     def __init__(self, filename, pinWrapper, simulator):
         # PARAMETERS
@@ -89,7 +90,7 @@ class bench_base:
 
         for jointName in rmodel.names[2:]:
             id = rmodel.getJointId(jointName) - 2
-            
+
             position = x[7 + id]
             speed = x[rmodel.nq + 6 + id]
             torque = torques[id]
@@ -111,7 +112,7 @@ class bench_base:
                 )
             if np.abs(torque) > rmodel.effortLimit[6 + id]:
                 exceeded_torque_list.append(
-                    jointName, torque, rmodel.effortLimit[6 + id]
+                    (jointName, torque, rmodel.effortLimit[6 + id])
                 )
         return (exceeded_position_list, exceeded_speed_list, exceeded_torque_list)
 
