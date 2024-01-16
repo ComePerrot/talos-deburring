@@ -40,11 +40,8 @@ def main():
     # SIMULATOR
     simulator = TalosDeburringSimulator(
         URDF=pinWrapper.get_settings()["urdf_path"],
-        initialConfiguration=pinWrapper.get_q0_complete(),
-        robotJointNames=pinWrapper.get_rmodel_complete().names,
+        rmodelComplete=pinWrapper.get_rmodel_complete(),
         controlledJointsIDs=pinWrapper.get_controlled_joints_ids(),
-        toolPlacement=pinWrapper.get_end_effector_frame(),
-        targetPlacement=oMtarget,
         enableGUI=False,
         dt=float(params["timeStepSimulation"]),
     )
@@ -72,6 +69,14 @@ def main():
     q_arm_list = np.zeros((int(max_time / num_simulation_step), 7))
     q_dot_arm_list = np.zeros((int(max_time / num_simulation_step), 7))
 
+    q_list = np.zeros((int(max_time / num_simulation_step), pinWrapper.get_rmodel().nq))
+    q_dot_list = np.zeros(
+        (int(max_time / num_simulation_step), pinWrapper.get_rmodel().nv)
+    )
+    torque_list = np.zeros(
+        (int(max_time / num_simulation_step), pinWrapper.get_rmodel().nq - 7)
+    )
+
     # Control loop
     while Time < max_time:
         x_measured = simulator.getRobotState()
@@ -80,11 +85,18 @@ def main():
             t0, x0, K0 = mpc.step(x_measured)
             riccati.update_references(t0, x0, K0)
 
-            # Extracting arm state
-            q_arm = x_measured[15 + 7 : 22 + 7]
-            q_dot_arm = x_measured[32 + 15 + 7 : 32 + 22 + 7]
-            q_arm_list[int(Time / num_simulation_step)] = q_arm
-            q_dot_arm_list[int(Time / num_simulation_step)] = q_dot_arm
+        # Extracting full state
+        q = x_measured[: pinWrapper.get_rmodel().nq]
+        q_dot = x_measured[pinWrapper.get_rmodel().nq :]
+        q_list[int(Time / num_simulation_step)] = q
+        q_dot_list[int(Time / num_simulation_step)] = q_dot
+        torque_list[int(Time / num_simulation_step)] = t0
+
+        # Extracting arm state
+        q_arm = x_measured[15 + 7 : 22 + 7]
+        q_dot_arm = x_measured[32 + 15 + 7 : 32 + 22 + 7]
+        q_arm_list[int(Time / num_simulation_step)] = q_arm
+        q_dot_arm_list[int(Time / num_simulation_step)] = q_dot_arm
 
         torques = riccati.step(x_measured)
         simulator.step(torques, pinWrapper.get_end_effector_frame(), oMtarget)
@@ -92,8 +104,11 @@ def main():
         Time += 1
 
     simulator.end
-    with open("arm_state.pkl", "wb") as file:
-        pkl.dump([q_arm_list, q_dot_arm_list], file)
+    # with open("arm_state.pkl", "wb") as file:
+    #     pkl.dump([q_arm_list, q_dot_arm_list], file)
+
+    with open("reach_movement.pkl", "wb") as file:
+        pkl.dump([q_list, q_dot_list, torque_list], file)
 
 
 if __name__ == "__main__":
