@@ -1,18 +1,26 @@
 Bootstrap: docker
 From: mambaorg/micromamba
 
-%files
-    environment.yml
-    gym_talos
-    config
-    pyproject.toml
-    poetry.lock
-    README.md
-
 %post
-    micromamba env create -f environment.yml
+    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        git \
+        cmake \
+        build-essential \
+        pkg-config \
+        libyaml-cpp-dev
+    git clone -b topic/MPC https://github.com/ComePerrot/talos-rl.git
+    micromamba env create --yes --quiet -f talos-rl/environment.yml
+    micromamba install --quiet -n talos-rl conda-forge::crocoddyl
     micromamba clean --all --yes
-    micromamba run -n talos-rl python -m pip install .
+    micromamba run -n talos-rl python -m pip install ./talos-rl
+
+    git clone --recursive -b devel https://github.com/ComePerrot/talos-manipulation.git
+    cmake -B talos-manipulation/deburring-mpc/build -S talos-manipulation/deburring-mpc \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH=/opt/conda/envs/talos-rl/ \
+            -DCMAKE_INSTALL_PREFIX=/opt/conda/envs/talos-rl/
+    cd talos-manipulation/deburring-mpc/build
+    make install
 
 %runscript
-    exec micromamba run -n talos-rl python -m gym_talos -config /config/config_RL.yaml
+    exec micromamba run -n talos-rl python -m gym_talos.training_MPC -config /config/config_MPC_RL.yaml
