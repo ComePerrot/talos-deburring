@@ -3,6 +3,8 @@ import numpy as np
 import pinocchio as pin
 from deburring_mpc import RobotDesigner, OCP
 
+from limit_checker.limit_checker import LimitChecker
+
 from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
 from gym_talos.utils.create_target import TargetGoal
 from gym_talos.utils.observation_wrapper import observation_wrapper
@@ -35,6 +37,8 @@ class EnvTalosMPC(gym.Env):
         )
 
         self.rmodel = self.pinWrapper.get_rmodel()
+
+        self.limit_checker = LimitChecker(self.rmodel)
 
         self.rmodel.lowerPositionLimit = np.array(
             params_designer["lower_position_limit"],
@@ -401,21 +405,29 @@ class EnvTalosMPC(gym.Env):
         )
 
         # Limits
-        truncation_limits_position = (
-            x_measured[: self.rmodel.nq] > self.rmodel.upperPositionLimit
-        ).any() or (x_measured[: self.rmodel.nq] < self.rmodel.lowerPositionLimit).any()
-        truncation_limits_speed = (
-            np.abs(x_measured[-self.rmodel.nv :]) > self.rmodel.velocityLimit
-        ).any()
-        truncation_limits_command = (
-            np.abs(torques) > self.rmodel.effortLimit[6:]
-        ).any()
-
-        truncation_limits = (
-            truncation_limits_position
-            or truncation_limits_speed
-            or truncation_limits_command
+        limits = self.limit_checker.test_all_limits(
+            x_measured[7 : self.rmodel.nq], x_measured[-self.rmodel.nv + 6 :], torques
         )
+        if any(len(limit) > 0 for limit in limits):
+            truncation_limits = True
+        else:
+            truncation_limits = False
+
+        # truncation_limits_position = (
+        #     x_measured[: self.rmodel.nq] > self.rmodel.upperPositionLimit
+        # ).any() or (x_measured[: self.rmodel.nq] < self.rmodel.lowerPositionLimit).any()
+        # truncation_limits_speed = (
+        #     np.abs(x_measured[-self.rmodel.nv :]) > self.rmodel.velocityLimit
+        # ).any()
+        # truncation_limits_command = (
+        #     np.abs(torques) > self.rmodel.effortLimit[6:]
+        # ).any()
+
+        # truncation_limits = (
+        #     truncation_limits_position
+        #     or truncation_limits_speed
+        #     or truncation_limits_command
+        # )
 
         # Explicitely casting from numpy.bool_ to bool
         return bool(truncation_balance or truncation_limits)
