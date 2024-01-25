@@ -12,7 +12,7 @@ class LowpassFilter:
     def filter(self, input_data):
         # Check input format
         if input_data.shape[0] != self.num_channels:
-            msg = f"Input vector should have {self.num_channels} channels."
+            msg = f"Invalid number of channels: {input_data.shape[0]} when {self.num_channels} is expected."
             raise ValueError(msg)
 
         output = self.alpha * input_data + (1 - self.alpha) * self.prev_output

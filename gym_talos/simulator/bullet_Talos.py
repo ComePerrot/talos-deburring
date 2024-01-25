@@ -3,7 +3,7 @@ import pybullet as p  # PyBullet simulator
 import pybullet_data
 import pinocchio as pin
 
-from .filter import LowpassFilter
+from gym_talos.simulator.filter import LowpassFilter
 
 
 class TalosDeburringSimulator:
@@ -22,7 +22,7 @@ class TalosDeburringSimulator:
         self._setupInitializer(randomInit, rmodelComplete)
         self._createObjectVisuals()
 
-        self.torque_filter = LowpassFilter(10,100, len(controlledJointsIDs))
+        self.torque_filter = LowpassFilter(10, 100, len(self.bullet_controlledJoints))
 
     def _setupBullet(self, enableGUI, enableGravity, dt):
         # Start the client for PyBullet
@@ -360,7 +360,7 @@ class TalosDeburringSimulator:
     def step(self, torques, oMtool=None, base_pose=None):
         """Do one step of simulation"""
         self._updateVisuals(oMtool, base_pose)
-        filtered_torques = self.torque_filter(torques)
+        filtered_torques = self.torque_filter.filter(torques)
         self._applyTorques(filtered_torques)
         p.stepSimulation()
         self.baseRobot = np.array(
