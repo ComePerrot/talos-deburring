@@ -36,6 +36,13 @@ class EnvTalosMPC(gym.Env):
 
         self.rmodel = self.pinWrapper.get_rmodel()
 
+        self.rmodel.lowerPositionLimit = np.array(
+            params_designer["lower_position_limit"],
+        )
+        self.rmodel.upperPositionLimit = np.array(
+            params_designer["upper_position_limit"],
+        )
+
         self.rl_controlled_IDs = np.array(
             [
                 self.rmodel.names.tolist().index(joint_name) - 2 + 7
@@ -256,7 +263,6 @@ class EnvTalosMPC(gym.Env):
             oMtool = self.pinWrapper.get_end_effector_frame()
 
             self._update_ocp(posture_reference)
-            self.crocoWrapper.solve(x0)
 
             for _ in range(self.numSimulationSteps):
                 torques = (
@@ -273,6 +279,7 @@ class EnvTalosMPC(gym.Env):
                 if self._checkTruncation(x_measured, torques):
                     break
             else:
+                self.crocoWrapper.solve(x0)
                 continue
             break
 
