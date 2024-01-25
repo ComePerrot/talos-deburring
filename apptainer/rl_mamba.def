@@ -22,5 +22,5 @@ From: mambaorg/micromamba
     cd talos-manipulation/deburring-mpc/build
     make install
 
-%runscript
+%apprun mpc
     exec micromamba run -n talos-rl python -m gym_talos.training_MPC -config /config/config_MPC_RL.yaml
