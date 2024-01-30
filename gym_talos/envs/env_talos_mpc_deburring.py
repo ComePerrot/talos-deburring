@@ -405,10 +405,12 @@ class EnvTalosMPC(gym.Env):
         )
 
         # Limits
-        limits = self.limit_checker.test_all_limits(
-            x_measured[7 : self.rmodel.nq], x_measured[-self.rmodel.nv + 6 :], torques
+        limits = self.limit_checker.are_limits_broken(
+            x_measured[7 : self.rmodel.nq],
+            x_measured[-self.rmodel.nv + 6 :],
+            torques,
         )
-        if any(len(limit) > 0 for limit in limits):
+        if limits is not False:
             truncation_limits = True
         else:
             truncation_limits = False
