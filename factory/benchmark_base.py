@@ -2,6 +2,8 @@ import pinocchio as pin
 import numpy as np
 import yaml
 
+from limit_checker.limit_checker import LimitChecker
+
 
 class bench_base:
     def __init__(self, filename, pinWrapper, simulator):
@@ -19,6 +21,7 @@ class bench_base:
 
         # Robot handler
         self.pinWrapper = pinWrapper
+        self.limit_checker = LimitChecker(self.pinWrapper.get_rmodel(), False)
 
         # Simulator
         self.simulator = simulator
@@ -67,18 +70,18 @@ class bench_base:
                 target_reached = False
                 reach_time = None
 
-            limit_position, limit_speed, limit_command = self._check_limits(
-                x_measured, torques
+            limits = self.limit_checker.are_limits_broken(
+                x_measured[7 : self.pinWrapper.get_rmodel().nq],
+                x_measured[-self.pinWrapper.get_rmodel().nv + 6 :],
+                torques,
             )
-            if limit_position or limit_speed or limit_command:
+            if limits is not False:
                 break
 
         return (
             reach_time,
             error_placement_tool,
-            limit_position,
-            limit_speed,
-            limit_command,
+            limits
         )
 
     def _check_limits(self, x, torques):
