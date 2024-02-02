@@ -13,11 +13,11 @@ from factory.benchmark_MPC_variablePosture import bench_MPC_variablePosture
 
 def main():
     # PARAMETERS
-    verbose = 0
-    filename = "config/config.yaml"
+    filename = "benchmark-manipulation/config/config.yaml"
     with open(filename, "r") as paramFile:
         params = yaml.safe_load(paramFile)
 
+    verbose = params["verbose"]
     target_handler = TargetGoal(params["target"])
     target_handler.create_target()
     targets = target_handler.generate_target_list(params["numberTargets"])
@@ -42,39 +42,26 @@ def main():
     MPC = bench_MPC(filename, pinWrapper, simulator)
     MPC_variablePosture = bench_MPC_variablePosture(filename, pinWrapper, simulator)
 
-    for controller in [MPC_variablePosture]:
+    for controller in [MPC, MPRL, MPC_variablePosture]:
         print(type(controller).__name__)
-        catastrophic_failure_position = 0
-        catastrophic_failure_speed = 0
-        catastrophic_failure_torque = 0
+        catastrophic_failure = 0
         failure = 0
         success = 0
         for target in targets:
             (
                 reach_time,
                 error_placement_tool,
-                limit_position,
-                limit_speed,
-                limit_command,
+                limits,
             ) = controller.run(target)
 
             if verbose == 1:
                 print(np.array(target))
-            if limit_position or limit_speed or limit_command:
-                if limit_position:
-                    catastrophic_failure_position += 1
-                elif limit_speed:
-                    catastrophic_failure_speed += 1
-                else:
-                    catastrophic_failure_torque += 1
+            if limits is not False:
+                catastrophic_failure += 1
 
                 if verbose == 1:
-                    if limit_position:
-                        print("Position limit infriged")
-                    elif limit_speed:
-                        print("Speed limit infriged")
-                    else:
-                        print("Control limit infriged")
+                    print("Limit infriged")
+                    print(limits)
             else:
                 if verbose == 1:
                     print(reach_time, error_placement_tool)
@@ -83,11 +70,9 @@ def main():
                 else:
                     failure += 1
         print("Catastrophic failure:")
-        print(" - Position: " + str(catastrophic_failure_position))
-        print(" - Speed: " + str(catastrophic_failure_speed))
-        print(" - Torque: " + str(catastrophic_failure_torque))
+        print(" " + str(catastrophic_failure))
         print("Failure: " + str(failure))
-        print("success: " + str(success))
+        print("Success: " + str(success))
 
     simulator.end
 

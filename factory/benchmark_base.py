@@ -21,7 +21,7 @@ class bench_base:
 
         # Robot handler
         self.pinWrapper = pinWrapper
-        self.limit_checker = LimitChecker(self.pinWrapper.get_rmodel(), False)
+        self.limit_checker = LimitChecker(self.pinWrapper.get_rmodel(), self.params['verbose'])
 
         # Simulator
         self.simulator = simulator

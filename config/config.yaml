@@ -3,6 +3,7 @@ maxTime: 4
 timeStepSimulation: 1e-3
 toleranceError: 0.005
 GUI: false
+verbose: true
 
 target:
   targetType: "box"
