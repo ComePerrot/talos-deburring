@@ -11,8 +11,8 @@ target:
   targetSizeHigh: [0.05, 0.1, 0.05]
 
 robot:
-  urdf_path: "/opt/openrobots/share/example-robot-data/robots/talos_data/robots/talos_reduced.urdf"
-  srdf_path: "/opt/openrobots/share/example-robot-data/robots/talos_data/srdf/talos.srdf"
+  urdf_path: "/home/cperrot/ws_bench/talos-limits/urdf/talos_custom.urdf"
+  srdf_path: "/home/cperrot/ws_bench/talos-limits/urdf/talos.srdf"
   robot_description: ""
   left_foot_name: "right_sole_link"
   right_foot_name: "left_sole_link"
@@ -48,14 +48,13 @@ robot:
   end_effector_position: [0, -0.02, -0.0825]
 
 RL_posture:
-  model_path: "config/best_model"
+  model_path: "benchmark-manipulation/config/best_model"
   numOCPSteps: 10
-  controlled_joints_names:
-    [
+  controlled_joints_names: [
       arm_left_1_joint,
       arm_left_2_joint,
       # arm_left_3_joint,
-      arm_left_4_joint
+      arm_left_4_joint,
     ]
   actionScale: 1
   actionType: "full_range" # full_range / differential
@@ -69,35 +68,40 @@ OCP:
   w_state_reg: 0.02
   w_control_reg: 0.001
   w_state_limits: 1000
-  w_control_limit: 0
+  w_control_limit: 500
   w_com_pos: 500
   w_gripper_pos: 5
   w_gripper_rot: 30
   w_gripper_vel: 2
-  limit_scale: 0.8
-  limit_speed: false
-  state_weights:
-    [
+  limit_scale: 0.95
+  limit_speed: true
+  state_weights: [
+      # base_pos
       500,
       500,
       500,
+      # base_ang
       1000,
       1000,
       1000,
-      500,
-      500,
-      500,
-      500,
-      1000,
-      1000,
+      # leg_left
       500,
       500,
       500,
       500,
       1000,
       1000,
+      # leg_right
+      500,
+      500,
+      500,
+      500,
+      1000,
+      1000,
+      # torso
       100,
       200,
+      # arm_left
       100,
       100,
       100,
@@ -105,28 +109,37 @@ OCP:
       1,
       1,
       1,
+      # arm_right
       500,
       500,
       500,
       500,
+      # base_pos_vel
+      1,
+      1,
+      1,
+      # base_ang_vel
+      1,
+      1,
+      1,
+      # leg_left_vel
       1,
       1,
       1,
       1,
       1,
       1,
+      # leg_right_vel
       1,
       1,
       1,
       1,
       1,
       1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
+      # torso
+      100,
+      100,
+      # arm_left_vel
       10,
       10,
       10,
@@ -134,8 +147,7 @@ OCP:
       10,
       10,
       10,
-      10,
-      10,
+      # arm_right_vel
       10,
       10,
       10,
