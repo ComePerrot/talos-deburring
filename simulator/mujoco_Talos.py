@@ -23,17 +23,17 @@ class TalosMujoco:
         self.d_arm_gain = 8.0
         self.p_torso_gain = 500.0
         self.d_torso_gain = 20.0
-        self.p_leg_gain = 800.0 * 1.2
+        self.p_leg_gain = 800.0
         self.d_leg_gain = 35.0
 
         self.reset()
 
-    def reset(self):
-        mujoco.mj_resetDataKeyframe(self.model, self.data, 1)
-
         self.qpos_des = self.data.qpos.copy()
         self.qvel_des = self.data.qvel.copy()
         self.ctrl_ff = self.data.ctrl.copy()
+
+    def reset(self):
+        mujoco.mj_resetDataKeyframe(self.model, self.data, 1)
 
     def step(self):
         mujoco.mj_step(self.model, self.data)
@@ -73,7 +73,7 @@ class TalosMujoco:
                 )
 
             else:
-                torque = 0
+                torque = self.ctrl_ff[id] - d_pos - d_vel
 
             self.data.ctrl[id] = torque
 
@@ -111,6 +111,5 @@ if __name__ == "__main__":
 
     while True:
         sim.pd_controller()
-        # sim.render()
+        sim.render()
         sim.step()
-        print(sim.data.qpos[:3])
