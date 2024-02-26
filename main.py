@@ -9,6 +9,7 @@ from simulator.bullet_Talos import TalosDeburringSimulator
 from factory.benchmark_MPRL import bench_MPRL
 from factory.benchmark_MPC import bench_MPC
 from factory.benchmark_MPC_variablePosture import bench_MPC_variablePosture
+from factory.benchmark_MPC_noRiccati import bench_MPC_noRiccati
 
 
 def main():
@@ -36,13 +37,15 @@ def main():
         controlledJointsIDs=pinWrapper.get_controlled_joints_ids(),
         enableGUI=params["GUI"],
         dt=float(params["timeStepSimulation"]),
+        cutoff_frequency=None,
     )
 
     MPRL = bench_MPRL(filename, target_handler, pinWrapper, simulator)
     MPC = bench_MPC(filename, pinWrapper, simulator)
     MPC_variablePosture = bench_MPC_variablePosture(filename, pinWrapper, simulator)
+    MPC_noRiccati = bench_MPC_noRiccati(filename, pinWrapper, simulator)
 
-    for controller in [MPC, MPRL, MPC_variablePosture]:
+    for controller in [MPC_noRiccati]:
         print(type(controller).__name__)
         catastrophic_failure = 0
         failure = 0

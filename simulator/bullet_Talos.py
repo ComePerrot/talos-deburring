@@ -3,6 +3,8 @@ import pybullet as p  # PyBullet simulator
 import pybullet_data
 import pinocchio as pin
 
+from .filter import LowpassFilter
+
 
 class TalosDeburringSimulator:
     def __init__(
@@ -14,11 +16,62 @@ class TalosDeburringSimulator:
         enableGUI=False,
         enableGravity=True,
         dt=1e-3,
+        cutoff_frequency=None,
     ):
         self._setupBullet(enableGUI, enableGravity, dt)
         self._setupRobot(URDF, rmodelComplete, controlledJointsIDs, randomInit)
         self._setupInitializer(randomInit, rmodelComplete)
         self._createObjectVisuals()
+        self.p_arm_gain = 100.0
+        self.d_arm_gain = 8.0
+        self.p_torso_gain = 500.0
+        self.d_torso_gain = 20.0
+        self.p_leg_gain = 800.0
+        self.d_leg_gain = 35.0
+        self.feed_forward = np.array(
+            [
+                0,
+                1,
+                2,
+                -5e01,
+                3,
+                -5,
+                0,
+                1,
+                2,
+                -5e01,
+                3,
+                5,
+                0,
+                6e-1,
+                6e-02,
+                5e-01,
+                2.2,
+                -9.3,
+                -1.1e-01,
+                3.2e-01,
+                -1.5,
+                4.4e-02,
+                -6e-02,
+                -5e-01,
+                -2.2,
+                -9.3,
+                1.1e-01,
+                -3.2e-01,
+                -1.5,
+                4.4e-02,
+                -3.9e-01,
+                1.3e-03,
+            ]
+        )
+
+        if cutoff_frequency is not None:
+            self.is_torque_filtered = True
+            self.torque_filter = LowpassFilter(
+                cutoff_frequency, 1 / dt, len(self.bullet_controlledJoints)
+            )
+        else:
+            self.is_torque_filtered = False
 
     def _setupBullet(self, enableGUI, enableGravity, dt):
         # Start the client for PyBullet
@@ -45,6 +98,7 @@ class TalosDeburringSimulator:
 
     def _setupRobot(self, URDF, rmodelComplete, controlledJointsIDs, randomInit):
         self.q0 = rmodelComplete.referenceConfigurations["half_sitting"]
+        self.q0[2] += 0.01
         self.initial_base_position = list(self.q0[:3])
         self.initial_base_orientation = list(self.q0[3:7])
         self.initial_joint_positions = list(self.q0[7:])
@@ -100,7 +154,7 @@ class TalosDeburringSimulator:
         :param q0 Intial robot configuration
         """
         for i in range(len(self.initial_joint_positions)):
-            p.enableJointForceTorqueSensor(self.robotId, i, True)
+            # p.enableJointForceTorqueSensor(self.robotId, i, True)
             p.resetJointState(
                 self.robotId,
                 self.bulletJointsIdInPinOrder[i],
@@ -280,20 +334,6 @@ class TalosDeburringSimulator:
 
         return x
 
-    def getRobotPos(self):
-        """Get current state of the robot from pyBullet"""
-        # Get basis pose
-        pos, quat = p.getBasePositionAndOrientation(self.robotId)
-        # Get basis vel
-        v, w = p.getBaseVelocity(self.robotId)
-        # pos = np.array(pos) - self.localInertiaPos
-        # Concatenate into a single x vector
-        x = np.concatenate([pos, quat])
-        # Magic transformation of the basis translation, as classical in Bullet.
-        # x[:3] -= self.localInertiaPos
-
-        return x  # noqa: RET504
-
     def getContactPoints(self):
         """Get contact points between the robot and the environment"""
         return [(i[4], i[6], i[9]) for i in p.getContactPoints()]
@@ -301,15 +341,12 @@ class TalosDeburringSimulator:
     def step(self, torques, oMtool=None, base_pose=None):
         """Do one step of simulation"""
         self._updateVisuals(oMtool)
-        self._applyTorques(torques)
+        if self.is_torque_filtered:
+            filtered_torques = self.torque_filter.filter(torques)
+        else:
+            filtered_torques = torques
+        self._applyTorques(filtered_torques)
         p.stepSimulation()
-        self.baseRobot = np.array(
-            [
-                p.getBasePositionAndOrientation(self.robotId)[0][0],
-                p.getBasePositionAndOrientation(self.robotId)[0][1],
-                p.getBasePositionAndOrientation(self.robotId)[0][2],
-            ],
-        )
 
     def _updateVisuals(self, oMtool):
         """Update visual elements of the simulation
@@ -341,24 +378,61 @@ class TalosDeburringSimulator:
             self.robotId,
             self.initial_base_position,
             self.initial_base_orientation,
-            # self.physicsClient,
-        )
-        self.baseRobot = np.array(
-            [
-                p.getBasePositionAndOrientation(self.robotId)[0][0],
-                p.getBasePositionAndOrientation(self.robotId)[0][1],
-                p.getBasePositionAndOrientation(self.robotId)[0][2],
-            ],
+            self.physicsClient,
         )
         p.resetBaseVelocity(
             self.robotId,
             [0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
-            # self.physicsClient,
+            self.physicsClient,
         )
 
-        self._reset_robot_joints()
+        self._setInitialConfig()
         self._setVisualObjectPosition(self.target_visual, target_pos)
+
+        for _ in range(100):
+            self.pd_controller()
+            p.stepSimulation()
+
+    def pd_controller(self):
+        for id_pin, id in enumerate(self.bulletJointsIdInPinOrder):
+            joint_name = p.getJointInfo(self.robotId, id)[1].decode()
+
+            d_pos = (
+                p.getJointState(self.robotId, id)[0]
+                - self.initial_joint_positions[id_pin]
+            )
+            d_vel = p.getJointState(self.robotId, id)[1]
+
+            feed_forward = self.feed_forward[id_pin]
+
+            if id not in self.bullet_controlledJoints:
+                continue
+
+            if "torso" in joint_name:
+                torque = (
+                    feed_forward - self.p_torso_gain * d_pos - self.d_torso_gain * d_vel
+                )
+
+            elif "arm" in joint_name:
+                torque = (
+                    feed_forward - self.p_arm_gain * d_pos - self.d_arm_gain * d_vel
+                )
+
+            elif "leg" in joint_name:
+                torque = (
+                    feed_forward - self.p_leg_gain * d_pos - self.d_leg_gain * d_vel
+                )
+
+            else:
+                torque = 0
+
+            p.setJointMotorControl(
+                self.robotId,
+                id,
+                p.TORQUE_CONTROL,
+                torque,
+            )
 
     def _reset_robot_joints(self):
         for i in range(len(self.initial_joint_positions)):
