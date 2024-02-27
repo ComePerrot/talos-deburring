@@ -2,13 +2,11 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 
-from IPython import embed
-
 
 class TalosMujoco:
     def __init__(self, controlled_joints_names):
         self.model = mujoco.MjModel.from_xml_path(
-            "/home/cperrot/ws_bench/talos-limits/pal_talos/scene_motor.xml"
+            "/home/cj/workspaces/talos-limits/pal_talos/scene_motor.xml"
         )
         self.data = mujoco.MjData(self.model)
 
@@ -16,7 +14,11 @@ class TalosMujoco:
 
         self.controlled_joints_names = controlled_joints_names
         self.controlled_joints_id = [
-            self.model.joint(joint).id - 1 + 7 for joint in self.controlled_joints_names
+            self.model.joint(joint).id - 1 for joint in self.controlled_joints_names
+        ]
+        self.actuators_id = [
+            self.model.actuator(joint + "_torque").id
+            for joint in self.controlled_joints_names
         ]
 
         self.p_arm_gain = 100.0
@@ -26,17 +28,51 @@ class TalosMujoco:
         self.p_leg_gain = 800.0
         self.d_leg_gain = 35.0
 
-        self.reset()
-
+        mujoco.mj_resetDataKeyframe(self.model, self.data, 1)
         self.qpos_des = self.data.qpos.copy()
         self.qvel_des = self.data.qvel.copy()
         self.ctrl_ff = self.data.ctrl.copy()
 
-    def reset(self):
+        self.reset()
+
+        self.state = np.zeros(2 * len(self.controlled_joints_names) + 7 + 6)
+
+    def reset(self, target_pos= [0,0,0]):
         mujoco.mj_resetDataKeyframe(self.model, self.data, 1)
 
-    def step(self):
+        for i in range(100):
+            self.pd_controller()
+            mujoco.mj_step(self.model, self.data)
+
+    def step(self, torques, oMtool=None):
+        self._apply_torques(torques)
         mujoco.mj_step(self.model, self.data)
+
+    def _apply_torques(self, torques):
+        for id_pin, torque in enumerate(torques):
+            id_mujoco = self.actuators_id[id_pin]
+            self.data.ctrl[id_mujoco] = torque
+
+    def getRobotState(self):
+        # Base position
+        self.state[:3] = self.data.qpos[:3]
+        self.state[2] += 0.02 + 1.01
+        # Base orientation
+        self.state[6] = self.data.qpos[3]
+        self.state[3:6] = self.data.qpos[4:7]
+        # Base velocity (linear and angular)
+        self.state[
+            len(self.controlled_joints_names)
+            + 7 : len(self.controlled_joints_names)
+            + 7
+            + 6
+        ] = self.data.qvel[:6]
+        for id_pin, id_mujoco in enumerate(self.controlled_joints_id):
+            self.state[7 + id_pin] = self.data.qpos[7 + id_mujoco]
+            self.state[len(self.controlled_joints_names) + 7 + 6 + id_pin] = (
+                self.data.qvel[6 + id_mujoco]
+            )
+        return self.state
 
     def render(self):
         if self.viewer is None:
@@ -44,7 +80,9 @@ class TalosMujoco:
         self.viewer.sync()
 
     def close(self):
-        pass
+        if self.viewer is not None:
+            self.viewer.close()
+            self.viewer = None
 
     def pd_controller(self):
         for id in range(self.model.nu):
@@ -112,4 +150,5 @@ if __name__ == "__main__":
     while True:
         sim.pd_controller()
         sim.render()
-        sim.step()
+        mujoco.mj_step(sim.model, sim.data)
+        print(sim.get_robot_state())
