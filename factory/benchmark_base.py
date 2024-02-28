@@ -21,7 +21,9 @@ class bench_base:
 
         # Robot handler
         self.pinWrapper = pinWrapper
-        self.limit_checker = LimitChecker(self.pinWrapper.get_rmodel(), self.params['verbose'])
+        self.limit_checker = LimitChecker(
+            self.pinWrapper.get_rmodel(), self.params["verbose"]
+        )
 
         # Simulator
         self.simulator = simulator
@@ -78,11 +80,7 @@ class bench_base:
             if limits is not False:
                 break
 
-        return (
-            reach_time,
-            error_placement_tool,
-            limits
-        )
+        return (reach_time, error_placement_tool, limits)
 
     def _check_limits(self, x, torques):
         exceeded_position_list = []

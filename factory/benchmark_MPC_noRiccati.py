@@ -24,7 +24,7 @@ class bench_MPC_noRiccati(bench_base):
 
     def _run_controller(self, Time, x_measured):
         if Time % self.num_simulation_step == 0:
-            self.torques, x0, K0 = self.mpc.step(x_measured, None)
+            self.torques, _, _ = self.mpc.step(x_measured, None)
 
         self.x_list.append(x_measured)
         self.u_list.append(self.torques)
