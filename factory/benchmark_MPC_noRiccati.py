@@ -10,6 +10,7 @@ class bench_MPC_noRiccati(bench_base):
             self.pinWrapper.get_x0(),
             self.oMtarget.translation,
             self.params["OCP"],
+            self.params["MPC_delay"],
         )
 
         time_step_OCP = float(self.params["OCP"]["time_step"])

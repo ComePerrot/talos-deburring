@@ -1,12 +1,14 @@
 import numpy as np
 import pinocchio as pin
+import queue
 
 from deburring_mpc import OCP
 
 
 class MPController:
-    def __init__(self, pinWrapper, x_initial, target_pos, param_ocp):
-        self.num_control_knots = 10
+    def __init__(self, pinWrapper, x_initial, target_pos, param_ocp, delay = 0):
+        self.output_queue = queue.Queue()
+        self.delay = delay
 
         self.pinWrapper = pinWrapper
         self.param_ocp = param_ocp
@@ -69,11 +71,17 @@ class MPController:
         )
 
     def change_target(self, x_initial, target_position):
+        self.output_queue.queue.clear()
         for i in range(3):
             self.oMtarget.translation[i] = target_position[i]
 
         self.crocoWrapper = OCP(self.param_ocp, self.pinWrapper)
         self.crocoWrapper.initialize(x_initial, self.oMtarget)
+
+        for i in range(self.delay):
+            self.output_queue.put(
+                (self.crocoWrapper.torque, x_initial, self.crocoWrapper.gain)
+            )
 
     def step(self, x_measured, reference_posture=None):
         self.x0 = x_measured
@@ -94,5 +102,8 @@ class MPController:
             )
 
         self.crocoWrapper.solve(x_measured)
+        self.output_queue.put(
+            (self.crocoWrapper.torque, self.x0, self.crocoWrapper.gain)
+        )
 
-        return (self.crocoWrapper.torque, self.x0, self.crocoWrapper.gain)
+        return self.output_queue.get()

@@ -37,7 +37,7 @@ def main():
         controlledJointsIDs=pinWrapper.get_controlled_joints_ids(),
         enableGUI=params["GUI"],
         dt=float(params["timeStepSimulation"]),
-        cutoff_frequency=None,
+        cutoff_frequency=params["robot_cutoff_frequency"],
     )
 
     MPRL = bench_MPRL(filename, target_handler, pinWrapper, simulator)
@@ -45,7 +45,7 @@ def main():
     MPC_variablePosture = bench_MPC_variablePosture(filename, pinWrapper, simulator)
     MPC_noRiccati = bench_MPC_noRiccati(filename, pinWrapper, simulator)
 
-    for controller in [MPC_noRiccati]:
+    for controller in [MPC]:
         print(type(controller).__name__)
         catastrophic_failure = 0
         failure = 0

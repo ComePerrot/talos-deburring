@@ -65,7 +65,7 @@ class TalosDeburringSimulator:
             ]
         )
 
-        if cutoff_frequency is not None:
+        if cutoff_frequency > 0:
             self.is_torque_filtered = True
             self.torque_filter = LowpassFilter(
                 cutoff_frequency, 1 / dt, len(self.bullet_controlledJoints)

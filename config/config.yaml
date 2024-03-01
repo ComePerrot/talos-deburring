@@ -2,6 +2,8 @@ numberTargets: [3, 3, 3]
 maxTime: 4
 timeStepSimulation: 1e-3
 toleranceError: 0.005
+MPC_delay: 1
+robot_cutoff_frequency: 5
 GUI: false
 verbose: true
 
@@ -38,9 +40,9 @@ robot:
       arm_left_2_joint,
       arm_left_3_joint,
       arm_left_4_joint,
-      arm_left_5_joint,
-      arm_left_6_joint,
-      arm_left_7_joint,
+      # arm_left_5_joint,
+      # arm_left_6_joint,
+      # arm_left_7_joint,
       arm_right_1_joint,
       arm_right_2_joint,
       arm_right_3_joint,
@@ -72,7 +74,7 @@ OCP:
   w_control_limit: 500
   w_com_pos: 500
   w_gripper_pos: 5
-  w_gripper_rot: 30
+  w_gripper_rot: 0
   w_gripper_vel: 2
   limit_scale: 0.95
   limit_speed: true
@@ -87,13 +89,13 @@ OCP:
     leg_left_3_joint: [500, 1, 1]
     leg_left_4_joint: [500, 1, 1]
     leg_left_5_joint: [1000, 1, 1]
-    leg_left_6_joint: [1000, 1, 1]
+    leg_left_6_joint: [1000, 100, 1]
     leg_right_1_joint: [500, 1, 1]
     leg_right_2_joint: [500, 1, 1]
     leg_right_3_joint: [500, 1, 1]
     leg_right_4_joint: [500, 1, 1]
     leg_right_5_joint: [1000, 1, 1]
-    leg_right_6_joint: [1000, 1, 1]
+    leg_right_6_joint: [1000, 100, 1]
     torso_1_joint: [100, 100, 1]
     torso_2_joint: [200, 100, 1]
     arm_left_1_joint: [100, 10, 1]

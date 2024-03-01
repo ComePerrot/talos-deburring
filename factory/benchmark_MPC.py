@@ -11,6 +11,7 @@ class bench_MPC(bench_base):
             self.pinWrapper.get_x0(),
             self.oMtarget.translation,
             self.params["OCP"],
+            self.params["MPC_delay"],
         )
 
         # RICCATI
