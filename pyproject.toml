@@ -1,0 +1,23 @@
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
+
+[tool.isort]
+profile = "black"
+
+[tool.poetry]
+authors = ["Côme Perrot <come.perrot@laas.fr>"]
+description = "Benchmark package for talos manipulation"
+license = "BSD-2-Clause"
+name = "benchmark-manipulation"
+packages = [{include = ""}]
+readme = "README.md"
+version = "0.1.0"
+
+[tool.ruff]
+extend-ignore = ["D203", "D213"]
+extend-select = ["A", "B", "C", "COM", "DJ", "EM", "EXE", "G", "PTH", "RET", "RUF", "UP", "W", "YTT"]
+target-version = "py38"
+
+[tool.tomlsort]
+all = true
