@@ -14,8 +14,8 @@ target:
   targetSizeHigh: [0.05, 0.1, 0.05]
 
 robot:
-  urdf_path: "/home/cperrot/ws_bench/talos-limits/urdf/talos_custom.urdf"
-  srdf_path: "/home/cperrot/ws_bench/talos-limits/urdf/talos.srdf"
+  urdf_path: "/home/cperrot/ws_bench/talos-private-conf/robot_description/urdf/talos_custom.urdf"
+  srdf_path: "/home/cperrot/ws_bench/talos-private-conf/robot_description/urdf/talos.srdf"
   robot_description: ""
   left_foot_name: "right_sole_link"
   right_foot_name: "left_sole_link"

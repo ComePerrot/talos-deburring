@@ -77,7 +77,7 @@ def main():
         print("Failure: " + str(failure))
         print("Success: " + str(success))
 
-    simulator.end
+    simulator.end()
 
 
 if __name__ == "__main__":

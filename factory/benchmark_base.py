@@ -2,7 +2,7 @@ import pinocchio as pin
 import numpy as np
 import yaml
 
-from limit_checker.limit_checker import LimitChecker
+from limit_checker_talos.limit_checker import LimitChecker
 
 
 class bench_base:

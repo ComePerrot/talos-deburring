@@ -16,7 +16,7 @@ class TalosDeburringSimulator:
         enableGUI=False,
         enableGravity=True,
         dt=1e-3,
-        cutoff_frequency=None,
+        cutoff_frequency=0,
     ):
         self._setupBullet(enableGUI, enableGravity, dt)
         self._setupRobot(URDF, rmodelComplete, controlledJointsIDs, randomInit)
