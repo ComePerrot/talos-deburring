@@ -1,16 +1,13 @@
 import pinocchio as pin
 import numpy as np
-import yaml
 
 from limit_checker_talos.limit_checker import LimitChecker
 
 
-
 class bench_base:
-    def __init__(self, filename, pinWrapper, simulator):
+    def __init__(self, params, pinWrapper, simulator):
         # PARAMETERS
-        with filename.open(mode="r") as paramFile:
-            self.params = yaml.safe_load(paramFile)
+        self.params = params
 
         self.error_tolerance = self.params["toleranceError"]
         self.time_step_simulation = float(self.params["timeStepSimulation"])
