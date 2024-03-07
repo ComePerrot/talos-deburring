@@ -5,10 +5,11 @@ import yaml
 from limit_checker_talos.limit_checker import LimitChecker
 
 
+
 class bench_base:
     def __init__(self, filename, pinWrapper, simulator):
         # PARAMETERS
-        with open(filename, "r") as paramFile:
+        with filename.open(mode="r") as paramFile:
             self.params = yaml.safe_load(paramFile)
 
         self.error_tolerance = self.params["toleranceError"]
@@ -22,7 +23,8 @@ class bench_base:
         # Robot handler
         self.pinWrapper = pinWrapper
         self.limit_checker = LimitChecker(
-            self.pinWrapper.get_rmodel(), self.params["verbose"]
+            self.pinWrapper.get_rmodel(),
+            self.params["verbose"],
         )
 
         # Simulator
@@ -61,7 +63,7 @@ class bench_base:
 
             error_placement_tool = np.linalg.norm(
                 self.pinWrapper.get_end_effector_frame().translation
-                - self.oMtarget.translation
+                - self.oMtarget.translation,
             )
 
             if error_placement_tool < self.error_tolerance:
@@ -90,30 +92,30 @@ class bench_base:
         rmodel = self.pinWrapper.get_rmodel()
 
         for jointName in rmodel.names[2:]:
-            id = rmodel.getJointId(jointName) - 2
+            joint_id = rmodel.getJointId(jointName) - 2
 
-            position = x[7 + id]
-            speed = x[rmodel.nq + 6 + id]
-            torque = torques[id]
+            position = x[7 + joint_id]
+            speed = x[rmodel.nq + 6 + joint_id]
+            torque = torques[joint_id]
 
-            if (position > rmodel.upperPositionLimit[7 + id]) or (
-                position < rmodel.lowerPositionLimit[7 + id]
+            if (position > rmodel.upperPositionLimit[7 + joint_id]) or (
+                position < rmodel.lowerPositionLimit[7 + joint_id]
             ):
-                if position > rmodel.upperPositionLimit[7 + id]:
+                if position > rmodel.upperPositionLimit[7 + joint_id]:
                     exceeded_position_list.append(
-                        (jointName, position, rmodel.upperPositionLimit[7 + id])
+                        (jointName, position, rmodel.upperPositionLimit[7 + joint_id]),
                     )
                 else:
                     exceeded_position_list.append(
-                        (jointName, position, rmodel.lowerPositionLimit[7 + id])
+                        (jointName, position, rmodel.lowerPositionLimit[7 + joint_id]),
                     )
-            if np.abs(speed) > rmodel.velocityLimit[6 + id]:
+            if np.abs(speed) > rmodel.velocityLimit[6 + joint_id]:
                 exceeded_speed_list.append(
-                    (jointName, speed, rmodel.velocityLimit[6 + id])
+                    (jointName, speed, rmodel.velocityLimit[6 + joint_id]),
                 )
-            if np.abs(torque) > rmodel.effortLimit[6 + id]:
+            if np.abs(torque) > rmodel.effortLimit[6 + joint_id]:
                 exceeded_torque_list.append(
-                    (jointName, torque, rmodel.effortLimit[6 + id])
+                    (jointName, torque, rmodel.effortLimit[6 + joint_id]),
                 )
         return (exceeded_position_list, exceeded_speed_list, exceeded_torque_list)
 

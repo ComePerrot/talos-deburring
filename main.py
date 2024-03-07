@@ -1,3 +1,4 @@
+from pathlib import Path
 import numpy as np
 import yaml
 
@@ -6,6 +7,7 @@ from deburring_mpc import RobotDesigner
 from gym_talos.utils.create_target import TargetGoal
 
 from simulator.bullet_Talos import TalosDeburringSimulator
+from simulator.mujoco_Talos import TalosMujoco
 from factory.benchmark_MPRL import bench_MPRL
 from factory.benchmark_MPC import bench_MPC
 from factory.benchmark_MPC_variablePosture import bench_MPC_variablePosture
@@ -14,8 +16,10 @@ from factory.benchmark_MPC_noRiccati import bench_MPC_noRiccati
 
 def main():
     # PARAMETERS
-    filename = "benchmark-manipulation/config/config.yaml"
-    with open(filename, "r") as paramFile:
+    parameter_filename = "config/config.yaml"
+    filepath = Path(__file__).resolve().parent
+    parameter_file = filepath / parameter_filename
+    with parameter_file.open(mode="r") as paramFile:
         params = yaml.safe_load(paramFile)
 
     verbose = params["verbose"]
@@ -40,10 +44,10 @@ def main():
         cutoff_frequency=params["robot_cutoff_frequency"],
     )
 
-    MPRL = bench_MPRL(filename, target_handler, pinWrapper, simulator)
-    MPC = bench_MPC(filename, pinWrapper, simulator)
-    MPC_variablePosture = bench_MPC_variablePosture(filename, pinWrapper, simulator)
-    MPC_noRiccati = bench_MPC_noRiccati(filename, pinWrapper, simulator)
+    MPRL = bench_MPRL(parameter_file, target_handler, pinWrapper, simulator)
+    MPC = bench_MPC(parameter_file, pinWrapper, simulator)
+    MPC_variablePosture = bench_MPC_variablePosture(parameter_file, pinWrapper, simulator)
+    MPC_noRiccati = bench_MPC_noRiccati(parameter_file, pinWrapper, simulator)
 
     for controller in [MPC]:
         print(type(controller).__name__)

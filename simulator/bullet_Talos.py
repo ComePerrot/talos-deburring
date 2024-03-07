@@ -18,62 +18,23 @@ class TalosDeburringSimulator:
         dt=1e-3,
         cutoff_frequency=0,
     ):
-        self._setupBullet(enableGUI, enableGravity, dt)
+        self._setupClient(enableGUI, enableGravity, dt)
         self._setupRobot(URDF, rmodelComplete, controlledJointsIDs, randomInit)
         self._setupInitializer(randomInit, rmodelComplete)
+        self._setupPDC()
         self._createObjectVisuals()
-        self.p_arm_gain = 100.0
-        self.d_arm_gain = 8.0
-        self.p_torso_gain = 500.0
-        self.d_torso_gain = 20.0
-        self.p_leg_gain = 800.0
-        self.d_leg_gain = 35.0
-        self.feed_forward = np.array(
-            [
-                0,
-                1,
-                2,
-                -5e01,
-                3,
-                -5,
-                0,
-                1,
-                2,
-                -5e01,
-                3,
-                5,
-                0,
-                6e-1,
-                6e-02,
-                5e-01,
-                2.2,
-                -9.3,
-                -1.1e-01,
-                3.2e-01,
-                -1.5,
-                4.4e-02,
-                -6e-02,
-                -5e-01,
-                -2.2,
-                -9.3,
-                1.1e-01,
-                -3.2e-01,
-                -1.5,
-                4.4e-02,
-                -3.9e-01,
-                1.3e-03,
-            ]
-        )
 
         if cutoff_frequency > 0:
             self.is_torque_filtered = True
             self.torque_filter = LowpassFilter(
-                cutoff_frequency, 1 / dt, len(self.bullet_controlledJoints)
+                cutoff_frequency,
+                1 / dt,
+                len(self.bullet_controlledJoints),
             )
         else:
             self.is_torque_filtered = False
 
-    def _setupBullet(self, enableGUI, enableGravity, dt):
+    def _setupClient(self, enableGUI, enableGravity, dt):
         # Start the client for PyBullet
         if enableGUI:
             self.physicsClient = p.connect(p.SHARED_MEMORY)
@@ -237,6 +198,50 @@ class TalosDeburringSimulator:
                 ]
             ] = i
 
+    def _setupPDC(self):
+        self.p_arm_gain = 100.0
+        self.d_arm_gain = 8.0
+        self.p_torso_gain = 500.0
+        self.d_torso_gain = 20.0
+        self.p_leg_gain = 800.0
+        self.d_leg_gain = 35.0
+        self.feed_forward = np.array(
+            [
+                0,
+                1,
+                2,
+                -5e01,
+                3,
+                -5,
+                0,
+                1,
+                2,
+                -5e01,
+                3,
+                5,
+                0,
+                6e-1,
+                6e-02,
+                5e-01,
+                2.2,
+                -9.3,
+                -1.1e-01,
+                3.2e-01,
+                -1.5,
+                4.4e-02,
+                -6e-02,
+                -5e-01,
+                -2.2,
+                -9.3,
+                1.1e-01,
+                -3.2e-01,
+                -1.5,
+                4.4e-02,
+                -3.9e-01,
+                1.3e-03,
+            ],
+        )
+
     def _createObjectVisuals(self, target=True, tool=True):
         """Creates visual element for the simulation
 
@@ -334,11 +339,7 @@ class TalosDeburringSimulator:
 
         return x
 
-    def getContactPoints(self):
-        """Get contact points between the robot and the environment"""
-        return [(i[4], i[6], i[9]) for i in p.getContactPoints()]
-
-    def step(self, torques, oMtool=None, base_pose=None):
+    def step(self, torques, oMtool=None):
         """Do one step of simulation"""
         self._updateVisuals(oMtool)
         if self.is_torque_filtered:
@@ -353,7 +354,6 @@ class TalosDeburringSimulator:
 
         Args:
             oMtool: Placement of the tool expressed as a SE3 object
-            base_pose: position of the base of the robot
         """
         if oMtool is not None:
             self._setVisualObjectPosition(
@@ -395,18 +395,18 @@ class TalosDeburringSimulator:
             p.stepSimulation()
 
     def pd_controller(self):
-        for id_pin, id in enumerate(self.bulletJointsIdInPinOrder):
-            joint_name = p.getJointInfo(self.robotId, id)[1].decode()
+        for id_pin, id_bullet in enumerate(self.bulletJointsIdInPinOrder):
+            joint_name = p.getJointInfo(self.robotId, id_bullet)[1].decode()
 
             d_pos = (
-                p.getJointState(self.robotId, id)[0]
+                p.getJointState(self.robotId, id_bullet)[0]
                 - self.initial_joint_positions[id_pin]
             )
-            d_vel = p.getJointState(self.robotId, id)[1]
+            d_vel = p.getJointState(self.robotId, id_bullet)[1]
 
             feed_forward = self.feed_forward[id_pin]
 
-            if id not in self.bullet_controlledJoints:
+            if id_bullet not in self.bullet_controlledJoints:
                 continue
 
             if "torso" in joint_name:
@@ -429,30 +429,9 @@ class TalosDeburringSimulator:
 
             p.setJointMotorControl(
                 self.robotId,
-                id,
+                id_bullet,
                 p.TORQUE_CONTROL,
                 torque,
-            )
-
-    def _reset_robot_joints(self):
-        for i in range(len(self.initial_joint_positions)):
-            if (
-                self.bulletJointsIdInPinOrder[i] in self.bullet_controlledJoints
-                and self.random_init
-            ):
-                init_pos = np.random.uniform(
-                    low=self.lower_joint_bound[i],
-                    high=self.upper_joint_bound[i],
-                )
-                self.qC0[
-                    self.bullet_controlledJoints.index(self.bulletJointsIdInPinOrder[i])
-                ] = init_pos
-            else:
-                init_pos = self.initial_joint_positions[i]
-            p.resetJointState(
-                self.robotId,
-                self.bulletJointsIdInPinOrder[i],
-                init_pos,
             )
 
     def end(self):

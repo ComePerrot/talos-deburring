@@ -13,7 +13,8 @@ class RLTorqueController:
         action, _ = self.model.predict(observation, deterministic=True)
         torque = self.action_wrapper.action(action)
 
-        return torque
+        return torque  # noqa: RET504
+
 
 class observation_wrapper:
     def __init__(self):
@@ -44,15 +45,17 @@ class observation_wrapper:
         self.avgGoal = (self.upperGoalLim + self.lowerGoalLim) / 2
         self.diffGoal = self.upperGoalLim - self.lowerGoalLim
 
-    def get_observation(x_measured):
-        return (goal - self.avgGoal) / self.diffGoal
-        return (x_measured - self.avgObs) / self.diffObs
-        return (target - self.avgGoal) / self.diffGoal
-    
-        final_obs.spaces["observation"] = np.array(observation)
-        final_obs.spaces["achieved_goal"] = np.array(achieved_goal)
-        final_obs.spaces["desired_goal"] = np.array(desired_goal)
-        return collections.OrderedDict(final_obs)
+    def get_observation(self, x_measured):
+        pass
+        # return (goal - self.avgGoal) / self.diffGoal
+        # return (x_measured - self.avgObs) / self.diffObs
+        # return (target - self.avgGoal) / self.diffGoal
+
+        # final_obs.spaces["observation"] = np.array(observation)
+        # final_obs.spaces["achieved_goal"] = np.array(achieved_goal)
+        # final_obs.spaces["desired_goal"] = np.array(desired_goal)
+        # return collections.OrderedDict(final_obs)
+
 
 class action_wrapper:
     def __init__(self):

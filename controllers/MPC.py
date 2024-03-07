@@ -6,7 +6,7 @@ from deburring_mpc import OCP
 
 
 class MPController:
-    def __init__(self, pinWrapper, x_initial, target_pos, param_ocp, delay = 0):
+    def __init__(self, pinWrapper, x_initial, target_pos, param_ocp, delay=0):
         self.output_queue = queue.Queue()
         self.delay = delay
 
@@ -53,21 +53,21 @@ class MPController:
                     self.param_ocp["base"]["linear_velocity"],
                     self.param_ocp["base"]["angular_velocity"],
                     joint_velocity_weights,
-                ]
+                ],
             )
         else:
             self.param_ocp["state_weights"] = np.concatenate(
                 [
                     joint_position_weights,
                     joint_velocity_weights,
-                ]
+                ],
             )
 
         self.param_ocp["control_weights"] = np.array(
             [
                 self.param_ocp["joints"][joint][2]
                 for joint in controlled_joints_names[1:]
-            ]
+            ],
         )
 
     def change_target(self, x_initial, target_position):
@@ -78,9 +78,9 @@ class MPController:
         self.crocoWrapper = OCP(self.param_ocp, self.pinWrapper)
         self.crocoWrapper.initialize(x_initial, self.oMtarget)
 
-        for i in range(self.delay):
+        for _ in range(self.delay):
             self.output_queue.put(
-                (self.crocoWrapper.torque, x_initial, self.crocoWrapper.gain)
+                (self.crocoWrapper.torque, x_initial, self.crocoWrapper.gain),
             )
 
     def step(self, x_measured, reference_posture=None):
@@ -103,7 +103,7 @@ class MPController:
 
         self.crocoWrapper.solve(x_measured)
         self.output_queue.put(
-            (self.crocoWrapper.torque, self.x0, self.crocoWrapper.gain)
+            (self.crocoWrapper.torque, self.x0, self.crocoWrapper.gain),
         )
 
         return self.output_queue.get()

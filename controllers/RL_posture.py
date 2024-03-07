@@ -14,13 +14,14 @@ class RLPostureController:
 
     def step(self, x_measured, x_future_list):
         observation = self.observation_wrapper.get_observation(
-            x_measured, x_future_list
+            x_measured,
+            x_future_list,
         )
         action, _ = self.model.predict(observation, deterministic=True)
         posture = self.action_wrapper.action(action)
         x_reference = self._build_full_ref(posture)
 
-        return x_reference
+        return x_reference  # noqa: RET504
 
     def _build_full_ref(self, posture):
         x_reference = self.x0

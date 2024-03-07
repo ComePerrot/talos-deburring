@@ -21,21 +21,21 @@ class bench_MPRL(bench_base):
                 for joint_name in controlled_joints_names
             ],
         )
-        kwargs_action = dict(
-            rl_controlled_IDs=rl_controlled_IDs,
-            rmodel=self.pinWrapper.get_rmodel(),
-            scaling_factor=self.params["RL_posture"]["actionScale"],
-            scaling_mode=self.params["RL_posture"]["actionType"],
-            initial_pose=None,
-        )
+        kwargs_action = {
+            "rl_controlled_IDs": rl_controlled_IDs,
+            "rmodel": self.pinWrapper.get_rmodel(),
+            "scaling_factor": self.params["RL_posture"]["actionScale"],
+            "scaling_mode": self.params["RL_posture"]["actionType"],
+            "initial_pose": None,
+        }
         #       Observation wrapper
-        kwargs_observation = dict(
-            normalize_obs=True,
-            rmodel=self.pinWrapper.get_rmodel(),
-            target_handler=self.target_handler,
-            history_size=0,
-            prediction_size=3,
-        )
+        kwargs_observation = {
+            "normalize_obs": True,
+            "rmodel": self.pinWrapper.get_rmodel(),
+            "target_handler": self.target_handler,
+            "history_size": 0,
+            "prediction_size": 3,
+        }
         model_path = self.params["RL_posture"]["model_path"]
         self.posture_controller = RLPostureController(
             model_path,
@@ -76,7 +76,8 @@ class bench_MPRL(bench_base):
     def _run_controller(self, Time, x_measured):
         if Time % (self.num_simulation_step * self.num_OCP_steps) == 0:
             self.x_reference = self.posture_controller.step(
-                x_measured, self.mpc.crocoWrapper.solver.xs
+                x_measured,
+                self.mpc.crocoWrapper.solver.xs,
             )
 
         if Time % self.num_simulation_step == 0:
@@ -85,4 +86,4 @@ class bench_MPRL(bench_base):
 
         torques = self.riccati.step(x_measured)
 
-        return torques
+        return torques  # noqa: RET504

@@ -16,4 +16,4 @@ class bench_MPC_variablePosture(bench_MPC):
 
         torques = self.riccati.step(x_measured)
 
-        return torques
+        return torques  # noqa: RET504

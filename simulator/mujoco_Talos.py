@@ -6,7 +6,7 @@ import numpy as np
 class TalosMujoco:
     def __init__(self, controlled_joints_names):
         self.model = mujoco.MjModel.from_xml_path(
-            "/home/cj/workspaces/talos-limits/pal_talos/scene_motor.xml"
+            "/home/cperrot/ws_bench/talos-private-conf/robot_description/mujoco/scene_motor.xml",
         )
         self.data = mujoco.MjData(self.model)
 
@@ -37,10 +37,10 @@ class TalosMujoco:
 
         self.state = np.zeros(2 * len(self.controlled_joints_names) + 7 + 6)
 
-    def reset(self, target_pos= [0,0,0]):
+    def reset(self, target_pos=None):
         mujoco.mj_resetDataKeyframe(self.model, self.data, 1)
 
-        for i in range(100):
+        for _ in range(100):
             self.pd_controller()
             mujoco.mj_step(self.model, self.data)
 
@@ -85,8 +85,8 @@ class TalosMujoco:
             self.viewer = None
 
     def pd_controller(self):
-        for id in range(self.model.nu):
-            act_name = self.data.actuator(id).name
+        for actuator_id in range(self.model.nu):
+            act_name = self.data.actuator(actuator_id).name
             joint_name = act_name[:-7]
             joint_id = self.data.joint(joint_name).id
 
@@ -95,25 +95,29 @@ class TalosMujoco:
 
             if "torso" in joint_name:
                 torque = (
-                    self.ctrl_ff[id]
+                    self.ctrl_ff[actuator_id]
                     - self.p_torso_gain * d_pos
                     - self.d_torso_gain * d_vel
                 )
 
             elif "arm" in joint_name:
                 torque = (
-                    self.ctrl_ff[id] - self.p_arm_gain * d_pos - self.d_arm_gain * d_vel
+                    self.ctrl_ff[actuator_id]
+                    - self.p_arm_gain * d_pos
+                    - self.d_arm_gain * d_vel
                 )
 
             elif "leg" in joint_name:
                 torque = (
-                    self.ctrl_ff[id] - self.p_leg_gain * d_pos - self.d_leg_gain * d_vel
+                    self.ctrl_ff[actuator_id]
+                    - self.p_leg_gain * d_pos
+                    - self.d_leg_gain * d_vel
                 )
 
             else:
-                torque = self.ctrl_ff[id] - d_pos - d_vel
+                torque = self.ctrl_ff[actuator_id] - d_pos - d_vel
 
-            self.data.ctrl[id] = torque
+            self.data.ctrl[actuator_id] = torque
 
 
 if __name__ == "__main__":
