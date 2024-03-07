@@ -3,7 +3,7 @@ import numpy as np
 import pinocchio as pin
 from deburring_mpc import RobotDesigner, OCP
 
-from limit_checker.limit_checker import LimitChecker
+from limit_checker_talos.limit_checker import LimitChecker
 
 from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
 from gym_talos.utils.create_target import TargetGoal
@@ -22,30 +22,16 @@ class EnvTalosMPC(gym.Env):
         self.target_handler = TargetGoal(params_env)
         self.target_handler.create_target()
 
-        # Robot wrapper
+        # Robot model handler
         self.pinWrapper = RobotDesigner()
-        self.pinWrapper.initialize(params_designer)
-
-        gripper_SE3_tool = pin.SE3.Identity()
-        gripper_SE3_tool.translation[0] = params_designer["toolPosition"][0]
-        gripper_SE3_tool.translation[1] = params_designer["toolPosition"][1]
-        gripper_SE3_tool.translation[2] = params_designer["toolPosition"][2]
-        self.pinWrapper.add_end_effector_frame(
-            "deburring_tool",
-            "gripper_left_fingertip_3_link",
-            gripper_SE3_tool,
+        params_designer["end_effector_position"] = np.array(
+            params_designer["end_effector_position"],
         )
+        self.pinWrapper.initialize(params_designer)
 
         self.rmodel = self.pinWrapper.get_rmodel()
 
-        self.limit_checker = LimitChecker(self.rmodel)
-
-        self.rmodel.lowerPositionLimit = np.array(
-            params_designer["lower_position_limit"],
-        )
-        self.rmodel.upperPositionLimit = np.array(
-            params_designer["upper_position_limit"],
-        )
+        self.limit_checker = LimitChecker(self.rmodel, verbose=False)
 
         self.rl_controlled_IDs = np.array(
             [
@@ -318,10 +304,10 @@ class EnvTalosMPC(gym.Env):
         """Compute step reward
 
         The reward is composed of:
-            - A bonus when the environment is still alive (no constraint has been
-              infriged)
-            - A cost proportional to the norm of the torques
-            - A cost proportional to the distance of the end-effector to the target
+        - A bonus when the environment is still alive (no constraint has been
+            infriged)
+        - A cost proportional to the norm of the torques
+        - A cost proportional to the distance of the end-effector to the target
 
         Args:
             torques: torque vector
@@ -386,10 +372,10 @@ class EnvTalosMPC(gym.Env):
 
         Environment is truncated when a constraint is infriged.
         There are two possible reasons for truncations:
-         - Loss of balance of the robot:
+        - Loss of balance of the robot:
             Rollout is stopped if position of CoM is under threshold
             No check is carried out if threshold is set to 0
-         - Infrigement of the kinematic constraints of the robot
+        - Infrigement of the kinematic constraints of the robot
             Rollout is stopped if configuration exceeds model limits
 
 
@@ -410,26 +396,11 @@ class EnvTalosMPC(gym.Env):
             x_measured[-self.rmodel.nv + 6 :],
             torques,
         )
+
         if limits is not False:
             truncation_limits = True
         else:
             truncation_limits = False
-
-        # truncation_limits_position = (
-        #     x_measured[: self.rmodel.nq] > self.rmodel.upperPositionLimit
-        # ).any() or (x_measured[: self.rmodel.nq] < self.rmodel.lowerPositionLimit).any()
-        # truncation_limits_speed = (
-        #     np.abs(x_measured[-self.rmodel.nv :]) > self.rmodel.velocityLimit
-        # ).any()
-        # truncation_limits_command = (
-        #     np.abs(torques) > self.rmodel.effortLimit[6:]
-        # ).any()
-
-        # truncation_limits = (
-        #     truncation_limits_position
-        #     or truncation_limits_speed
-        #     or truncation_limits_command
-        # )
 
         # Explicitely casting from numpy.bool_ to bool
         return bool(truncation_balance or truncation_limits)
