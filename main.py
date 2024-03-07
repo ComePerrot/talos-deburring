@@ -30,7 +30,7 @@ def main():
     # Robot handler
     pinWrapper = RobotDesigner()
     params["robot"]["end_effector_position"] = np.array(
-        params["robot"]["end_effector_position"]
+        params["robot"]["end_effector_position"],
     )
     pinWrapper.initialize(params["robot"])
 
@@ -44,10 +44,14 @@ def main():
         cutoff_frequency=params["robot_cutoff_frequency"],
     )
 
-    MPRL = bench_MPRL(parameter_file, target_handler, pinWrapper, simulator)
-    MPC = bench_MPC(parameter_file, pinWrapper, simulator)
-    MPC_variablePosture = bench_MPC_variablePosture(parameter_file, pinWrapper, simulator)
-    MPC_noRiccati = bench_MPC_noRiccati(parameter_file, pinWrapper, simulator)
+    MPRL = bench_MPRL(params, target_handler, pinWrapper, simulator)
+    MPC = bench_MPC(params, pinWrapper, simulator)
+    MPC_variablePosture = bench_MPC_variablePosture(
+        params,
+        pinWrapper,
+        simulator,
+    )
+    MPC_noRiccati = bench_MPC_noRiccati(params, pinWrapper, simulator)
 
     for controller in [MPC]:
         print(type(controller).__name__)
