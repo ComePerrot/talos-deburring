@@ -3,17 +3,17 @@ from pathlib import Path
 import yaml
 from stable_baselines3 import SAC
 
-from .envs.env_talos_deburring_her import EnvTalosDeburringHer
-from .envs.env_talos_mpc_deburring import EnvTalosMPC
+from gym_talos.envs.env_talos_deburring_her import EnvTalosDeburringHer
+from gym_talos.envs.env_talos_mpc_deburring import EnvTalosMPC
 
 # Script parameters
 envMPC = True
 bestModel = True
-training_name = "2023-09-04_severalJoints_severalTargets_predictions_1"
+training_name = "2024-03-08_4joints_1"
 
 
 train_name = "_".join(training_name.split("_")[:-1])
-log_dir = Path("logs")
+log_dir = Path(__file__).resolve().parent / "../../logs"
 if bestModel:
     model_path = log_dir / training_name / "best_model.zip"
 else:

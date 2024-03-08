@@ -7,7 +7,7 @@ from gym_talos.utils.modelLoader import TalosDesigner
 
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.env_util import make_vec_env
-from .envs.env_talos_mpc_deburring import EnvTalosMPC
+from gym_talos.envs.env_talos_mpc_deburring import EnvTalosMPC
 
 from IPython import embed
 

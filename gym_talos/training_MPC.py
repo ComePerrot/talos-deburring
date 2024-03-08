@@ -7,9 +7,9 @@ import yaml
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CallbackList
 
-from .envs.env_talos_mpc_deburring import EnvTalosMPC
-from .utils.loader_and_saver import setup_env, setup_model
-from .utils.custom_callbacks import (
+from gym_talos.envs.env_talos_mpc_deburring import EnvTalosMPC
+from gym_talos.utils.loader_and_saver import setup_env, setup_model
+from gym_talos.utils.custom_callbacks import (
     LoggerCallback,
     SaveFilesCallback,
     EvalOnTrainingCallback,
