@@ -1,8 +1,10 @@
 import gymnasium as gym
 import numpy as np
 import pinocchio as pin
-from deburring_mpc import RobotDesigner, OCP
+from deburring_mpc import RobotDesigner
 
+from controllers.MPC import MPController
+from controllers.Riccati import RiccatiController
 from limit_checker_talos.limit_checker import LimitChecker
 
 from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
@@ -31,7 +33,7 @@ class EnvTalosMPC(gym.Env):
 
         self.rmodel = self.pinWrapper.get_rmodel()
 
-        self.limit_checker = LimitChecker(self.rmodel, verbose=False)
+        self.limit_checker = LimitChecker(self.pinWrapper.get_rmodel(), verbose=False)
 
         self.rl_controlled_IDs = np.array(
             [
@@ -76,8 +78,6 @@ class EnvTalosMPC(gym.Env):
         )
 
     def _init_ocp(self, param_ocp):
-        self.param_ocp["state_weights"] = np.array(self.param_ocp["state_weights"])
-        self.param_ocp["control_weights"] = np.array(self.param_ocp["control_weights"])
 
         self.oMtarget = pin.SE3.Identity()
         self.oMtarget.translation[0] = self.target_handler.position_target[0]
@@ -86,13 +86,20 @@ class EnvTalosMPC(gym.Env):
 
         self.oMtarget.rotation = np.array([[0, 0, -1], [0, -1, 0], [-1, 0, 0]])
 
-        self.crocoWrapper = OCP(param_ocp, self.pinWrapper)
-        self.crocoWrapper.initialize(self.pinWrapper.get_x0(), self.oMtarget)
+        self.mpc = MPController(
+            self.pinWrapper,
+            self.pinWrapper.get_x0(),
+            self.target_handler.position_target,
+            param_ocp,
+            1,
+        )
 
-        self.ddp = self.crocoWrapper.solver
-
-        # self.X_warm = self.ddp.xs
-        # self.U_warm = self.ddp.us
+        self.riccati = RiccatiController(
+            state=self.mpc.crocoWrapper.state,
+            torque=self.mpc.crocoWrapper.torque,
+            xref=self.pinWrapper.get_x0(),
+            riccati=self.mpc.crocoWrapper.gain,
+        )
 
         # Problem can be modified here to fit the needs of the RL
 
@@ -187,6 +194,7 @@ class EnvTalosMPC(gym.Env):
             Observation of the initial state.
         """
         self.timer = 0
+        self.sim_time = 0
         if options is None:
             options = {}
 
@@ -198,15 +206,12 @@ class EnvTalosMPC(gym.Env):
         self.oMtarget.translation[1] = self.target_handler.position_target[1]
         self.oMtarget.translation[2] = self.target_handler.position_target[2]
 
-        self.simulator.reset(target_pos=self.oMtarget.translation)
+        self.simulator.reset(target_pos=self.target_handler.position_target)
 
         x_measured = self.simulator.getRobotState()
         self.pinWrapper.update_reduced_model(x_measured)
 
-        self._init_ocp(self.param_ocp)
-
-        # self.crocoWrapper.reset(x_measured, self.oMtarget)
-        # self.crocoWrapper.set_warm_start(self.X_warm, self.U_warm)
+        self.mpc.change_target(self.pinWrapper.get_x0(), self.oMtarget.translation)
 
         self.distance_tool_target = None
         self.reach_time = None
@@ -217,7 +222,7 @@ class EnvTalosMPC(gym.Env):
             self.observation_handler.reset(
                 x_measured,
                 self.oMtarget.translation,
-                self.crocoWrapper.solver.xs,
+                self.mpc.crocoWrapper.solver.xs,
             ),
             infos,
         )
@@ -225,11 +230,12 @@ class EnvTalosMPC(gym.Env):
     def step(self, action):
         """Execute a step of the environment
 
-        One step of the environment is numSimulationSteps of the simulator with the same
-        command.
+        For each step of the environment the OCP is ran numOCPSteps times.
+        The simulator is called numSimulationSteps between each iteration of the OCP.
+        So each step of the environment represents numOCPSteps*numSimulationSteps calls to the simulator
         The model of the robot is updated using the observation taken from the
         environment.
-        The termination and condition are checked and the reward is computed.
+        The termination and truncation conditions are checked and the reward is computed.
 
         Args:
             action: Normalized action vector (arm arm posture reference)
@@ -248,30 +254,21 @@ class EnvTalosMPC(gym.Env):
 
         torque_sum = 0
 
-        for _ in range(self.numOCPSteps):
-            x0 = x_measured = self.simulator.getRobotState()
+        for _ in range(self.numOCPSteps * self.numSimulationSteps):
+            x_measured = self.simulator.getRobotState()
             oMtool = self.pinWrapper.get_end_effector_frame()
+            if self.sim_time % self.numSimulationSteps == 0:
+                t0, x0, K0 = self.mpc.step(x_measured, None)
+                self.riccati.update_references(t0, x0, K0)
 
-            self._update_ocp(posture_reference)
+            torques = self.riccati.step(x_measured)
+            torque_sum += np.linalg.norm(torques)
 
-            for _ in range(self.numSimulationSteps):
-                torques = (
-                    self.crocoWrapper.torque
-                    + self.crocoWrapper.gain
-                    @ self.crocoWrapper.state.diff(x_measured, x0)
-                )
+            self.simulator.step(torques, oMtool)
+            self.sim_time += 1
 
-                torque_sum += np.linalg.norm(torques)
-
-                self.simulator.step(torques, oMtool)
-                x_measured = self.simulator.getRobotState()
-
-                if self._checkTruncation(x_measured, torques):
-                    break
-            else:
-                self.crocoWrapper.solve(x0)
-                continue
-            break
+            if self._checkTruncation(x_measured, torques):
+                break
 
         self.pinWrapper.update_reduced_model(x_measured)
 
@@ -279,7 +276,7 @@ class EnvTalosMPC(gym.Env):
 
         observation = self.observation_handler.get_observation(
             x_measured,
-            self.crocoWrapper.solver.xs,
+            self.mpc.crocoWrapper.solver.xs,
         )
         terminated = self._checkTermination(x_measured)
         truncated = self._checkTruncation(x_measured, torques)
@@ -288,22 +285,11 @@ class EnvTalosMPC(gym.Env):
 
         return observation, reward, terminated, truncated, infos
 
-    def _update_ocp(self, posture_reference):
-        self.crocoWrapper.recede()
-        self.crocoWrapper.change_goal_cost_activation(self.horizon_length - 1, True)
-        self.crocoWrapper.change_posture_reference(
-            self.horizon_length - 1,
-            posture_reference,
-        )
-        self.crocoWrapper.change_posture_reference(
-            self.horizon_length,
-            posture_reference,
-        )
-
     def _getReward(self, avg_torque_norm, x_measured, terminated, truncated):
         """Compute step reward
 
         The reward is composed of:
+        - A reward if the tool is close enough to the target
         - A bonus when the environment is still alive (no constraint has been
             infriged)
         - A cost proportional to the norm of the torques
@@ -376,7 +362,7 @@ class EnvTalosMPC(gym.Env):
             Rollout is stopped if position of CoM is under threshold
             No check is carried out if threshold is set to 0
         - Infrigement of the kinematic constraints of the robot
-            Rollout is stopped if configuration exceeds model limits
+            Rollout is stopped safety limits are exceeded
 
 
         Args:
