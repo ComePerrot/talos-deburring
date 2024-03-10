@@ -9,10 +9,14 @@ From: mambaorg/micromamba
         pkg-config \
         libyaml-cpp-dev
     git clone -b topic/MPC https://github.com/ComePerrot/talos-rl.git
+    git clone https://gitlab.laas.fr/cperrot/benchmark-manipulation.git
+    git clone https://gitlab.laas.fr/cperrot/talos-limits.git
     micromamba env create --yes --quiet -f talos-rl/environment.yml
     micromamba install --quiet -n talos-rl conda-forge::crocoddyl
     micromamba clean --all --yes
     micromamba run -n talos-rl python -m pip install ./talos-rl
+    micromamba run -n talos-rl python -m pip install ./benchmark-manipulation
+    micromamba run -n talos-rl python -m pip install ./talos-limits
 
     git clone --recursive -b devel https://github.com/ComePerrot/talos-manipulation.git
     cmake -B talos-manipulation/deburring-mpc/build -S talos-manipulation/deburring-mpc \
