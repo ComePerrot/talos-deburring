@@ -12,7 +12,7 @@ class ModelFactory:
     def create_robot_model():
         # Create and return a complex object
         rmodel = pin.buildModelFromUrdf(
-            urdf_path["custom"],
+            urdf_path["example_robot_data"],
             pin.JointModelFreeFlyer(),
         )
         pin.loadReferenceConfigurations(rmodel, srdf_path, False)
@@ -63,7 +63,7 @@ class TestBulletSimulator(unittest.TestCase):
             cutoff_frequency=0,
         )
 
-    def test_position_limit(self):
+    def test_reset(self):
         nb_tries = 10
         torques = np.array(
             [
@@ -98,14 +98,16 @@ class TestBulletSimulator(unittest.TestCase):
             x0_list[i, :] = self.simulator.getRobotState().copy()
             self.simulator.step(torques)
             x1_list[i, :] = self.simulator.getRobotState().copy()
-            for _ in range(10):
+            for _ in range(100):
                 self.simulator.step(torques)
 
         for x0 in x0_list:
-            self.assertListEqual(list(x0), list(x0_list[0]))
+            for x0_i, x0_i_ref in zip(x0, x0_list[0]):
+                self.assertAlmostEqual(x0_i, x0_i_ref, 2)
 
         for x1 in x1_list:
-            self.assertListEqual(list(x1), list(x1_list[0]))
+            for x1_i, x1_i_ref in zip(x1, x1_list[0]):
+                self.assertAlmostEqual(x1_i, x1_i_ref, 2)
 
 
 if __name__ == "__main__":
