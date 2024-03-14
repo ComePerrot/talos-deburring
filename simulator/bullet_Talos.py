@@ -205,42 +205,36 @@ class TalosDeburringSimulator:
         self.d_torso_gain = 20.0
         self.p_leg_gain = 800.0
         self.d_leg_gain = 35.0
-        self.feed_forward = np.array(
-            [
-                0,
-                1,
-                2,
-                -5e01,
-                3,
-                -5,
-                0,
-                1,
-                2,
-                -5e01,
-                3,
-                5,
-                0,
-                6e-1,
-                6e-02,
-                5e-01,
-                2.2,
-                -9.3,
-                -1.1e-01,
-                3.2e-01,
-                -1.5,
-                4.4e-02,
-                -6e-02,
-                -5e-01,
-                -2.2,
-                -9.3,
-                1.1e-01,
-                -3.2e-01,
-                -1.5,
-                4.4e-02,
-                -3.9e-01,
-                1.3e-03,
-            ],
-        )
+        self.feed_forward = {
+            "leg_left_1_joint": 0,
+            "leg_left_2_joint": 1,
+            "leg_left_3_joint": 2,
+            "leg_left_4_joint": -5e01,
+            "leg_left_5_joint": 3,
+            "leg_left_6_joint": -5,
+            "leg_right_1_joint": 0,
+            "leg_right_2_joint": 1,
+            "leg_right_3_joint": 2,
+            "leg_right_4_joint": -5e01,
+            "leg_right_5_joint": 3,
+            "leg_right_6_joint": 5,
+            "torso_1_joint": 0,
+            "torso_2_joint": 6e-1,
+            "arm_left_1_joint": 6e-02,
+            "arm_left_2_joint": 5e-01,
+            "arm_left_3_joint": 2.2,
+            "arm_left_4_joint": -9.3,
+            "arm_left_5_joint": 1.1e-01,
+            "arm_left_6_joint": 3.2e-01,
+            "arm_left_7_joint": -1.5,
+            "arm_right_1_joint": -6e-02,
+            "arm_right_2_joint": -5e-01,
+            "arm_right_3_joint": -2.2,
+            "arm_right_4_joint": -9.3,
+            "arm_right_5_joint": 1.1e-01,
+            "arm_right_6_joint": 3.2e-01,
+            "arm_right_7_joint": -1.5,
+        }
 
     def _createObjectVisuals(self, target=True, tool=True):
         """Creates visual element for the simulation
@@ -396,6 +390,9 @@ class TalosDeburringSimulator:
 
     def pd_controller(self):
         for id_pin, id_bullet in enumerate(self.bulletJointsIdInPinOrder):
+            if id_bullet not in self.bullet_controlledJoints:
+                continue
+
             joint_name = p.getJointInfo(self.robotId, id_bullet)[1].decode()
 
             d_pos = (
@@ -404,10 +401,7 @@ class TalosDeburringSimulator:
             )
             d_vel = p.getJointState(self.robotId, id_bullet)[1]
 
-            feed_forward = self.feed_forward[id_pin]
-
-            if id_bullet not in self.bullet_controlledJoints:
-                continue
+            feed_forward = self.feed_forward[joint_name]
 
             if "torso" in joint_name:
                 torque = (
