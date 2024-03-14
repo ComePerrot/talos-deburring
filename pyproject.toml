@@ -10,7 +10,8 @@ authors = ["Côme Perrot <come.perrot@laas.fr>"]
 description = "Benchmark package for talos manipulation"
 license = "BSD-2-Clause"
 name = "benchmark-manipulation"
-packages = [{include = "controllers"}]
+packages = [{include = "controllers"},
+            {include = "simulator"},]
 readme = "README.md"
 version = "0.1.0"
 
