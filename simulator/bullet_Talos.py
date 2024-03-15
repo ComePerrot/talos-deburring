@@ -20,7 +20,6 @@ class TalosDeburringSimulator:
     ):
         self._setupClient(enableGUI, enableGravity, dt)
         self._setupRobot(URDF, rmodelComplete, controlledJointsIDs, randomInit)
-        self._setupInitializer(randomInit, rmodelComplete)
         self._setupPDC()
         self._createObjectVisuals()
 
@@ -63,10 +62,6 @@ class TalosDeburringSimulator:
         self.initial_base_position = list(self.q0[:3])
         self.initial_base_orientation = list(self.q0[3:7])
         self.initial_joint_positions = list(self.q0[7:])
-
-        rmodelComplete.armature = (
-            rmodelComplete.rotorInertia * rmodelComplete.rotorGearRatio**2
-        )
 
         # Load robot
         self.robot_URDF = URDF
@@ -137,9 +132,6 @@ class TalosDeburringSimulator:
 
         Disable default position controller in torque controlled joints.
         Default controller will take care of other joints.
-
-        :param rmodelComplete Complete model of the robot
-        :param ControlledJoints List of ControlledJoints
         """
         p.setJointMotorControlArray(
             self.robotId,
@@ -147,56 +139,6 @@ class TalosDeburringSimulator:
             controlMode=p.VELOCITY_CONTROL,
             forces=[0.0 for m in self.bullet_controlledJoints],
         )
-
-    def _setupInitializer(self, randomInit, rmodelComplete, noise_coeff=0.01):
-        self.random_init = randomInit
-
-        lower_limits_joint = rmodelComplete.lowerPositionLimit[7:]
-        upper_limits_joint = rmodelComplete.upperPositionLimit[7:]
-        amplitude_limits_joint = upper_limits_joint - lower_limits_joint
-
-        lower_sampling_bound = (
-            self.initial_joint_positions - noise_coeff * amplitude_limits_joint
-        )
-        upper_sampling_bound = (
-            self.initial_joint_positions + noise_coeff * amplitude_limits_joint
-        )
-        self.lower_joint_bound = [
-            max(lower_sampling_bound[i], lower_limits_joint[i])
-            for i in range(len(self.initial_joint_positions))
-        ]
-        self.upper_joint_bound = [
-            min(upper_sampling_bound[i], upper_limits_joint[i])
-            for i in range(len(self.initial_joint_positions))
-        ]
-        self._init_joint_controlled(rmodelComplete)
-
-    def _init_joint_controlled(self, rmodelComplete):
-        """
-        Initialize the joint controlled
-        :param rmodelComplete Complete model of the robot
-        """
-
-        if self.has_free_flyer:
-            shift = 7
-            self.qC0 = np.empty(len(self.bullet_controlledJoints) + 7)
-        else:
-            shift = 0
-            self.qC0 = np.empty(len(self.bullet_controlledJoints))
-        self.dict_pos = {}
-        for i in range(len(self.bullet_controlledJoints)):
-            self.qC0[i + shift] = p.getJointState(
-                self.robotId,
-                self.bullet_controlledJoints[i],
-            )[0]
-            self.dict_pos[
-                rmodelComplete.names[
-                    2
-                    + self.bulletJointsIdInPinOrder.index(
-                        self.bullet_controlledJoints[i],
-                    )
-                ]
-            ] = i
 
     def _setupPDC(self):
         self.p_arm_gain = 100.0
@@ -384,9 +326,9 @@ class TalosDeburringSimulator:
         self._setInitialConfig()
         self._setVisualObjectPosition(self.target_visual, target_pos)
 
-        for _ in range(100):
-            self.pd_controller()
-            p.stepSimulation()
+        # for _ in range(100):
+        #     self.pd_controller()
+        #     p.stepSimulation()
 
     def pd_controller(self):
         for id_pin, id_bullet in enumerate(self.bulletJointsIdInPinOrder):
