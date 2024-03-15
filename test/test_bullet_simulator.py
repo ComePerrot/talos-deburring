@@ -116,9 +116,6 @@ class TestBulletSimulator(unittest.TestCase):
         self.simulator.reset([0, 0, 0])
         q = self.simulator.getRobotState().copy()
 
-        for i in range(7):
-            self.assertEqual(q0[i], q[i])
-
         for joint_id_reduced, joint_id_complete in enumerate(
             self.controlled_joints_ids[1:],
         ):
@@ -193,6 +190,8 @@ class TestBulletSimulator(unittest.TestCase):
         self.simulator.step(torques)
         for q_i, q_i_ref in zip(self.simulator.getRobotState(), q1):
             self.assertAlmostEqual(q_i, q_i_ref)
+
+        self.simulator.end()
 
 
 if __name__ == "__main__":

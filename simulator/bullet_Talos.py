@@ -72,7 +72,7 @@ class TalosDeburringSimulator:
             rmodelComplete: Pinocchio model of the full robot.
             controlledJointsIDs: List of joint IDs to control in torque.
         """
-        self.q0 = rmodelComplete.referenceConfigurations["half_sitting"]
+        self.q0 = rmodelComplete.referenceConfigurations["half_sitting"].copy()
         # Modify the height of the robot to avoid collision with the ground
         self.q0[2] += 0.01
         self.initial_base_position = list(self.q0[:3])
@@ -90,10 +90,10 @@ class TalosDeburringSimulator:
 
         # Fetching the position of the center of mass of the base
         # (which is different from the origin of the root link)
-        self.localInertiaPos = p.getDynamicsInfo(self.robot_id, -1)[3]
+        self.local_inertia_pos = p.getDynamicsInfo(self.robot_id, -1)[3]
         # Expressing initial position wrt the CoM
         for i in range(3):
-            self.initial_base_position[i] += self.localInertiaPos[i]
+            self.initial_base_position[i] += self.local_inertia_pos[i]
 
         self.names2bulletIndices = {
             p.getJointInfo(self.robot_id, i)[1].decode(): i
@@ -116,11 +116,11 @@ class TalosDeburringSimulator:
             self.names2bulletIndices[rmodelComplete.names[i]]
             for i in controlledJointsIDs[offset_controlled_joints:]
         ]
-        self._setInitialConfig()
-        self._changeFriction(["leg_left_6_joint", "leg_right_6_joint"], 100, 30)
-        self._setControlledJoints()
+        self._set_initial_config()
+        self._change_friction(["leg_left_6_joint", "leg_right_6_joint"], 100, 30)
+        self._set_controlled_joints()
 
-    def _setInitialConfig(self):
+    def _set_initial_config(self):
         """Initialize robot configuration in PyBullet."""
         for i in range(len(self.initial_joint_positions)):
             # p.enableJointForceTorqueSensor(self.robot_id, i, True)
@@ -130,24 +130,24 @@ class TalosDeburringSimulator:
                 self.initial_joint_positions[i],
             )
 
-    def _changeFriction(self, names, lateralFriction=100, spinningFriction=30):
+    def _change_friction(self, names, lateral_friction=100, spinning_friction=30):
         """Change friction parameters for specified links.
 
         Args:
             names: List of link names to change friction for.
-            lateralFriction: Lateral friction coefficient.
-            spinningFriction: Spinning friction coefficient.
+            lateral_friction: Lateral friction coefficient.
+            spinning_friction: Spinning friction coefficient.
         """
         for n in names:
             idx = self.names2bulletIndices[n]
             p.changeDynamics(
                 self.robot_id,
                 idx,
-                lateralFriction=lateralFriction,
-                spinningFriction=spinningFriction,
+                lateralFriction=lateral_friction,
+                spinningFriction=spinning_friction,
             )
 
-    def _setControlledJoints(self):
+    def _set_controlled_joints(self):
         """Define torque controlled joints."""
         p.setJointMotorControlArray(
             self.robot_id,
@@ -155,45 +155,6 @@ class TalosDeburringSimulator:
             controlMode=p.VELOCITY_CONTROL,
             forces=[0.0 for m in self.bullet_controlledJoints],
         )
-
-    def _setup_PD_controller(self):
-        """Set up PD controller gains and feed-forward terms."""
-        self.p_arm_gain = 100.0
-        self.d_arm_gain = 8.0
-        self.p_torso_gain = 500.0
-        self.d_torso_gain = 20.0
-        self.p_leg_gain = 800.0
-        self.d_leg_gain = 35.0
-        self.feed_forward = {
-            "leg_left_1_joint": 0,
-            "leg_left_2_joint": 1,
-            "leg_left_3_joint": 2,
-            "leg_left_4_joint": -5e01,
-            "leg_left_5_joint": 3,
-            "leg_left_6_joint": -5,
-            "leg_right_1_joint": 0,
-            "leg_right_2_joint": 1,
-            "leg_right_3_joint": 2,
-            "leg_right_4_joint": -5e01,
-            "leg_right_5_joint": 3,
-            "leg_right_6_joint": 5,
-            "torso_1_joint": 0,
-            "torso_2_joint": 6e-1,
-            "arm_left_1_joint": 6e-02,
-            "arm_left_2_joint": 5e-01,
-            "arm_left_3_joint": 2.2,
-            "arm_left_4_joint": -9.3,
-            "arm_left_5_joint": 1.1e-01,
-            "arm_left_6_joint": 3.2e-01,
-            "arm_left_7_joint": -1.5,
-            "arm_right_1_joint": -6e-02,
-            "arm_right_2_joint": -5e-01,
-            "arm_right_3_joint": -2.2,
-            "arm_right_4_joint": -9.3,
-            "arm_right_5_joint": 1.1e-01,
-            "arm_right_6_joint": 3.2e-01,
-            "arm_right_7_joint": -1.5,
-        }
 
     def _setup_filter(self, cutoff_frequency, dt):
         """Set up low-pass filter for torque control.
@@ -221,14 +182,14 @@ class TalosDeburringSimulator:
         """
         RADIUS = 0.005
         LENGTH = 0.01
-        blueSphere = p.createVisualShape(
+        blue_sphere = p.createVisualShape(
             shapeType=p.GEOM_SPHERE,
             rgbaColor=[0, 0, 1, 0.5],
             visualFramePosition=[0.0, 0.0, 0.0],
             radius=RADIUS,
             halfExtents=[0.0, 0.0, 0.0],
         )
-        blueCapsule = p.createVisualShape(
+        blue_capsule = p.createVisualShape(
             shapeType=p.GEOM_CAPSULE,
             rgbaColor=[0, 0, 1, 1.0],
             visualFramePosition=[0.0, 0.0, 0.0],
@@ -241,7 +202,7 @@ class TalosDeburringSimulator:
             self.target_visual = p.createMultiBody(
                 baseMass=0.0,
                 baseInertialFramePosition=[0, 0, 0],
-                baseVisualShapeIndex=blueSphere,
+                baseVisualShapeIndex=blue_sphere,
                 basePosition=[0.0, 0.0, 0.0],
                 useMaximalCoordinates=True,
             )
@@ -250,12 +211,12 @@ class TalosDeburringSimulator:
             self.tool_visual = p.createMultiBody(
                 baseMass=0.0,
                 baseInertialFramePosition=[0, 0, 0],
-                baseVisualShapeIndex=blueCapsule,
+                baseVisualShapeIndex=blue_capsule,
                 basePosition=[0.0, 0.0, 0.0],
                 useMaximalCoordinates=True,
             )
 
-    def _setVisualObjectPosition(
+    def _set_visual_object_position(
         self,
         object_name,
         object_position,
@@ -300,7 +261,7 @@ class TalosDeburringSimulator:
 
             # Transformation between CoM of the base (base position in bullet)
             # and position of the base in Pinocchio
-            x[:3] -= self.localInertiaPos
+            x[:3] -= self.local_inertia_pos
 
         else:
             x = np.concatenate([q, vq])
@@ -314,28 +275,28 @@ class TalosDeburringSimulator:
             torques: Torques to be applied to the robot.
             oMtool: Placement of the tool expressed as a SE3 object.
         """
-        self._updateVisuals(oMtool)
+        self._update_visuals(oMtool)
         if self.is_torque_filtered:
             filtered_torques = self.torque_filter.filter(torques)
         else:
             filtered_torques = torques
-        self._applyTorques(filtered_torques)
+        self._apply_torques(filtered_torques)
         p.stepSimulation()
 
-    def _updateVisuals(self, oMtool):
+    def _update_visuals(self, oMtool):
         """Update visual elements of the simulation.
 
         Args:
             oMtool: Placement of the tool expressed as a SE3 object.
         """
         if oMtool is not None:
-            self._setVisualObjectPosition(
+            self._set_visual_object_position(
                 self.tool_visual,
                 oMtool.translation,
                 pin.Quaternion(oMtool.rotation).coeffs(),
             )
 
-    def _applyTorques(self, torques):
+    def _apply_torques(self, torques):
         """Apply computed torques to the robot.
 
         Args:
@@ -348,11 +309,12 @@ class TalosDeburringSimulator:
             forces=torques,
         )
 
-    def reset(self, target_pos):
+    def reset(self, target_pos, nb_pd_steps=0):
         """Reset robot to initial configuration.
 
         Args:
             target_pos: Position of the target.
+            nb_pd_steps: Number of pd controlled steps to execute after reset. Defaults to 0.
         """
         # Reset base
         p.resetBasePositionAndOrientation(
@@ -368,12 +330,51 @@ class TalosDeburringSimulator:
             self.physics_client,
         )
 
-        self._setInitialConfig()
-        self._setVisualObjectPosition(self.target_visual, target_pos)
+        self._set_initial_config()
+        self._set_visual_object_position(self.target_visual, target_pos)
 
-        # for _ in range(100):
-        #     self.pd_controller()
-        #     p.stepSimulation()
+        for _ in range(nb_pd_steps):
+            self.pd_controller()
+            p.stepSimulation()
+
+    def _setup_PD_controller(self):
+        """Set up PD controller gains and feed-forward terms."""
+        self.p_arm_gain = 100.0
+        self.d_arm_gain = 8.0
+        self.p_torso_gain = 500.0
+        self.d_torso_gain = 20.0
+        self.p_leg_gain = 800.0
+        self.d_leg_gain = 35.0
+        self.feed_forward = {
+            "leg_left_1_joint": 0,
+            "leg_left_2_joint": 1,
+            "leg_left_3_joint": 2,
+            "leg_left_4_joint": -5e01,
+            "leg_left_5_joint": 3,
+            "leg_left_6_joint": -5,
+            "leg_right_1_joint": 0,
+            "leg_right_2_joint": 1,
+            "leg_right_3_joint": 2,
+            "leg_right_4_joint": -5e01,
+            "leg_right_5_joint": 3,
+            "leg_right_6_joint": 5,
+            "torso_1_joint": 0,
+            "torso_2_joint": 6e-1,
+            "arm_left_1_joint": 6e-02,
+            "arm_left_2_joint": 5e-01,
+            "arm_left_3_joint": 2.2,
+            "arm_left_4_joint": -9.3,
+            "arm_left_5_joint": 1.1e-01,
+            "arm_left_6_joint": 3.2e-01,
+            "arm_left_7_joint": -1.5,
+            "arm_right_1_joint": -6e-02,
+            "arm_right_2_joint": -5e-01,
+            "arm_right_3_joint": -2.2,
+            "arm_right_4_joint": -9.3,
+            "arm_right_5_joint": 1.1e-01,
+            "arm_right_6_joint": 3.2e-01,
+            "arm_right_7_joint": -1.5,
+        }
 
     def pd_controller(self):
         """Run PD controller for the robot."""
