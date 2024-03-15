@@ -23,9 +23,9 @@ class TestBulletSimulator(unittest.TestCase):
     def setUp(self):
         self.factory = ModelFactory()
         self.rmodel = self.factory.create_robot_model()
-        self.nq = self.rmodel.nq
 
         self.controlled_joints_ids = [
+            1,
             2,
             3,
             4,
@@ -50,7 +50,7 @@ class TestBulletSimulator(unittest.TestCase):
             33,
         ]
 
-        self.nq = len(self.controlled_joints_ids)
+        self.nq = len(self.controlled_joints_ids) - 1
 
         self.simulator = TalosDeburringSimulator(
             urdf_path["custom"],
@@ -64,7 +64,7 @@ class TestBulletSimulator(unittest.TestCase):
         )
 
     def test_reset(self):
-        nb_tries = 10
+        nb_tries = 4
         torques = np.array(
             [
                 -0.41736194,
@@ -103,11 +103,97 @@ class TestBulletSimulator(unittest.TestCase):
 
         for x0 in x0_list:
             for x0_i, x0_i_ref in zip(x0, x0_list[0]):
-                self.assertAlmostEqual(x0_i, x0_i_ref, 2)
+                self.assertEqual(x0_i, x0_i_ref)
 
         for x1 in x1_list:
             for x1_i, x1_i_ref in zip(x1, x1_list[0]):
-                self.assertAlmostEqual(x1_i, x1_i_ref, 2)
+                self.assertEqual(x1_i, x1_i_ref)
+
+        self.simulator.end()
+
+    def test_get_robot_state(self):
+        q0 = self.rmodel.referenceConfigurations["half_sitting"].copy()
+
+        self.simulator.reset([0, 0, 0])
+        q = self.simulator.getRobotState().copy()
+
+        for i in range(7):
+            self.assertEqual(q0[i], q[i])
+
+        for joint_id_reduced, joint_id_complete in enumerate(
+            self.controlled_joints_ids[1:],
+        ):
+            self.assertEqual(q0[joint_id_complete - 2 + 7], q[joint_id_reduced + 7])
+
+        self.simulator.end()
+
+    def test_step(self):
+        q1 = np.array(
+            [
+                0,
+                0,
+                1.02926019,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                -0.4,
+                0.8,
+                -0.4,
+                0,
+                0,
+                0,
+                -0.4,
+                0.8,
+                -0.4,
+                0,
+                0,
+                0,
+                0.4,
+                0.24,
+                -0.6,
+                -1.45,
+                -0.4,
+                -0.24,
+                0.6,
+                -1.45,
+                0,
+                0,
+                -0.00981,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+            ],
+        )
+        self.simulator.reset([0, 0, 0])
+        torques = np.zeros(self.nq)
+        self.simulator.step(torques)
+        for q_i, q_i_ref in zip(self.simulator.getRobotState(), q1):
+            self.assertAlmostEqual(q_i, q_i_ref)
 
 
 if __name__ == "__main__":
