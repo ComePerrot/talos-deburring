@@ -3,7 +3,8 @@ import pybullet as p  # PyBullet simulator
 import pybullet_data
 import pinocchio as pin
 
-from .filter import LowpassFilter
+from simulator.filter import LowpassFilter
+from simulator.pd_controller import PDController
 
 
 class TalosDeburringSimulator:
@@ -334,88 +335,23 @@ class TalosDeburringSimulator:
         self._set_visual_object_position(self.target_visual, target_pos)
 
         for _ in range(nb_pd_steps):
-            self.pd_controller()
-            p.stepSimulation()
+            for id_bullet in self.bullet_controlledJoints:
+                joint_name = p.getJointInfo(self.robot_id, id_bullet)[1].decode()
+                joint_torque = self.pd_controller.compute_control(
+                    joint_name,
+                    p.getJointState(self.robot_id, id_bullet)[0],
+                    p.getJointState(self.robot_id, id_bullet)[1],
+                )
+                p.setJointMotorControl(
+                    self.robot_id,
+                    id_bullet,
+                    p.TORQUE_CONTROL,
+                    joint_torque,
+                )
+                p.stepSimulation()
 
     def _setup_PD_controller(self):
-        """Set up PD controller gains and feed-forward terms."""
-        self.p_arm_gain = 100.0
-        self.d_arm_gain = 8.0
-        self.p_torso_gain = 500.0
-        self.d_torso_gain = 20.0
-        self.p_leg_gain = 800.0
-        self.d_leg_gain = 35.0
-        self.feed_forward = {
-            "leg_left_1_joint": 0,
-            "leg_left_2_joint": 1,
-            "leg_left_3_joint": 2,
-            "leg_left_4_joint": -5e01,
-            "leg_left_5_joint": 3,
-            "leg_left_6_joint": -5,
-            "leg_right_1_joint": 0,
-            "leg_right_2_joint": 1,
-            "leg_right_3_joint": 2,
-            "leg_right_4_joint": -5e01,
-            "leg_right_5_joint": 3,
-            "leg_right_6_joint": 5,
-            "torso_1_joint": 0,
-            "torso_2_joint": 6e-1,
-            "arm_left_1_joint": 6e-02,
-            "arm_left_2_joint": 5e-01,
-            "arm_left_3_joint": 2.2,
-            "arm_left_4_joint": -9.3,
-            "arm_left_5_joint": 1.1e-01,
-            "arm_left_6_joint": 3.2e-01,
-            "arm_left_7_joint": -1.5,
-            "arm_right_1_joint": -6e-02,
-            "arm_right_2_joint": -5e-01,
-            "arm_right_3_joint": -2.2,
-            "arm_right_4_joint": -9.3,
-            "arm_right_5_joint": 1.1e-01,
-            "arm_right_6_joint": 3.2e-01,
-            "arm_right_7_joint": -1.5,
-        }
-
-    def pd_controller(self):
-        """Run PD controller for the robot."""
-        for id_pin, id_bullet in enumerate(self.bulletJointsIdInPinOrder):
-            if id_bullet not in self.bullet_controlledJoints:
-                continue
-
-            joint_name = p.getJointInfo(self.robot_id, id_bullet)[1].decode()
-
-            d_pos = (
-                p.getJointState(self.robot_id, id_bullet)[0]
-                - self.initial_joint_positions[id_pin]
-            )
-            d_vel = p.getJointState(self.robot_id, id_bullet)[1]
-
-            feed_forward = self.feed_forward[joint_name]
-
-            if "torso" in joint_name:
-                torque = (
-                    feed_forward - self.p_torso_gain * d_pos - self.d_torso_gain * d_vel
-                )
-
-            elif "arm" in joint_name:
-                torque = (
-                    feed_forward - self.p_arm_gain * d_pos - self.d_arm_gain * d_vel
-                )
-
-            elif "leg" in joint_name:
-                torque = (
-                    feed_forward - self.p_leg_gain * d_pos - self.d_leg_gain * d_vel
-                )
-
-            else:
-                torque = 0
-
-            p.setJointMotorControl(
-                self.robot_id,
-                id_bullet,
-                p.TORQUE_CONTROL,
-                torque,
-            )
+        self.pd_controller = PDController()
 
     def end(self):
         """End connection with PyBullet."""
