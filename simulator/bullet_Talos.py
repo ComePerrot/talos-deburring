@@ -174,6 +174,9 @@ class TalosDeburringSimulator:
         else:
             self.is_torque_filtered = False
 
+    def _setup_PD_controller(self):
+        self.pd_controller = PDController()
+
     def _create_visuals(self, target=True, tool=True):
         """Create visual elements for the simulation.
 
@@ -348,10 +351,7 @@ class TalosDeburringSimulator:
                     p.TORQUE_CONTROL,
                     joint_torque,
                 )
-                p.stepSimulation()
-
-    def _setup_PD_controller(self):
-        self.pd_controller = PDController()
+            p.stepSimulation()
 
     def end(self):
         """End connection with PyBullet."""
