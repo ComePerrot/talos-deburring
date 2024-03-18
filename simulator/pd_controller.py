@@ -1,5 +1,12 @@
 class PDController:
+    """A PD+ controller that calculates the control torque for a robot's joints.
+
+    The control torque is calculated based on the proportional and derivative errors
+    for each joint and the feed_forward torque.
+    """
+
     def __init__(self):
+        """Initialize the PDController object with default gain values and initial joint positions."""
         self.p_arm_gain = 100.0
         self.d_arm_gain = 8.0
         self.p_torso_gain = 500.0
@@ -68,12 +75,19 @@ class PDController:
         }
 
     def compute_control(self, joint_name, measured_pos, measured_vel):
+        """Calculate the control torque for a given joint.
+
+        Args:
+            joint_name: The name of the joint to control.
+            measured_pos: The measured position of the joint.
+            measured_vel: The measured velocity of the joint.
+
+        Returns:
+            The computed control torque for the joint.
+        """
         feed_forward = self.feed_forward[joint_name]
         d_pos = measured_pos - self.initial_joint_positions[joint_name]
         d_vel = measured_vel
-
-        print(measured_pos)
-        print(measured_vel)
 
         if "torso" in joint_name:
             torque = (
