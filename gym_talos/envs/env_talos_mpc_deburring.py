@@ -261,7 +261,7 @@ class EnvTalosMPC(gym.Env):
             x_measured = self.simulator.getRobotState()
             oMtool = self.pinWrapper.get_end_effector_frame()
             if self.sim_time % self.numSimulationSteps == 0:
-                t0, x0, K0 = self.mpc.step(x_measured, None)
+                t0, x0, K0 = self.mpc.step(x_measured, posture_reference)
                 self.riccati.update_references(t0, x0, K0)
 
             torques = self.riccati.step(x_measured)
