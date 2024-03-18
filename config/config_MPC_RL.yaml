@@ -21,11 +21,10 @@ environment:
   normalizeObs: True
   historyObs: 0
   predictionSize: 3
-  controlled_joints_names:
-    [
+  controlled_joints_names: [
       arm_left_1_joint,
       arm_left_2_joint,
-      arm_left_3_joint,
+      # arm_left_3_joint,
       arm_left_4_joint,
     ]
   # Stop conditions
@@ -45,10 +44,8 @@ environment:
 
 robot:
   designer:
-    urdf_path: "/home/cj/.miniforge3/envs/talos-rl/share/example-robot-data/robots/talos_data/robots/talos_reduced.urdf"
-    srdf_path: "/home/cj/.miniforge3/envs/talos-rl/share/example-robot-data/robots/talos_data/srdf/talos.srdf"
-    controlled_joints_names:
-      [
+    urdf_type: "private_pal" # custom, example_robot_data, private_pal, public_pal
+    controlled_joints_names: [
         root_joint,
         leg_left_1_joint,
         leg_left_2_joint,

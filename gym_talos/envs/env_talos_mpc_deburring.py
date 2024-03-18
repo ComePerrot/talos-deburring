@@ -1,13 +1,14 @@
 import gymnasium as gym
 import numpy as np
 import pinocchio as pin
-from deburring_mpc import RobotDesigner
 
+from deburring_mpc import RobotDesigner
 from controllers.MPC import MPController
 from controllers.Riccati import RiccatiController
 from limit_checker_talos.limit_checker import LimitChecker
+from robot_description.path_getter import urdf_path, srdf_path
+from simulator.bullet_Talos import TalosDeburringSimulator
 
-from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
 from gym_talos.utils.create_target import TargetGoal
 from gym_talos.utils.observation_wrapper import observation_wrapper
 from gym_talos.utils.action_wrapper import action_wrapper
@@ -29,6 +30,8 @@ class EnvTalosMPC(gym.Env):
         params_designer["end_effector_position"] = np.array(
             params_designer["end_effector_position"],
         )
+        params_designer["urdf_path"] = urdf_path[params_designer["urdf_type"]]
+        params_designer["srdf_path"] = srdf_path
         self.pinWrapper.initialize(params_designer)
 
         self.rmodel = self.pinWrapper.get_rmodel()
