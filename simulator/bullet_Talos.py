@@ -1,8 +1,8 @@
 import numpy as np
 import pybullet as p  # PyBullet simulator
 import pybullet_data
-import pinocchio as pin
 
+from simulator.bullet_visuals import VisualHandler
 from simulator.filter import LowpassFilter
 from simulator.pd_controller import PDController
 
@@ -35,7 +35,7 @@ class TalosDeburringSimulator:
         self._setup_robot(URDF, rmodelComplete, controlledJointsIDs)
         self._setup_PD_controller()
         self._setup_filter(cutoff_frequency, dt)
-        self._create_visuals()
+        self.visual_handler = VisualHandler(self.physics_client)
 
     def _setup_client(self, enableGUI, enableGravity, dt):
         """Set up PyBullet client and environment settings.
@@ -177,75 +177,6 @@ class TalosDeburringSimulator:
     def _setup_PD_controller(self):
         self.pd_controller = PDController()
 
-    def _create_visuals(self, target=True, tool=True):
-        """Create visual elements for the simulation.
-
-        Args:
-            target: Whether to display the target.
-            tool: Whether to display the tool.
-        """
-        RADIUS = 0.005
-        LENGTH = 0.01
-        blue_sphere = p.createVisualShape(
-            shapeType=p.GEOM_SPHERE,
-            rgbaColor=[0, 0, 1, 0.5],
-            visualFramePosition=[0.0, 0.0, 0.0],
-            radius=RADIUS,
-            halfExtents=[0.0, 0.0, 0.0],
-        )
-        blue_capsule = p.createVisualShape(
-            shapeType=p.GEOM_CAPSULE,
-            rgbaColor=[0, 0, 1, 1.0],
-            visualFramePosition=[0.0, 0.0, 0.0],
-            radius=RADIUS / 3,
-            length=LENGTH,
-            halfExtents=[0.0, 0.0, 0.0],
-        )
-
-        if target:
-            self.target_visual = p.createMultiBody(
-                baseMass=0.0,
-                baseInertialFramePosition=[0, 0, 0],
-                baseVisualShapeIndex=blue_sphere,
-                basePosition=[0.0, 0.0, 0.0],
-                useMaximalCoordinates=True,
-            )
-
-        if tool:
-            self.tool_visual = p.createMultiBody(
-                baseMass=0.0,
-                baseInertialFramePosition=[0, 0, 0],
-                baseVisualShapeIndex=blue_capsule,
-                basePosition=[0.0, 0.0, 0.0],
-                useMaximalCoordinates=True,
-            )
-
-    def _set_visual_object_position(
-        self,
-        object_name,
-        object_position,
-        object_orientation=None,
-    ):
-        """Move an object to the given position.
-
-        Args:
-            object_name: Name of the object to move.
-            object_position: Position of the object in the world.
-            object_orientation: Orientation of the object wrt the world.
-        """
-        if object_orientation is not None:
-            p.resetBasePositionAndOrientation(
-                object_name,
-                object_position,
-                object_orientation,
-            )
-        else:
-            p.resetBasePositionAndOrientation(
-                object_name,
-                object_position,
-                np.array([0, 0, 0, 1]),
-            )
-
     def getRobotState(self):
         """Get current state of the robot from PyBullet."""
         # Get articulated joint pos and vel
@@ -279,26 +210,13 @@ class TalosDeburringSimulator:
             torques: Torques to be applied to the robot.
             oMtool: Placement of the tool expressed as a SE3 object.
         """
-        self._update_visuals(oMtool)
+        self.visual_handler.update_visuals(oMtool)
         if self.is_torque_filtered:
             filtered_torques = self.torque_filter.filter(torques)
         else:
             filtered_torques = torques
         self._apply_torques(filtered_torques)
         p.stepSimulation()
-
-    def _update_visuals(self, oMtool):
-        """Update visual elements of the simulation.
-
-        Args:
-            oMtool: Placement of the tool expressed as a SE3 object.
-        """
-        if oMtool is not None:
-            self._set_visual_object_position(
-                self.tool_visual,
-                oMtool.translation,
-                pin.Quaternion(oMtool.rotation).coeffs(),
-            )
 
     def _apply_torques(self, torques):
         """Apply computed torques to the robot.
@@ -320,7 +238,6 @@ class TalosDeburringSimulator:
             target_pos: Position of the target.
             nb_pd_steps: Number of pd controlled steps to execute after reset. Defaults to 0.
         """
-        # Reset base
         p.resetBasePositionAndOrientation(
             self.robot_id,
             self.initial_base_position,
@@ -335,8 +252,13 @@ class TalosDeburringSimulator:
         )
 
         self._set_initial_config()
-        self._set_visual_object_position(self.target_visual, target_pos)
 
+        self.visual_handler.set_visual_object_position(
+            self.visual_handler.target_visual,
+            target_pos,
+        )
+
+        # Optionnal init phase with PD control
         for _ in range(nb_pd_steps):
             for id_bullet in self.bullet_controlledJoints:
                 joint_name = p.getJointInfo(self.robot_id, id_bullet)[1].decode()
