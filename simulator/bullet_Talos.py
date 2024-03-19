@@ -2,7 +2,7 @@ import numpy as np
 import pybullet as p  # PyBullet simulator
 import pybullet_data
 
-from simulator.bullet_visuals import VisualHandler
+from simulator.bullet_visuals import VisualHandler, PostureVisualizer
 from simulator.filter import LowpassFilter
 from simulator.pd_controller import PDController
 
@@ -36,6 +36,13 @@ class TalosDeburringSimulator:
         self._setup_PD_controller()
         self._setup_filter(cutoff_frequency, dt)
         self.visual_handler = VisualHandler(self.physics_client)
+        self.posture_visualizer = PostureVisualizer(
+            URDF,
+            np.array(self.initial_base_position) - np.array(self.local_inertia_pos),
+            self.initial_base_orientation,
+            self.bullet_controlledJoints,
+            self.initial_joint_positions,
+        )
 
     def _setup_client(self, enableGUI, enableGravity, dt):
         """Set up PyBullet client and environment settings.
@@ -175,6 +182,7 @@ class TalosDeburringSimulator:
             self.is_torque_filtered = False
 
     def _setup_PD_controller(self):
+        """Set up PD controller"""
         self.pd_controller = PDController()
 
     def getRobotState(self):

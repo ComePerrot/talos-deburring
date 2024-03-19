@@ -97,3 +97,59 @@ class VisualHandler:
                 oMtool.translation,
                 pin.Quaternion(oMtool.rotation).coeffs(),
             )
+
+
+class PostureVisualizer:
+    """A class for handling reference posture visualization in the simulation.
+
+    Args:
+        URDF: Path to the URDF file of the robot.
+        initial_base_position: Initial position of the base.
+        initial_base_orientation: Initial orientation of the base.
+        bullet_controlledJoints: List of joints controlled in torque (used to find size/order of the posture).
+        initial_joint_positions: Initial joint configuration.
+    """
+
+    def __init__(
+        self,
+        URDF,
+        initial_base_position,
+        initial_base_orientation,
+        bullet_controlledJoints,
+        initial_joint_positions,
+    ):
+        """Initialize the PostureVisualizer class."""
+        # Load visual robot
+        self.visual_robot = p.loadURDF(
+            URDF,
+            initial_base_position,
+            initial_base_orientation,
+            useFixedBase=True,
+        )
+        self.bullet_controlledJoints = bullet_controlledJoints
+        # Set robot in initial pose
+        self.update_posture(initial_joint_positions)
+
+        # Change color and disable collisions
+        color = [0, 0, 1, 0.2]  # second robot is gold
+        # Base
+        p.changeVisualShape(self.visual_robot, -1, rgbaColor=color)
+        p.setCollisionFilterGroupMask(self.visual_robot, -1, 0, 0)
+
+        # Joints
+        for link_id in range(p.getNumJoints(self.visual_robot)):
+            p.changeVisualShape(self.visual_robot, link_id, rgbaColor=color)
+            p.setCollisionFilterGroupMask(self.visual_robot, link_id, 0, 0)
+
+    def update_posture(self, posture):
+        """Update the visual representation of the posture
+
+        Args:
+            posture: Reference joint posture of the robot (free-flyer should not be included)
+        """
+        for i, joint_id in enumerate(self.bullet_controlledJoints):
+            p.resetJointState(
+                self.visual_robot,
+                joint_id,
+                posture[i],
+            )
