@@ -6,6 +6,8 @@ from deburring_mpc import RobotDesigner
 
 from gym_talos.utils.create_target import TargetGoal
 
+from robot_description.path_getter import urdf_path, srdf_path
+
 from simulator.bullet_Talos import TalosDeburringSimulator
 from simulator.mujoco_Talos import TalosMujoco
 from factory.benchmark_MPRL import bench_MPRL
@@ -27,6 +29,9 @@ def main():
     target_handler.create_target()
     targets = target_handler.generate_target_list(params["numberTargets"])
 
+    params["robot"]["urdf_path"] = urdf_path["example_robot_data"]
+    params["robot"]["srdf_path"] = srdf_path
+
     # Robot handler
     pinWrapper = RobotDesigner()
     params["robot"]["end_effector_position"] = np.array(
@@ -37,9 +42,9 @@ def main():
     # SIMULATOR
     simulator = TalosDeburringSimulator(
         URDF=pinWrapper.get_settings()["urdf_path"],
-        rmodelComplete=pinWrapper.get_rmodel_complete(),
-        controlledJointsIDs=pinWrapper.get_controlled_joints_ids(),
-        enableGUI=params["GUI"],
+        rmodel_complete=pinWrapper.get_rmodel_complete(),
+        controlled_joints_ids=pinWrapper.get_controlled_joints_ids(),
+        enable_GUI=params["GUI"],
         dt=float(params["timeStepSimulation"]),
         cutoff_frequency=params["robot_cutoff_frequency"],
     )
@@ -53,7 +58,7 @@ def main():
     )
     MPC_noRiccati = bench_MPC_noRiccati(params, pinWrapper, simulator)
 
-    for controller in [MPC]:
+    for controller in [MPC_variablePosture]:
         print(type(controller).__name__)
         catastrophic_failure = 0
         failure = 0

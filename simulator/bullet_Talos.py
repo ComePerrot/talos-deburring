@@ -12,10 +12,10 @@ class TalosDeburringSimulator:
 
     Args:
         URDF: Path to the URDF file of the robot.
-        rmodelComplete: Pinocchio model of the full robot.
-        controlledJointsIDs: List of joint IDs to control in torque.
-        enableGUI: Whether to enable PyBullet GUI. Defaults to False.
-        enableGravity: Whether to enable gravity in the simulation. Defaults to True.
+        rmodel_complete: Pinocchio model of the full robot.
+        controlled_joints_ids: List of joint IDs to control in torque.
+        enable_GUI: Whether to enable PyBullet GUI. Defaults to False.
+        enable_gravity: Whether to enable gravity in the simulation. Defaults to True.
         dt: Time step of the simulation. Defaults to 1e-3.
         cutoff_frequency: Cutoff frequency for torque filtering. Defaults to 0.
     """
@@ -23,16 +23,16 @@ class TalosDeburringSimulator:
     def __init__(
         self,
         URDF,
-        rmodelComplete,
-        controlledJointsIDs,
-        enableGUI=False,
-        enableGravity=True,
+        rmodel_complete,
+        controlled_joints_ids,
+        enable_GUI=False,
+        enable_gravity=True,
         dt=1e-3,
         cutoff_frequency=0,
     ):
         """Initialize the simulator."""
-        self._setup_client(enableGUI, enableGravity, dt)
-        self._setup_robot(URDF, rmodelComplete, controlledJointsIDs)
+        self._setup_client(enable_GUI, enable_gravity, dt)
+        self._setup_robot(URDF, rmodel_complete, controlled_joints_ids)
         self._setup_PD_controller()
         self._setup_filter(cutoff_frequency, dt)
         self.visual_handler = VisualHandler(self.physics_client)
@@ -44,16 +44,16 @@ class TalosDeburringSimulator:
             self.q0[7:],
         )
 
-    def _setup_client(self, enableGUI, enableGravity, dt):
+    def _setup_client(self, enable_GUI, enable_gravity, dt):
         """Set up PyBullet client and environment settings.
 
         Args:
-            enableGUI: Whether to enable PyBullet GUI.
-            enableGravity: Whether to enable gravity in the simulation.
+            enable_GUI: Whether to enable PyBullet GUI.
+            enable_gravity: Whether to enable gravity in the simulation.
             dt: Time step of the simulation.
         """
         # Start the client for PyBullet
-        if enableGUI:
+        if enable_GUI:
             self.physics_client = p.connect(p.SHARED_MEMORY)
             if self.physics_client < 0:
                 self.physics_client = p.connect(p.GUI)
@@ -61,7 +61,7 @@ class TalosDeburringSimulator:
         else:
             self.physics_client = p.connect(p.DIRECT)
 
-        if enableGravity:
+        if enable_gravity:
             p.setGravity(0, 0, -9.81)
         else:
             p.setGravity(0, 0, 0)
@@ -72,16 +72,16 @@ class TalosDeburringSimulator:
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.loadURDF("plane.urdf")
 
-    def _setup_robot(self, URDF, rmodelComplete, controlledJointsIDs):
+    def _setup_robot(self, URDF, rmodel_complete, controlled_joints_ids):
         """Set up the robot model and configuration.
 
         Args:
             URDF: Path to the URDF file of the robot.
-            rmodelComplete: Pinocchio model of the full robot.
-            controlledJointsIDs: List of joint IDs to control in torque.
+            rmodel_complete: Pinocchio model of the full robot.
+            controlled_joints_ids: List of joint IDs to control in torque.
         """
         # Extract initial configuration from reference posture
-        self.q0 = rmodelComplete.referenceConfigurations["half_sitting"].copy()
+        self.q0 = rmodel_complete.referenceConfigurations["half_sitting"].copy()
         # Modify the height of the robot to avoid collision with the ground
         self.q0[2] += 0.01
         self.initial_base_position = list(self.q0[:3])
@@ -98,7 +98,7 @@ class TalosDeburringSimulator:
         self._correct_base_position()
 
         self.has_free_flyer = int(
-            rmodelComplete.getFrameId("root_joint") in controlledJointsIDs,
+            rmodel_complete.getFrameId("root_joint") in controlled_joints_ids,
         )
 
         # Define structure to reconcile bullet and pinocchio formats
@@ -108,13 +108,13 @@ class TalosDeburringSimulator:
         }
 
         self.bullet_ids_in_pin_order = [
-            self.joint_names_2_bullet_ids[name] for name in rmodelComplete.names[2:]
+            self.joint_names_2_bullet_ids[name] for name in rmodel_complete.names[2:]
         ]
 
         # Torque controlled joints (all controlled with crocoddyl)
         self.torque_controlled_joints_ids = [
-            self.joint_names_2_bullet_ids[rmodelComplete.names[i]]
-            for i in controlledJointsIDs[
+            self.joint_names_2_bullet_ids[rmodel_complete.names[i]]
+            for i in controlled_joints_ids[
                 self.has_free_flyer :
             ]  # Remove root_joint if robot has free-flyer
         ]

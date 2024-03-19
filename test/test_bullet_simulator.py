@@ -56,8 +56,8 @@ class TestBulletSimulator(unittest.TestCase):
             urdf_path["custom"],
             self.rmodel,
             self.controlled_joints_ids,
-            enableGUI=False,
-            enableGravity=True,
+            enable_GUI=False,
+            enable_gravity=True,
             dt=1e-3,
             cutoff_frequency=0,
         )
