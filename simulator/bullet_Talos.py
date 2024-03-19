@@ -54,6 +54,9 @@ class TalosDeburringSimulator:
             enable_gravity: Whether to enable gravity in the simulation.
             dt: Time step of the simulation.
         """
+
+        assert enable_GUI in [0, 1, 2], "Unexpected enable_GUI value"
+
         self.enable_GUI = enable_GUI
         # Start the client for PyBullet
         if self.enable_GUI > 0:
@@ -121,6 +124,7 @@ class TalosDeburringSimulator:
                 self.has_free_flyer :
             ]  # Remove root_joint if robot has free-flyer
         ]
+        self.nu = len(self.torque_controlled_joints_ids)
 
         self.initial_joint_configuration = {
             id_bullet: self.q0[7 + id_pin]
@@ -231,6 +235,11 @@ class TalosDeburringSimulator:
             torques: Torques to be applied to the robot.
             oMtool: Placement of the tool expressed as a SE3 object.
         """
+
+        assert (
+            len(torques) == self.nu
+        ), f"Size mismatch: torque is of size ({len(torques)}) instead of ({self.nu})."
+
         if self.enable_GUI > 0:
             self.visual_handler.update_visuals(oMtool)
         if self.is_torque_filtered:
@@ -260,6 +269,9 @@ class TalosDeburringSimulator:
             target_pos: Position of the target.
             nb_pd_steps: Number of pd controlled steps to execute after reset. Defaults to 0.
         """
+
+        assert len(target_pos) == 3, "Target position must be of size 3"
+
         p.resetBasePositionAndOrientation(
             self.robot_id,
             self.initial_base_position,
