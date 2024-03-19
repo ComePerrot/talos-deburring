@@ -38,10 +38,10 @@ class TalosDeburringSimulator:
         self.visual_handler = VisualHandler(self.physics_client)
         self.posture_visualizer = PostureVisualizer(
             URDF,
-            np.array(self.initial_base_position) - np.array(self.local_inertia_pos),
-            self.initial_base_orientation,
-            self.bullet_controlledJoints,
-            self.initial_joint_positions,
+            self.q0[:3],
+            self.q0[3:7],
+            self.torque_controlled_joints_ids,
+            self.q0[7:],
         )
 
     def _setup_client(self, enableGUI, enableGravity, dt):
@@ -80,12 +80,12 @@ class TalosDeburringSimulator:
             rmodelComplete: Pinocchio model of the full robot.
             controlledJointsIDs: List of joint IDs to control in torque.
         """
+        # Extract initial configuration from reference posture
         self.q0 = rmodelComplete.referenceConfigurations["half_sitting"].copy()
         # Modify the height of the robot to avoid collision with the ground
         self.q0[2] += 0.01
         self.initial_base_position = list(self.q0[:3])
         self.initial_base_orientation = list(self.q0[3:7])
-        self.initial_joint_positions = list(self.q0[7:])
 
         # Load robot
         self.robot_URDF = URDF
@@ -95,47 +95,57 @@ class TalosDeburringSimulator:
             self.initial_base_orientation,
             useFixedBase=False,
         )
+        self._correct_base_position()
 
-        # Fetching the position of the center of mass of the base
-        # (which is different from the origin of the root link)
+        self.has_free_flyer = int(
+            rmodelComplete.getFrameId("root_joint") in controlledJointsIDs,
+        )
+
+        # Define structure to reconcile bullet and pinocchio formats
+        self.joint_names_2_bullet_ids = {
+            p.getJointInfo(self.robot_id, i)[1].decode(): i
+            for i in range(p.getNumJoints(self.robot_id))
+        }
+
+        self.bullet_ids_in_pin_order = [
+            self.joint_names_2_bullet_ids[name] for name in rmodelComplete.names[2:]
+        ]
+
+        # Torque controlled joints (all controlled with crocoddyl)
+        self.torque_controlled_joints_ids = [
+            self.joint_names_2_bullet_ids[rmodelComplete.names[i]]
+            for i in controlledJointsIDs[
+                self.has_free_flyer :
+            ]  # Remove root_joint if robot has free-flyer
+        ]
+
+        self.initial_joint_configuration = {
+            id_bullet: self.q0[7 + id_pin]
+            for id_pin, id_bullet in enumerate(self.bullet_ids_in_pin_order)
+        }
+        self._set_initial_config()
+        self._change_friction(["leg_left_6_joint", "leg_right_6_joint"], 100, 30)
+        self._set_controlled_joints()
+
+    def _correct_base_position(self):
+        """Correct the reference mismatch between pybullet and pinocchio
+
+        PyBullet uses the position of the center of mass of the base
+        (which is different from the origin of the root link)"""
+
         self.local_inertia_pos = p.getDynamicsInfo(self.robot_id, -1)[3]
         # Expressing initial position wrt the CoM
         for i in range(3):
             self.initial_base_position[i] += self.local_inertia_pos[i]
 
-        self.names2bulletIndices = {
-            p.getJointInfo(self.robot_id, i)[1].decode(): i
-            for i in range(p.getNumJoints(self.robot_id))
-        }
-
-        # Checks if the robot has a free-flyer to know how to shape state
-        self.has_free_flyer = (
-            rmodelComplete.getFrameId("root_joint") in controlledJointsIDs
-        )
-        # Needs to remove root_joint from joints controller by bullet
-        # if robot has a free-flyer
-        offset_controlled_joints = int(self.has_free_flyer) * 1
-
-        self.bulletJointsIdInPinOrder = [
-            self.names2bulletIndices[name] for name in rmodelComplete.names[2:]
-        ]
-        # Joints controlled with crocoddyl
-        self.bullet_controlledJoints = [
-            self.names2bulletIndices[rmodelComplete.names[i]]
-            for i in controlledJointsIDs[offset_controlled_joints:]
-        ]
-        self._set_initial_config()
-        self._change_friction(["leg_left_6_joint", "leg_right_6_joint"], 100, 30)
-        self._set_controlled_joints()
-
     def _set_initial_config(self):
         """Initialize robot configuration in PyBullet."""
-        for i in range(len(self.initial_joint_positions)):
-            # p.enableJointForceTorqueSensor(self.robot_id, i, True)
+        for id_bullet, initial_pos in self.initial_joint_configuration.items():
+            # p.enableJointForceTorqueSensor(self.robot_id, id_bullet, True)
             p.resetJointState(
                 self.robot_id,
-                self.bulletJointsIdInPinOrder[i],
-                self.initial_joint_positions[i],
+                id_bullet,
+                initial_pos,
             )
 
     def _change_friction(self, names, lateral_friction=100, spinning_friction=30):
@@ -147,7 +157,7 @@ class TalosDeburringSimulator:
             spinning_friction: Spinning friction coefficient.
         """
         for n in names:
-            idx = self.names2bulletIndices[n]
+            idx = self.joint_names_2_bullet_ids[n]
             p.changeDynamics(
                 self.robot_id,
                 idx,
@@ -159,9 +169,9 @@ class TalosDeburringSimulator:
         """Define torque controlled joints."""
         p.setJointMotorControlArray(
             self.robot_id,
-            jointIndices=self.bullet_controlledJoints,
+            jointIndices=self.torque_controlled_joints_ids,
             controlMode=p.VELOCITY_CONTROL,
-            forces=[0.0 for m in self.bullet_controlledJoints],
+            forces=[0.0 for m in self.torque_controlled_joints_ids],
         )
 
     def _setup_filter(self, cutoff_frequency, dt):
@@ -176,7 +186,7 @@ class TalosDeburringSimulator:
             self.torque_filter = LowpassFilter(
                 cutoff_frequency,
                 1 / dt,
-                len(self.bullet_controlledJoints),
+                len(self.torque_controlled_joints_ids),
             )
         else:
             self.is_torque_filtered = False
@@ -188,7 +198,7 @@ class TalosDeburringSimulator:
     def getRobotState(self):
         """Get current state of the robot from PyBullet."""
         # Get articulated joint pos and vel
-        xbullet = p.getJointStates(self.robot_id, self.bullet_controlledJoints)
+        xbullet = p.getJointStates(self.robot_id, self.torque_controlled_joints_ids)
         q = [x[0] for x in xbullet]
         vq = [x[1] for x in xbullet]
 
@@ -234,7 +244,7 @@ class TalosDeburringSimulator:
         """
         p.setJointMotorControlArray(
             self.robot_id,
-            self.bullet_controlledJoints,
+            self.torque_controlled_joints_ids,
             controlMode=p.TORQUE_CONTROL,
             forces=torques,
         )
@@ -268,7 +278,7 @@ class TalosDeburringSimulator:
 
         # Optionnal init phase with PD control
         for _ in range(nb_pd_steps):
-            for id_bullet in self.bullet_controlledJoints:
+            for id_bullet in self.torque_controlled_joints_ids:
                 joint_name = p.getJointInfo(self.robot_id, id_bullet)[1].decode()
                 joint_torque = self.pd_controller.compute_control(
                     joint_name,
