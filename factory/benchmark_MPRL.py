@@ -79,6 +79,10 @@ class bench_MPRL(bench_base):
                 x_measured,
                 self.mpc.crocoWrapper.solver.xs,
             )
+            if self.simulator.enable_GUI == 2:
+                self.simulator.posture_visualizer.update_posture(
+                    self.x_reference[7 : self.pinWrapper.get_rmodel().nq],
+                )
 
         if Time % self.num_simulation_step == 0:
             t0, x0, K0 = self.mpc.step(x_measured, self.x_reference)

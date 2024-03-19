@@ -63,8 +63,7 @@ class VisualHandler:
         object_position,
         object_orientation=None,
     ):
-        """
-        Set the position and orientation of a visual object.
+        """Set the position and orientation of a visual object.
 
         Args:
             object_name: The name of the visual object to update.
@@ -85,8 +84,7 @@ class VisualHandler:
             )
 
     def update_visuals(self, oMtool):
-        """
-        Update the position and orientation of the tool visual object.
+        """Update the position and orientation of the tool visual object.
 
         Args:
             oMtool: The new SE3 pose of the tool.
@@ -97,6 +95,14 @@ class VisualHandler:
                 oMtool.translation,
                 pin.Quaternion(oMtool.rotation).coeffs(),
             )
+
+    def reset_visuals(self, target_pos):
+        """Reset the position and orientation of the target
+
+        Args:
+            target_pos: The new position of the target.
+        """
+        self.set_visual_object_position(self.target_visual, target_pos)
 
 
 class PostureVisualizer:
@@ -116,7 +122,7 @@ class PostureVisualizer:
         initial_base_position,
         initial_base_orientation,
         bullet_controlledJoints,
-        initial_joint_positions,
+        initial_joint_configuration,
     ):
         """Initialize the PostureVisualizer class."""
         # Load visual robot
@@ -128,7 +134,13 @@ class PostureVisualizer:
         )
         self.bullet_controlledJoints = bullet_controlledJoints
         # Set robot in initial pose
-        self.update_posture(initial_joint_positions)
+        for id_bullet, initial_pos in initial_joint_configuration.items():
+            # p.enableJointForceTorqueSensor(self.robot_id, id_bullet, True)
+            p.resetJointState(
+                self.visual_robot,
+                id_bullet,
+                initial_pos,
+            )
 
         # Change color and disable collisions
         color = [0, 0, 1, 0.2]  # second robot is gold

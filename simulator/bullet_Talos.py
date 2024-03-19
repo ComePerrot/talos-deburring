@@ -25,7 +25,7 @@ class TalosDeburringSimulator:
         URDF,
         rmodel_complete,
         controlled_joints_ids,
-        enable_GUI=False,
+        enable_GUI=0,
         enable_gravity=True,
         dt=1e-3,
         cutoff_frequency=0,
@@ -35,14 +35,16 @@ class TalosDeburringSimulator:
         self._setup_robot(URDF, rmodel_complete, controlled_joints_ids)
         self._setup_PD_controller()
         self._setup_filter(cutoff_frequency, dt)
-        self.visual_handler = VisualHandler(self.physics_client)
-        self.posture_visualizer = PostureVisualizer(
-            URDF,
-            self.q0[:3],
-            self.q0[3:7],
-            self.torque_controlled_joints_ids,
-            self.q0[7:],
-        )
+        if self.enable_GUI > 0:
+            self.visual_handler = VisualHandler(self.physics_client)
+        if self.enable_GUI == 2:
+            self.posture_visualizer = PostureVisualizer(
+                URDF,
+                self.q0[:3],
+                self.q0[3:7],
+                self.torque_controlled_joints_ids,
+                self.initial_joint_configuration,
+            )
 
     def _setup_client(self, enable_GUI, enable_gravity, dt):
         """Set up PyBullet client and environment settings.
@@ -52,8 +54,9 @@ class TalosDeburringSimulator:
             enable_gravity: Whether to enable gravity in the simulation.
             dt: Time step of the simulation.
         """
+        self.enable_GUI = enable_GUI
         # Start the client for PyBullet
-        if enable_GUI:
+        if self.enable_GUI > 0:
             self.physics_client = p.connect(p.SHARED_MEMORY)
             if self.physics_client < 0:
                 self.physics_client = p.connect(p.GUI)
@@ -228,7 +231,8 @@ class TalosDeburringSimulator:
             torques: Torques to be applied to the robot.
             oMtool: Placement of the tool expressed as a SE3 object.
         """
-        self.visual_handler.update_visuals(oMtool)
+        if self.enable_GUI > 0:
+            self.visual_handler.update_visuals(oMtool)
         if self.is_torque_filtered:
             filtered_torques = self.torque_filter.filter(torques)
         else:
@@ -271,10 +275,8 @@ class TalosDeburringSimulator:
 
         self._set_initial_config()
 
-        self.visual_handler.set_visual_object_position(
-            self.visual_handler.target_visual,
-            target_pos,
-        )
+        if self.enable_GUI > 0:
+            self.visual_handler.reset_visuals(target_pos)
 
         # Optionnal init phase with PD control
         for _ in range(nb_pd_steps):
