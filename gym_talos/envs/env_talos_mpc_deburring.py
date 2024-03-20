@@ -259,6 +259,9 @@ class EnvTalosMPC(gym.Env):
 
         for _ in range(self.numOCPSteps * self.numSimulationSteps):
             x_measured = self.simulator.getRobotState()
+            self.action_handler.q0 = [
+                x_measured[i] for i in self.rl_controlled_IDs
+            ]
             oMtool = self.pinWrapper.get_end_effector_frame()
             if self.sim_time % self.numSimulationSteps == 0:
                 t0, x0, K0 = self.mpc.step(x_measured, posture_reference)

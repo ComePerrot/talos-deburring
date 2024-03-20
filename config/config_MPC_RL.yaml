@@ -1,5 +1,5 @@
 training:
-  name: "4joints"
+  name: "3joints"
   total_timesteps: 100000 # Total number of training timesteps
   log_interval: 50 # Number of episodes between logging events
   check_freq: 2000 # Number of timesteps between saving checkpoints
@@ -16,8 +16,8 @@ environment:
   nb_environments: 1 # Number of environments used to collect data
   timeStepSimulation: 1e-3
   numOCPSteps: 10
-  actionType: "full_range" # full_range / differential
-  actionScale: 1
+  actionType: "differential" # full_range / differential
+  actionScale: 0.1
   normalizeObs: True
   historyObs: 0
   predictionSize: 3
@@ -39,7 +39,7 @@ environment:
   distanceThreshold: 0.005
   w_success: 10
   w_distance: 5
-  w_penalization_truncation: 100
+  w_penalization_truncation: 500
   w_penalization_torque: 0.001
 
 robot:
