@@ -62,9 +62,9 @@ class EnvTalosMPC(gym.Env):
         # Simulator
         self.simulator = TalosDeburringSimulator(
             URDF=params_designer["urdf_path"],
-            rmodelComplete=self.pinWrapper.get_rmodel_complete(),
-            controlledJointsIDs=self.pinWrapper.get_controlled_joints_ids(),
-            enableGUI=GUI,
+            rmodel_complete=self.pinWrapper.get_rmodel_complete(),
+            controlled_joints_ids=self.pinWrapper.get_controlled_joints_ids(),
+            enable_GUI=GUI,
             dt=self.timeStepSimulation,
         )
 
