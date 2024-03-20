@@ -15,18 +15,20 @@ from factory.benchmark_MPC_variablePosture import bench_MPC_variablePosture
 from factory.benchmark_results import BenchmarkResult
 
 
-def main():
-    # PARAMETERS
-    parameter_filename = "config/config.yaml"
-    filepath = Path(__file__).resolve().parent
-    parameter_file = filepath / parameter_filename
+def setup_benchmark(parameter_file):
+    """Set up the benchmark.
+
+    Set up the benchmark by loading parameters, creating a target handler,
+    initializing the robot designer, and setting up the simulator.
+
+    Args:
+        parameter_file (Path): The path to the parameter file in YAML format.
+    """
     with parameter_file.open(mode="r") as paramFile:
         params = yaml.safe_load(paramFile)
 
-    verbose = params["verbose"]
     target_handler = TargetGoal(params["target"])
     target_handler.create_target()
-    targets = target_handler.generate_target_list(params["numberTargets"])
 
     params["robot"]["urdf_path"] = urdf_path["example_robot_data"]
     params["robot"]["srdf_path"] = srdf_path
@@ -48,23 +50,19 @@ def main():
         cutoff_frequency=params["robot_cutoff_frequency"],
     )
 
-    MPC = bench_MPC(params, pinWrapper, simulator)
-    MPC_variablePosture = bench_MPC_variablePosture(
-        params,
-        pinWrapper,
-        simulator,
-    )
-    # MPRL
-    model_paths = [
-        "/home/cperrot/ws_bench/logs/2024-03-20_3joints_2/best_model",
-    ]
-    MPRL_list = []
-    for path in model_paths:
-        MPRL = bench_MPRL(params, path, target_handler, pinWrapper, simulator)
-        MPRL_list.append(MPRL)
+    return (params, target_handler, pinWrapper, simulator)
 
-    trial_list = [*MPRL_list]
-    result = BenchmarkResult()
+
+def run_benchmark(targets, trial_list):
+    """Run the benchmark.
+
+    Executes each trial for each target and stores the results.
+
+    Args:
+        targets: A list of targets for the benchmark.
+        trial_list: A list of controllers to be tested in the benchmark.
+    """
+    results = BenchmarkResult()
     for trial_id, controller in enumerate(trial_list):
         test_details = []
         for target in targets:
@@ -82,15 +80,55 @@ def main():
             }
             test_details.append(test_detail)
 
-        result.add_trial_result(
+        results.add_trial_result(
             trial_id,
             type(controller).__name__,
             test_details,
         )
 
-    result.print_results()
-    simulator.end()
+    # Closing simulator (all trials are talking to the same instance)
+    trial_list[0].simulator.end()
+
+    return results
 
 
 if __name__ == "__main__":
-    main()
+    # Parameters
+    parameter_filename = "config/config.yaml"
+
+    test_MPC = False
+    test_MPC_variablePosture = False
+    rl_model_paths = [
+        "/home/cperrot/ws_bench/logs/2024-03-20_3joints_2/best_model",
+    ]
+
+    # Loading parameters from YAML file
+    filepath = Path(__file__).resolve().parent
+    parameter_file = filepath / parameter_filename
+
+    # Setting up useful objects
+    params, target_handler, pinWrapper, simulator = setup_benchmark(parameter_file)
+
+    # Creating trial list
+    trial_list = []
+    if test_MPC:
+        MPC = bench_MPC(params, pinWrapper, simulator)
+        trial_list.append(MPC)
+
+    if test_MPC_variablePosture:
+        MPC_variablePosture = bench_MPC_variablePosture(params, pinWrapper, simulator)
+        trial_list.append(MPC_variablePosture)
+
+    if rl_model_paths is not None:
+        MPRL_list = []
+        for path in rl_model_paths:
+            MPRL = bench_MPRL(params, path, target_handler, pinWrapper, simulator)
+            MPRL_list.append(MPRL)
+        trial_list.extend(MPRL_list)
+
+    # Running benchmark
+    targets = target_handler.generate_target_list(params["numberTargets"])
+    results = run_benchmark(targets, trial_list)
+
+    # Printing results
+    results.print_results()
