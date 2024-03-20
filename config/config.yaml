@@ -4,7 +4,7 @@ timeStepSimulation: 1e-3
 toleranceError: 0.005
 MPC_delay: 1
 robot_cutoff_frequency: 5
-GUI: 2 # 0 : no GUI - 1 : GUI - 2 : GUI and posture visualization
+GUI: 0 # 0 : no GUI - 1 : GUI - 2 : GUI and posture visualization
 verbose: true
 
 target:
@@ -51,16 +51,16 @@ robot:
   end_effector_position: [0, -0.02, -0.0825]
 
 RL_posture:
-  model_path: "/home/cperrot/ws_bench/logs/2024-03-08_4joints_1/best_model"
+  model_path: "/home/cperrot/ws_bench/logs/2024-03-18_3joints_4/best_model"
   numOCPSteps: 10
   controlled_joints_names: [
       arm_left_1_joint,
       arm_left_2_joint,
-      arm_left_3_joint,
+      # arm_left_3_joint,
       arm_left_4_joint,
     ]
-  actionScale: 1
-  actionType: "full_range" # full_range / differential
+  actionScale: 0.1
+  actionType: "differential" # full_range / differential
   normalizeObs: True
   historyObs: 0
   predictionSize: 3

@@ -96,8 +96,8 @@ if __name__ == "__main__":
     # Parameters
     parameter_filename = "config/config.yaml"
 
-    test_MPC = False
-    test_MPC_variablePosture = False
+    test_MPC = True
+    test_MPC_variablePosture = True
     rl_model_paths = [
         "/home/cperrot/ws_bench/logs/2024-03-20_3joints_2/best_model",
     ]
@@ -131,4 +131,4 @@ if __name__ == "__main__":
     results = run_benchmark(targets, trial_list)
 
     # Printing results
-    results.print_results()
+    results.print_results(print_details=params["verbose"])
