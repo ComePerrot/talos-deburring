@@ -7,8 +7,9 @@ from controllers.RL_posture import RLPostureController
 
 
 class bench_MPRL(bench_base):
-    def __init__(self, filename, target_handler, pinWrapper, simulator):
+    def __init__(self, filename, model_path, target_handler, pinWrapper, simulator):
         self.target_handler = target_handler
+        self.model_path = model_path
         super().__init__(filename, pinWrapper, simulator)
 
     def _define_controller(self):
@@ -26,7 +27,7 @@ class bench_MPRL(bench_base):
             "rmodel": self.pinWrapper.get_rmodel(),
             "scaling_factor": self.params["RL_posture"]["actionScale"],
             "scaling_mode": self.params["RL_posture"]["actionType"],
-            "initial_pose": None,
+            "initial_pose": [self.pinWrapper.get_x0()[i] for i in rl_controlled_IDs],
         }
         #       Observation wrapper
         kwargs_observation = {
@@ -36,9 +37,8 @@ class bench_MPRL(bench_base):
             "history_size": 0,
             "prediction_size": 3,
         }
-        model_path = self.params["RL_posture"]["model_path"]
         self.posture_controller = RLPostureController(
-            model_path,
+            self.model_path,
             self.pinWrapper.get_x0().copy(),
             kwargs_action,
             kwargs_observation,
