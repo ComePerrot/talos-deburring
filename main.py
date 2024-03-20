@@ -9,11 +9,10 @@ from gym_talos.utils.create_target import TargetGoal
 from robot_description.path_getter import urdf_path, srdf_path
 
 from simulator.bullet_Talos import TalosDeburringSimulator
-from simulator.mujoco_Talos import TalosMujoco
 from factory.benchmark_MPRL import bench_MPRL
 from factory.benchmark_MPC import bench_MPC
 from factory.benchmark_MPC_variablePosture import bench_MPC_variablePosture
-from factory.benchmark_MPC_noRiccati import bench_MPC_noRiccati
+from factory.benchmark_results import BenchmarkResult
 
 
 def main():
@@ -49,20 +48,25 @@ def main():
         cutoff_frequency=params["robot_cutoff_frequency"],
     )
 
-    MPRL = bench_MPRL(params, target_handler, pinWrapper, simulator)
     MPC = bench_MPC(params, pinWrapper, simulator)
     MPC_variablePosture = bench_MPC_variablePosture(
         params,
         pinWrapper,
         simulator,
     )
-    MPC_noRiccati = bench_MPC_noRiccati(params, pinWrapper, simulator)
+    # MPRL
+    model_paths = [
+        "/home/cperrot/ws_bench/logs/2024-03-20_3joints_2/best_model",
+    ]
+    MPRL_list = []
+    for path in model_paths:
+        MPRL = bench_MPRL(params, path, target_handler, pinWrapper, simulator)
+        MPRL_list.append(MPRL)
 
-    for controller in [MPC_variablePosture]:
-        print(type(controller).__name__)
-        catastrophic_failure = 0
-        failure = 0
-        success = 0
+    trial_list = [*MPRL_list]
+    result = BenchmarkResult()
+    for trial_id, controller in enumerate(trial_list):
+        test_details = []
         for target in targets:
             (
                 reach_time,
@@ -70,26 +74,21 @@ def main():
                 limits,
             ) = controller.run(target)
 
-            if verbose == 1:
-                print(np.array(target))
-            if limits is not False:
-                catastrophic_failure += 1
+            test_detail = {
+                "target": target,
+                "reach_time": reach_time,
+                "error_placement_tool": error_placement_tool,
+                "limits": limits,
+            }
+            test_details.append(test_detail)
 
-                if verbose == 1:
-                    print("Limit infriged")
-                    print(limits)
-            else:
-                if verbose == 1:
-                    print(reach_time, error_placement_tool)
-                if reach_time is not None:
-                    success += 1
-                else:
-                    failure += 1
-        print("Catastrophic failure:")
-        print(" " + str(catastrophic_failure))
-        print("Failure: " + str(failure))
-        print("Success: " + str(success))
+        result.add_trial_result(
+            trial_id,
+            type(controller).__name__,
+            test_details,
+        )
 
+    result.print_results()
     simulator.end()
 
 
