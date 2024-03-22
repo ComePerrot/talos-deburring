@@ -70,6 +70,9 @@ class ActionWrapper:
         else:
             partial_reference = self.partial_x0 + scaled_action
 
+        if self.clip_action:
+            partial_reference = self._clip_reference(partial_reference)
+
         return partial_reference
 
     def _scale_action(self, action):
@@ -88,3 +91,12 @@ class ActionWrapper:
         ).any():
             msg = "Scaling of action is not inside of the model limits"
             raise ValueError(msg)
+
+    def _clip_reference(self, partial_reference):
+        return [
+            max(
+                min(partial_reference[i], self.upper_action_limit[i]),
+                self.lower_action_limit[i],
+            )
+            for i in range(len(partial_reference))
+        ]
