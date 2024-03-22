@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class action_wrapper:
+class ActionWrapper:
     def __init__(
         self,
         rmodel,
@@ -32,12 +32,6 @@ class action_wrapper:
 
         self._compute_action_data()
 
-    def update_initial_state(self, state):
-        self.x0 = self.reference_state = state.copy()
-        self.x0[self.rmodel.nq :] = np.zeros(self.rmodel.nv)
-
-        self.partial_x0 = [self.x0[i] for i in self.rl_controlled_ids]
-
     def _compute_action_data(self):
         self.lower_action_limit = np.array(
             [
@@ -54,6 +48,12 @@ class action_wrapper:
 
         self.action_average = (self.upper_action_limit + self.lower_action_limit) / 2
         self.action_amplitude = (self.upper_action_limit - self.lower_action_limit) / 2
+
+    def update_initial_state(self, state):
+        self.x0 = self.reference_state = state.copy()
+        self.x0[self.rmodel.nq :] = np.zeros(self.rmodel.nv)
+
+        self.partial_x0 = [self.x0[i] for i in self.rl_controlled_ids]
 
     def compute_reference_state(self, action):
         partial_state = self.compute_partial_state(action)
@@ -73,7 +73,7 @@ class action_wrapper:
         return partial_reference
 
     def _scale_action(self, action):
-        return action * self.action_amplitude * self.scaling_factor
+        return self.scaling_factor * action * self.action_amplitude
 
     def _check_scaling(self):
         """Checks range of scaled action
