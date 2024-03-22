@@ -4,39 +4,76 @@ import numpy as np
 class action_wrapper:
     def __init__(
         self,
-        rl_controlled_IDs,
         rmodel,
+        rl_controlled_joints,
+        initial_state,
         scaling_factor=1,
         scaling_mode="full_range",
-        initial_pose=None,
+        clip_action=False,
     ):
-        self.rl_controlled_IDs = rl_controlled_IDs
         self.rmodel = rmodel
+        self.rl_controlled_joints = rl_controlled_joints
+        self.rl_controlled_ids = np.array(
+            [
+                self.rmodel.names.tolist().index(joint_name) - 2 + 7
+                for joint_name in self.rl_controlled_joints
+            ],
+        )
+
+        # initial state
+        self.x0 = initial_state.copy()
+        self.partial_x0 = [self.x0[i] for i in self.rl_controlled_ids]
+
+        self.reference_state = self.x0.copy()
+
         self.scaling_factor = scaling_factor
         self.scaling_mode = scaling_mode
-        self.q0 = initial_pose
-        self._init_actScaler()
-        if scaling_mode == "differential":
-            # Check scaling
-            self._check_scaling()
+        self.clip_action = clip_action
 
-    def _init_actScaler(self):
-        """Initializes the action scaler using robot model limits"""
-        self.lowerActLim = np.array(
+        self._compute_action_data()
+
+    def update_initial_state(self, state):
+        self.x0 = self.reference_state = state.copy()
+        self.x0[self.rmodel.nq :] = np.zeros(self.rmodel.nv)
+
+        self.partial_x0 = [self.x0[i] for i in self.rl_controlled_ids]
+
+    def _compute_action_data(self):
+        self.lower_action_limit = np.array(
             [
                 self.rmodel.lowerPositionLimit[joint_ID]
-                for joint_ID in self.rl_controlled_IDs
+                for joint_ID in self.rl_controlled_ids
             ],
         )
-        self.upperActLim = np.array(
+        self.upper_action_limit = np.array(
             [
                 self.rmodel.upperPositionLimit[joint_ID]
-                for joint_ID in self.rl_controlled_IDs
+                for joint_ID in self.rl_controlled_ids
             ],
         )
 
-        self.avgAct = (self.upperActLim + self.lowerActLim) / 2
-        self.diffAct = (self.upperActLim - self.lowerActLim) / 2
+        self.action_average = (self.upper_action_limit + self.lower_action_limit) / 2
+        self.action_amplitude = (self.upper_action_limit - self.lower_action_limit) / 2
+
+    def compute_reference_state(self, action):
+        partial_state = self.compute_partial_state(action)
+
+        for i, state_id in enumerate(self.rl_controlled_ids):
+            self.reference_state[state_id] = partial_state[i]
+
+        return self.reference_state
+
+    def compute_partial_state(self, action):
+        scaled_action = self._scale_action(action)
+        if self.scaling_mode == "full_range":
+            partial_reference = self.action_average + scaled_action
+        else:
+            partial_reference = self.partial_x0 + scaled_action
+
+        return partial_reference
+
+    def _scale_action(self, action):
+        return action * self.action_amplitude * self.scaling_factor
 
     def _check_scaling(self):
         """Checks range of scaled action
@@ -44,30 +81,10 @@ class action_wrapper:
         Checks that the scaled action stays inside the kinematic limits of the
         robot (only used when the scaling mode is differential)
         """
-        upper_action = self.q0 + self.diffAct * self.scaling_factor
-        lower_action = self.q0 - self.diffAct * self.scaling_factor
-        if (upper_action > self.upperActLim).any() or (
-            lower_action < self.lowerActLim
+        upper_action = self.q0 + self.action_amplitude * self.scaling_factor
+        lower_action = self.q0 - self.action_amplitude * self.scaling_factor
+        if (upper_action > self.upper_action_limit).any() or (
+            lower_action < self.lower_action_limit
         ).any():
             msg = "Scaling of action is not inside of the model limits"
             raise ValueError(msg)
-
-    def action(self, action):
-        """Scale the action given by the agent based on the chosen scaling mode
-
-        Args:
-            action: normalized action given by the agent in the range [-1, 1]
-
-        Returns:
-            unnormalized reference based on the chosen scaling mode
-        """
-        scaled_action = action * self.diffAct * self.scaling_factor
-        if self.scaling_mode == "full_range":
-            reference = self.avgAct + scaled_action
-        elif self.scaling_mode == "differential" and self.q0 is not None:
-            reference = self.q0 + scaled_action
-        else:
-            msg = "Invalid scaling mode or missing initial pose."
-            raise ValueError(msg)
-
-        return reference
