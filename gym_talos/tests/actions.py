@@ -110,5 +110,36 @@ class ActionTestCase(unittest.TestCase):
     def test_update_initial_state(self):
         self.action_wrapper.update_initial_state(self.x1)
 
+        partial_state_neutral = self.action_wrapper.compute_partial_state([0, 0, 0, 0])
+        partial_x0_neutral = self.action_wrapper.action_average
+        np.testing.assert_allclose(partial_state_neutral, partial_x0_neutral)
+
+        partial_state_upper = self.action_wrapper.compute_partial_state([1, 1, 1, 1])
+        partial_x0_upper = self.action_wrapper.upper_action_limit
+        np.testing.assert_allclose(partial_state_upper, partial_x0_upper)
+
+        partial_state_lower = self.action_wrapper.compute_partial_state(
+            [-1, -1, -1, -1],
+        )
+        partial_x0_lower = self.action_wrapper.lower_action_limit
+        np.testing.assert_allclose(partial_state_lower, partial_x0_lower)
+
+        self.action_wrapper.scaling_mode = "differential"
+        partial_state_neutral = self.action_wrapper.compute_partial_state([0, 0, 0, 0])
+        partial_x0_neutral = [self.x1[i] for i in self.rl_controlled_ids]
+        np.testing.assert_allclose(partial_state_neutral, partial_x0_neutral)
+
+        partial_state_upper = self.action_wrapper.compute_partial_state([1, 1, 1, 1])
+        partial_x0_upper = self.action_wrapper.upper_action_limit
+        for partial_state_i, partial_x0_i in zip(partial_state_upper, partial_x0_upper):
+            self.assertLessEqual(partial_state_i, partial_x0_i)
+
+        partial_state_lower = self.action_wrapper.compute_partial_state(
+            [-1, -1, -1, -1],
+        )
+        partial_x0_lower = self.action_wrapper.lower_action_limit
+        for partial_state_i, partial_x0_i in zip(partial_state_lower, partial_x0_lower):
+            self.assertLessEqual(partial_x0_i, partial_state_i)
+
 if __name__ == "__main__":
     unittest.main()
