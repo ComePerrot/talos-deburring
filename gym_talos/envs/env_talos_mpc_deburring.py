@@ -11,7 +11,7 @@ from simulator.bullet_Talos import TalosDeburringSimulator
 
 from gym_talos.utils.create_target import TargetGoal
 from gym_talos.utils.observation_wrapper import observation_wrapper
-from gym_talos.utils.action_wrapper import action_wrapper
+from gym_talos.utils.action_wrapper import ActionWrapper
 
 
 class EnvTalosMPC(gym.Env):
@@ -72,12 +72,13 @@ class EnvTalosMPC(gym.Env):
         self._init_env_variables(self.action_dimension, observation_dimension)
 
         # action
-        self.action_handler = action_wrapper(
-            self.rl_controlled_IDs,
+        self.action_handler = ActionWrapper(
             self.rmodel,
+            self.rl_controlled_joints,
+            initial_state=self.q0,
             scaling_factor=params_env["actionScale"],
             scaling_mode=params_env["actionType"],
-            initial_pose=[self.q0[i] for i in self.rl_controlled_IDs],
+            clip_action=True,
         )
 
     def _init_ocp(self, param_ocp):
@@ -249,19 +250,15 @@ class EnvTalosMPC(gym.Env):
             Boolean indicating this rollout is done
         """
         self.timer += 1
-        arm_reference = self.action_handler.action(action)
+        x_measured = self.simulator.getRobotState()
+        self.action_handler.update_initial_state(x_measured)
 
-        posture_reference = self.q0
-        for i in range(self.action_dimension):
-            posture_reference[self.rl_controlled_IDs[i]] = arm_reference[i]
+        posture_reference = self.action_handler.compute_reference_state(action)
 
         torque_sum = 0
 
         for _ in range(self.numOCPSteps * self.numSimulationSteps):
             x_measured = self.simulator.getRobotState()
-            self.action_handler.q0 = [
-                x_measured[i] for i in self.rl_controlled_IDs
-            ]
             oMtool = self.pinWrapper.get_end_effector_frame()
             if self.sim_time % self.numSimulationSteps == 0:
                 t0, x0, K0 = self.mpc.step(x_measured, posture_reference)
