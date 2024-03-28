@@ -16,18 +16,12 @@ class bench_MPRL(bench_base):
         #   RL Posture controller
         #       Action wrapper
         controlled_joints_names = self.params["RL_posture"]["controlled_joints_names"]
-        rl_controlled_IDs = np.array(
-            [
-                self.pinWrapper.get_rmodel().names.tolist().index(joint_name) - 2 + 7
-                for joint_name in controlled_joints_names
-            ],
-        )
         kwargs_action = {
-            "rl_controlled_IDs": rl_controlled_IDs,
             "rmodel": self.pinWrapper.get_rmodel(),
+            "rl_controlled_joints": controlled_joints_names,
+            "initial_state": self.pinWrapper.get_x0(),
             "scaling_factor": self.params["RL_posture"]["actionScale"],
             "scaling_mode": self.params["RL_posture"]["actionType"],
-            "initial_pose": [self.pinWrapper.get_x0()[i] for i in rl_controlled_IDs],
         }
         #       Observation wrapper
         kwargs_observation = {
