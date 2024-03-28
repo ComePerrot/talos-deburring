@@ -12,6 +12,18 @@ class ActionWrapper:
         scaling_mode="full_range",
         clip_action=False,
     ):
+        # Check input arguments
+        for joint in rl_controlled_joints:
+            assert joint in rmodel.names.tolist(), f"{joint} not in robot model."
+        assert (
+            len(initial_state) == rmodel.nq + rmodel.nv
+        ), f"Size mismatch: initial state is of size ({len(initial_state)}) instead of ({rmodel.nq + rmodel.nv})."
+        assert scaling_mode in [
+            "full_range",
+            "differential",
+        ], f"Unexpected '{scaling_mode}' scaling_mode, must be either 'full_range' or 'differential'."
+        assert isinstance(clip_action, bool), "clip_action must be a boolean."
+
         self.rmodel = rmodel
         self.rl_controlled_joints = rl_controlled_joints
         self.rl_controlled_ids = np.array(
