@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 
 
 class ActionWrapper:
@@ -32,6 +33,9 @@ class ActionWrapper:
 
         self._compute_action_data()
 
+        if scaling_mode == "differential" and not clip_action:
+            self._check_scaling()
+
     def _compute_action_data(self):
         self.lower_action_limit = np.array(
             [
@@ -49,11 +53,20 @@ class ActionWrapper:
         self.action_average = (self.upper_action_limit + self.lower_action_limit) / 2
         self.action_amplitude = (self.upper_action_limit - self.lower_action_limit) / 2
 
-    def update_initial_state(self, state):
-        self.x0 = self.reference_state = state.copy()
-        self.x0[self.rmodel.nq :] = np.zeros(self.rmodel.nv)
+    def _check_scaling(self):
+        """Checks range of scaled action
 
-        self.partial_x0 = [self.x0[i] for i in self.rl_controlled_ids]
+        Checks that the scaled action stays inside the kinematic limits of the
+        robot (only used when the scaling mode is differential)
+        """
+        upper_action = self.compute_partial_state(np.ones(len(self.rl_controlled_ids)))
+        lower_action = self.compute_partial_state(-np.ones(len(self.rl_controlled_ids)))
+        if (upper_action > self.upper_action_limit).any() or (
+            lower_action < self.lower_action_limit
+        ).any():
+            msg = "Scaling of action is not inside of the model limits."
+            print(msg)
+            # warnings.warn(msg, stacklevel=2)
 
     def compute_reference_state(self, action):
         partial_state = self.compute_partial_state(action)
@@ -76,21 +89,7 @@ class ActionWrapper:
         return partial_reference
 
     def _scale_action(self, action):
-        return self.scaling_factor * action * self.action_amplitude
-
-    def _check_scaling(self):
-        """Checks range of scaled action
-
-        Checks that the scaled action stays inside the kinematic limits of the
-        robot (only used when the scaling mode is differential)
-        """
-        upper_action = self.q0 + self.action_amplitude * self.scaling_factor
-        lower_action = self.q0 - self.action_amplitude * self.scaling_factor
-        if (upper_action > self.upper_action_limit).any() or (
-            lower_action < self.lower_action_limit
-        ).any():
-            msg = "Scaling of action is not inside of the model limits"
-            raise ValueError(msg)
+        return self.scaling_factor * np.array(action) * self.action_amplitude
 
     def _clip_reference(self, partial_reference):
         return [
@@ -100,3 +99,9 @@ class ActionWrapper:
             )
             for i in range(len(partial_reference))
         ]
+
+    def update_initial_state(self, state):
+        self.x0 = self.reference_state = state.copy()
+        self.x0[self.rmodel.nq :] = np.zeros(self.rmodel.nv)
+
+        self.partial_x0 = [self.x0[i] for i in self.rl_controlled_ids].copy()
