@@ -29,14 +29,21 @@ class BenchmarkResult:
         catastrophic_failures = 0
         failures = 0
         successes = 0
+        avg_time = 0
 
         for test_detail in test_details:
             if test_detail["limits"] is not False:
                 catastrophic_failures += 1
             elif test_detail["reach_time"] is not None:
                 successes += 1
+                avg_time += test_detail["reach_time"]
             else:
                 failures += 1
+
+        if successes > 0:
+            avg_time = avg_time / successes
+        else:
+            avg_time = None
 
         trial_result = {
             "trial_id": trial_id,
@@ -44,6 +51,7 @@ class BenchmarkResult:
             "catastrophic_failures": catastrophic_failures,
             "failures": failures,
             "successes": successes,
+            "avg_reach_time": avg_time,
             "test_details": test_details,  # List of dictionaries, each containing details about a test
         }
         self.trial_results.append(trial_result)
@@ -59,6 +67,7 @@ class BenchmarkResult:
             print(f"Catastrophic failures: {trial_result['catastrophic_failures']}")
             print(f"Failures: {trial_result['failures']}")
             print(f"Successes: {trial_result['successes']}")
+            print(f"Average reach time for successes: {trial_result['avg_reach_time']}s")
             if print_details:
                 print("\nTest details:")
                 for test_detail in trial_result["test_details"]:
