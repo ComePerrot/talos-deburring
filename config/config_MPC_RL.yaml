@@ -1,8 +1,8 @@
 training:
   name: "3joints"
-  total_timesteps: 100000 # Total number of training timesteps
-  log_interval: 50 # Number of episodes between logging events
-  check_freq: 2000 # Number of timesteps between saving checkpoints
+  total_timesteps: 50000 # Total number of training timesteps
+  log_interval: 20 # Number of episodes between logging events
+  check_freq: 500 # Number of timesteps between saving checkpoints
   number_eval: 50
 
 SAC:
@@ -10,14 +10,15 @@ SAC:
     policy: "MlpPolicy"
     tensorboard_log: "logs/"
     device: "cpu"
-    verbose: 2
+    verbose: 1
 
 environment:
   nb_environments: 1 # Number of environments used to collect data
   timeStepSimulation: 1e-3
   numOCPSteps: 10
   actionType: "differential" # full_range / differential
-  actionScale: 0.1
+  actionScale: 1
+  clipAction: False
   normalizeObs: True
   historyObs: 0
   predictionSize: 3

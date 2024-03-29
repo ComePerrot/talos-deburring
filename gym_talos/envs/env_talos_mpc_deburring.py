@@ -78,7 +78,7 @@ class EnvTalosMPC(gym.Env):
             initial_state=self.q0,
             scaling_factor=params_env["actionScale"],
             scaling_mode=params_env["actionType"],
-            clip_action=True,
+            clip_action=params_env["clipAction"],
         )
 
     def _init_ocp(self, param_ocp):
