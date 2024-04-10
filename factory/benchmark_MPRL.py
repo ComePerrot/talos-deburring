@@ -1,5 +1,3 @@
-import numpy as np
-
 from factory.benchmark_base import bench_base
 from controllers.MPC import MPController
 from controllers.Riccati import RiccatiController
@@ -25,11 +23,11 @@ class bench_MPRL(bench_base):
         }
         #       Observation wrapper
         kwargs_observation = {
-            "normalize_obs": True,
+            "normalize_obs": self.params["RL_posture"]["normalizeObs"],
             "rmodel": self.pinWrapper.get_rmodel(),
             "target_handler": self.target_handler,
-            "history_size": 0,
-            "prediction_size": 3,
+            "history_size":  self.params["RL_posture"]["historyObs"],
+            "prediction_size": self.params["RL_posture"]["predictionSize"],
         }
         self.posture_controller = RLPostureController(
             self.model_path,
