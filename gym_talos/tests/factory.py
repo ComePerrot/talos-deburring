@@ -4,6 +4,8 @@ import pathlib
 import yaml
 
 from deburring_mpc import RobotDesigner
+from gym_talos.utils.create_target import TargetGoal
+
 
 class RobotModelFactory:
     def __init__(self):
@@ -24,14 +26,18 @@ class RobotModelFactory:
 
         self.rmodel = self.pinWrapper.get_rmodel()
 
+        self.target_handler = TargetGoal(self.params_env)
+
     def _get_parameters(self):
-        config_filename = pathlib.Path(__file__).with_name('config_test.yaml')
+        config_filename = pathlib.Path(__file__).with_name("config_test.yaml")
         with config_filename.open() as config_file:
             parameters = yaml.safe_load(config_file)
         self.params_designer = parameters["robot"]["designer"]
 
         self.params_designer["urdf_path"] = self._get_robot_urdf()
         self.params_designer["srdf_path"] = self._get_robot_srdf()
+
+        self.params_env = parameters["environment"]
 
     def _get_robot_urdf(self):
         URDF = "/talos_data/robots/talos_reduced.urdf"
@@ -44,5 +50,7 @@ class RobotModelFactory:
         return modelPath + SRDF
 
     def get_rmodel(self):
-        return(self.rmodel)
+        return self.rmodel
 
+    def get_target_handler(self):
+        return self.target_handler
