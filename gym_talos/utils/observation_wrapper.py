@@ -5,7 +5,12 @@ import numpy as np
 
 class observation_wrapper:
     def __init__(
-        self, normalize_obs, rmodel, target_handler, history_size, prediction_size,
+        self,
+        normalize_obs,
+        rmodel,
+        target_handler,
+        history_size,
+        prediction_size,
     ):
         self.normalize_obs = normalize_obs
         self._init_normalizer(rmodel, target_handler)

@@ -15,14 +15,16 @@ SAC:
 environment:
   nb_environments: 1 # Number of environments used to collect data
   timeStepSimulation: 1e-3
-  numOCPSteps: 10
-  actionType: "differential" # full_range / differential
+  numOCPSteps: 5
+  actionType: "full_range" # full_range / differential
   actionScale: 1
   clipAction: False
   normalizeObs: True
   historyObs: 0
   predictionSize: 3
   controlled_joints_names: [
+      # torso_1_joint,
+      # torso_2_joint,
       arm_left_1_joint,
       arm_left_2_joint,
       # arm_left_3_joint,
@@ -34,8 +36,8 @@ environment:
   # Target
   targetType: "box"
   targetPosition: [0.6, 0.4, 1.1]
-  targetSizeLow: [-0.05, -0.1, -0.05]
-  targetSizeHigh: [0.05, 0.1, 0.05]
+  targetSizeLow: [-0.1, -0.1, -0.1]
+  targetSizeHigh: [0.1, 0.1, 0.1]
   # Reward parameters
   distanceThreshold: 0.005
   w_success: 10
@@ -88,7 +90,7 @@ robot:
     w_control_limit: 500
     w_com_pos: 500
     w_gripper_pos: 5
-    w_gripper_rot: 0
+    w_gripper_rot: 1
     w_gripper_vel: 2
     limit_scale: 0.95
     limit_speed: true
