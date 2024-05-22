@@ -12,6 +12,7 @@ from simulator.bullet_Talos import TalosDeburringSimulator
 from factory.benchmark_MPRL import bench_MPRL
 from factory.benchmark_MPC import bench_MPC
 from factory.benchmark_MPC_variablePosture import bench_MPC_variablePosture
+from factory.benchmark_MPC_noRiccati import bench_MPC_noRiccati
 from factory.benchmark_results import BenchmarkResult
 
 
@@ -73,7 +74,7 @@ def run_benchmark(targets, trial_list):
             ) = controller.run(target)
 
             test_detail = {
-                "target": target,
+                "target": np.array(target),
                 "reach_time": reach_time,
                 "error_placement_tool": error_placement_tool,
                 "limits": limits,
@@ -98,8 +99,9 @@ if __name__ == "__main__":
 
     test_MPC = True
     test_MPC_variablePosture = True
+    test_MPC_noRiccati = False
     rl_model_paths = [
-        "/home/cperrot/ws_bench/logs/2024-03-20_3joints_2/best_model",
+        # "/home/cperrot/ws_bench/logs/2024-03-20_3joints_2/best_model",
     ]
 
     # Loading parameters from YAML file
@@ -118,6 +120,10 @@ if __name__ == "__main__":
     if test_MPC_variablePosture:
         MPC_variablePosture = bench_MPC_variablePosture(params, pinWrapper, simulator)
         trial_list.append(MPC_variablePosture)
+
+    if test_MPC_noRiccati:
+        MPC_noRiccati = bench_MPC_noRiccati(params, pinWrapper, simulator)
+        trial_list.append(MPC_noRiccati)
 
     if rl_model_paths is not None:
         MPRL_list = []
