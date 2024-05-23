@@ -1,16 +1,16 @@
 training:
-  name: "3joints"
-  total_timesteps: 50000 # Total number of training timesteps
-  log_interval: 20 # Number of episodes between logging events
-  check_freq: 500 # Number of timesteps between saving checkpoints
-  number_eval: 50
+  name: "3joints_unlimited"
+  total_timesteps: 150000 # Total number of training timesteps
+  log_interval: 500 # Number of episodes between logging events
+  check_freq: 5000 # Number of timesteps between saving checkpoints
+  number_eval: 100
 
 SAC:
   model_param:
     policy: "MlpPolicy"
     tensorboard_log: "logs/"
     device: "cpu"
-    verbose: 1
+    verbose: 0
 
 environment:
   nb_environments: 1 # Number of environments used to collect data
@@ -19,7 +19,7 @@ environment:
   actionType: "full_range" # full_range / differential
   actionScale: 1
   clipAction: False
-  normalizeObs: True
+  normalizeObs: False
   historyObs: 0
   predictionSize: 3
   controlled_joints_names: [
@@ -35,19 +35,21 @@ environment:
   minHeight: 0.8 # if 0 no check is performed on the height of the robot
   # Target
   targetType: "box"
-  targetPosition: [0.6, 0.4, 1.1]
-  targetSizeLow: [-0.1, -0.1, -0.1]
-  targetSizeHigh: [0.1, 0.1, 0.1]
+  targetPosition: [0.7, 0.3, 1]
+  targetSizeLow: [-0.2, -0.3, -0.3]
+  targetSizeHigh: [0.2, 0.3, 0.3]
   # Reward parameters
   distanceThreshold: 0.005
   w_success: 10
   w_distance: 5
   w_penalization_truncation: 500
   w_penalization_torque: 0.001
+  # Parameter to activate extra Pal's limits
+  extra_limits: False
 
 robot:
   designer:
-    urdf_type: "private_pal" # custom, example_robot_data, private_pal, public_pal
+    urdf_type: "private_pal_limited" # custom, example_robot_data, private_pal, public_pal
     controlled_joints_names: [
         root_joint,
         leg_left_1_joint,
@@ -82,6 +84,7 @@ robot:
     end_effector_position: [0, -0.02, -0.0825]
 
   OCP:
+    delay: 1
     horizon_length: 30
     time_step: 0.02
     w_state_reg: 0.02

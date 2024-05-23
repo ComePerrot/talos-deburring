@@ -36,7 +36,11 @@ class EnvTalosMPC(gym.Env):
 
         self.rmodel = self.pinWrapper.get_rmodel()
 
-        self.limit_checker = LimitChecker(self.pinWrapper.get_rmodel(), verbose=False)
+        self.limit_checker = LimitChecker(
+            self.pinWrapper.get_rmodel(),
+            extra_limits=params_env["extra_limits"],
+            verbose=False,
+        )
 
         self.rl_controlled_IDs = np.array(
             [
@@ -82,7 +86,6 @@ class EnvTalosMPC(gym.Env):
         )
 
     def _init_ocp(self, param_ocp):
-
         self.oMtarget = pin.SE3.Identity()
         self.oMtarget.translation[0] = self.target_handler.position_target[0]
         self.oMtarget.translation[1] = self.target_handler.position_target[1]
@@ -95,7 +98,7 @@ class EnvTalosMPC(gym.Env):
             self.pinWrapper.get_x0(),
             self.target_handler.position_target,
             param_ocp,
-            1,
+            delay=param_ocp["delay"],
         )
 
         self.riccati = RiccatiController(
@@ -391,5 +394,5 @@ class EnvTalosMPC(gym.Env):
         else:
             truncation_limits = False
 
-        # Explicitely casting from numpy.bool_ to bool
+        # Explicitly casting from numpy.bool_ to bool
         return bool(truncation_balance or truncation_limits)
