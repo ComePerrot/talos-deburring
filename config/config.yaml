@@ -3,17 +3,19 @@ maxTime: 4
 timeStepSimulation: 1e-3
 toleranceError: 0.005
 MPC_delay: 1
-robot_cutoff_frequency: 5
+robot_cutoff_frequency: 0
 GUI: 0 # 0 : no GUI - 1 : GUI - 2 : GUI and posture visualization
 verbose: False
+extra_limits: False
 
 target:
   targetType: "box"
-  targetPosition: [0.6, 0.4, 1.1]
-  targetSizeLow: [-0.1, -0.1, -0.1]
-  targetSizeHigh: [0.1, 0.1, 0.1]
+  targetPosition: [0.7, 0.3, 1]
+  targetSizeLow: [-0.2, -0.3, -0.3]
+  targetSizeHigh: [0.2, 0.3, 0.3]
 
 robot:
+  urdf_type: "private_pal_limited" # custom, example_robot_data, private_pal, public_pal
   robot_description: ""
   left_foot_name: "right_sole_link"
   right_foot_name: "left_sole_link"

@@ -31,7 +31,7 @@ def setup_benchmark(parameter_file):
     target_handler = TargetGoal(params["target"])
     target_handler.create_target()
 
-    params["robot"]["urdf_path"] = urdf_path["example_robot_data"]
+    params["robot"]["urdf_path"] = urdf_path[params["robot"]["urdf_type"]]
     params["robot"]["srdf_path"] = srdf_path
 
     # Robot handler
