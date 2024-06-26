@@ -1,6 +1,7 @@
 import numpy as np
 import pinocchio as pin
 import pybullet as p  # PyBullet simulator
+from PIL import Image
 
 
 class VisualHandler:
@@ -22,13 +23,12 @@ class VisualHandler:
         self.LENGTH = 0.01
         self.create_visuals(target, tool)
 
-    def create_visuals(self, target=True, tool=True):
+    def create_visuals(self, target=True, tool=True, working_space=False):
         blue_sphere = p.createVisualShape(
             shapeType=p.GEOM_SPHERE,
             rgbaColor=[0, 0, 1, 0.5],
             visualFramePosition=[0.0, 0.0, 0.0],
             radius=self.RADIUS,
-            halfExtents=[0.0, 0.0, 0.0],
         )
         blue_capsule = p.createVisualShape(
             shapeType=p.GEOM_CAPSULE,
@@ -36,7 +36,6 @@ class VisualHandler:
             visualFramePosition=[0.0, 0.0, 0.0],
             radius=self.RADIUS / 3,
             length=self.LENGTH,
-            halfExtents=[0.0, 0.0, 0.0],
         )
 
         if target:
@@ -54,6 +53,21 @@ class VisualHandler:
                 baseInertialFramePosition=[0, 0, 0],
                 baseVisualShapeIndex=blue_capsule,
                 basePosition=[0.0, 0.0, 0.0],
+                useMaximalCoordinates=True,
+            )
+
+        if working_space:
+            blue_box = p.createVisualShape(
+                shapeType=p.GEOM_BOX,
+                rgbaColor=[0, 0, 1, 0.5],
+                visualFramePosition=[0.0, 0.0, 0.0],
+                halfExtents=[0.2, 0.3, 0.3],
+            )
+            self.working_space = p.createMultiBody(
+                baseMass=0.0,
+                baseInertialFramePosition=[0.0, 0.0, 0.0],
+                baseVisualShapeIndex=blue_box,
+                basePosition=[0.7, 0.3, 1],
                 useMaximalCoordinates=True,
             )
 
@@ -82,6 +96,24 @@ class VisualHandler:
                 object_position,
                 np.array([0, 0, 0, 1]),
             )
+
+    def reset_camera(self):
+        p.resetDebugVisualizerCamera(
+            cameraDistance=1.5,
+            cameraYaw=50,
+            cameraPitch=-30,
+            cameraTargetPosition=[0, 0, 1.1],
+        )
+
+    def save_picture(self, picture_name):
+        img = p.getCameraImage(
+            2160,
+            2160,
+            renderer=p.ER_BULLET_HARDWARE_OPENGL,
+        )  # p.ER_BULLET_HARDWARE_OPENGL p.ER_TINY_RENDERER
+        rgbBuffer = img[2]
+        rgbim = Image.fromarray(rgbBuffer)
+        rgbim.save(picture_name)
 
     def update_visuals(self, oMtool):
         """Update the position and orientation of the tool visual object.
@@ -143,14 +175,20 @@ class PostureVisualizer:
             )
 
         # Change color and disable collisions
-        color = [0, 0, 1, 0.2]  # second robot is gold
+        blue = [0, 0, 1, 0.2]  # second robot is blue
+        translucent = [0, 0, 0, 0]  # some joints should not appear
         # Base
-        p.changeVisualShape(self.visual_robot, -1, rgbaColor=color)
+        p.changeVisualShape(self.visual_robot, -1, rgbaColor=translucent)
         p.setCollisionFilterGroupMask(self.visual_robot, -1, 0, 0)
+
+        left_arm_ids = range(11, 28)
 
         # Joints
         for link_id in range(p.getNumJoints(self.visual_robot)):
-            p.changeVisualShape(self.visual_robot, link_id, rgbaColor=color)
+            if link_id in left_arm_ids:
+                p.changeVisualShape(self.visual_robot, link_id, rgbaColor=blue)
+            else:
+                p.changeVisualShape(self.visual_robot, link_id, rgbaColor=translucent)
             p.setCollisionFilterGroupMask(self.visual_robot, link_id, 0, 0)
 
     def update_posture(self, posture):

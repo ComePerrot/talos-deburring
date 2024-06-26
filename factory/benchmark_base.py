@@ -21,7 +21,8 @@ class bench_base:
         self.pinWrapper = pinWrapper
         self.limit_checker = LimitChecker(
             self.pinWrapper.get_rmodel(),
-            self.params["verbose"],
+            extra_limits=self.params["extra_limits"],
+            verbose=self.params["verbose"],
         )
 
         # Simulator
