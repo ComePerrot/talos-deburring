@@ -34,7 +34,7 @@ priority = "explicit"
 url = "https://download.pytorch.org/whl/cpu"
 
 [tool.poetry2conda]
-name = "talos-rl"
+name = "deburring-python-utils"
 
 [tool.poetry2conda.dependencies]
 example-robot-data = {channel = "conda-forge"}
