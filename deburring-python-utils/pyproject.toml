@@ -12,6 +12,8 @@ license = "BSD-2-Clause"
 name = "deburring-python-utils"
 packages = [{include = "gym_talos"},
             {include = "controllers"},
+            {include = "limit_checker_talos"},
+            {include = "robot_description"},
             {include = "simulator"},]
 readme = "README.md"
 version = "0.1.0"
@@ -40,7 +42,7 @@ name = "deburring-python-utils"
 example-robot-data = {channel = "conda-forge"}
 pybullet = {channel = "conda-forge"}
 pyyaml = {channel = "conda-forge"}
-stable-baselines3 = {channel = "pip"} # because pre-release are not available on canda
+stable-baselines3 = {channel = "pip"} # because pre-release are not available on conda
 tensorboard = {channel = "conda-forge"}
 torch = {channel = "pytorch", name = "pytorch"}
 
