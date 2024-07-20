@@ -4,26 +4,21 @@ From: mambaorg/micromamba
 %post
     apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
         git \
-        cmake \
-        build-essential \
-        pkg-config \
-        libyaml-cpp-dev
-    git clone -b topic/MPC https://github.com/ComePerrot/talos-rl.git
-    git clone https://gitlab.laas.fr/cperrot/benchmark-manipulation.git
-    git clone https://gitlab.laas.fr/cperrot/talos-limits.git
-    micromamba env create --yes --quiet -f talos-rl/environment.yml
+        cmake
+    git clone -b topic/merge https://github.com/ComePerrot/talos-deburring.git
+    micromamba env create --yes --quiet -f talos-deburring/deburring-python-utils/environment.yml
+    micromamba install --quiet -n talos-rl conda-forge::compilers
+    micromamba install --quiet -n talos-rl conda-forge::pkg-config
+    micromamba install --quiet -n talos-rl conda-forge::yaml-cpp
     micromamba install --quiet -n talos-rl conda-forge::crocoddyl
     micromamba clean --all --yes
-    micromamba run -n talos-rl python -m pip install ./talos-rl
-    micromamba run -n talos-rl python -m pip install ./benchmark-manipulation
-    micromamba run -n talos-rl python -m pip install ./talos-limits
+    micromamba run -n talos-rl python -m pip install ./talos-deburring/deburring-python-utils
 
-    git clone --recursive -b devel https://github.com/ComePerrot/talos-manipulation.git
-    cmake -B talos-manipulation/deburring-mpc/build -S talos-manipulation/deburring-mpc \
+    cmake -B talos-deburring/deburring-mpc/build -S talos-deburring/deburring-mpc \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH=/opt/conda/envs/talos-rl/ \
             -DCMAKE_INSTALL_PREFIX=/opt/conda/envs/talos-rl/
-    cd talos-manipulation/deburring-mpc/build
+    cd talos-deburring/deburring-mpc/build
     make install
 
 %apprun mpc
