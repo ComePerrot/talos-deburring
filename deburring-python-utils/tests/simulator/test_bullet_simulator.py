@@ -53,7 +53,7 @@ class TestBulletSimulator(unittest.TestCase):
         self.nq = len(self.controlled_joints_ids) - 1
 
         self.simulator = TalosDeburringSimulator(
-            urdf_path["custom"],
+            urdf_path["example_robot_data"],
             self.rmodel,
             self.controlled_joints_ids,
             enable_GUI=False,
