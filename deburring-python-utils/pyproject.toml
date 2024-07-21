@@ -10,8 +10,9 @@ authors = ["Côme Perrot <come.perrot@laas.fr>"]
 description = "Python utils for deburring with Talos"
 license = "BSD-2-Clause"
 name = "deburring-python-utils"
-packages = [{include = "gym_talos"},
-            {include = "controllers"},
+packages = [{include = "controllers"},
+            {include = "deburring_benchmark"},
+            {include = "gym_talos"},
             {include = "limit_checker_talos"},
             {include = "robot_description"},
             {include = "simulator"},]
@@ -36,7 +37,7 @@ priority = "explicit"
 url = "https://download.pytorch.org/whl/cpu"
 
 [tool.poetry2conda]
-name = "deburring-python-utils"
+name = "talos-rl"
 
 [tool.poetry2conda.dependencies]
 example-robot-data = {channel = "conda-forge"}
