@@ -1,25 +1,27 @@
 Bootstrap: docker
 From: mambaorg/micromamba
 
+%files
+    cmake
+    deburring-mpc
+    deburring-python-utils
+
 %post
     apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        git \
         cmake
-    git clone -b topic/merge https://github.com/ComePerrot/talos-deburring.git
-    micromamba env create --yes --quiet -f talos-deburring/deburring-python-utils/environment.yml
-    micromamba install --quiet -n talos-rl conda-forge::compilers
-    micromamba install --quiet -n talos-rl conda-forge::pkg-config
-    micromamba install --quiet -n talos-rl conda-forge::yaml-cpp
-    micromamba install --quiet -n talos-rl conda-forge::crocoddyl
+    micromamba env create --yes --quiet -f deburring-python-utils/environment.yaml
     micromamba clean --all --yes
-    micromamba run -n talos-rl python -m pip install ./talos-deburring/deburring-python-utils
+    micromamba run -n talos-rl python -m pip install ./deburring-python-utils
 
-    cmake -B talos-deburring/deburring-mpc/build -S talos-deburring/deburring-mpc \
+    cmake -B deburring-mpc/build -S deburring-mpc \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH=/opt/conda/envs/talos-rl/ \
             -DCMAKE_INSTALL_PREFIX=/opt/conda/envs/talos-rl/
-    cd talos-deburring/deburring-mpc/build
+    cd deburring-mpc/build
     make install
 
-%apprun mpc
+%apprun training_mpc
     exec micromamba run -n talos-rl python -m gym_talos.training_MPC -config /config/config_MPC_RL.yaml
+
+%apprun benchmark
+    exec micromamba run -n talos-rl python -m deburring_benchmark
