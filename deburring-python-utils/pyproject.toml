@@ -48,9 +48,14 @@ tensorboard = {channel = "conda-forge"}
 torch = {channel = "pytorch", name = "pytorch"}
 
 [tool.ruff]
-extend-ignore = ["D203", "D213"]
-extend-select = ["A", "B", "C", "COM", "DJ", "EM", "EXE", "G", "PTH", "RET", "RUF", "UP", "W", "YTT"]
 target-version = "py38"
+
+[tool.ruff.lint]
+ignore = ["D203", "D213"]
+extend-select = ["A", "B", "C", "COM", "DJ", "EM", "EXE", "G", "PTH", "RET", "RUF", "UP", "W", "YTT"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["deburring_mpc"]
 
 [tool.tomlsort]
 all = true
