@@ -1,6 +1,6 @@
 import argparse
 import datetime
-import pathlib
+from pathlib import Path
 import torch
 import yaml
 
@@ -26,7 +26,7 @@ model_class = SAC
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "-id",
-    "--identication",
+    "--identification",
     default=None,
     help=(
         "Identification number for the training (usefull when launching several "
@@ -37,13 +37,15 @@ parser.add_argument(
 parser.add_argument(
     "-config",
     "--configurationFile",
-    required=True,
+    default= (Path(__file__).resolve().parent / "config/config_MPC_RL.yaml"),
+    required=False,
     help="Path to file containg the configuration of the training",
 )
 
 args = parser.parse_args()
-config_filename = pathlib.Path(args.configurationFile)
-training_id = args.identication
+config_filename = Path(args.configurationFile)
+print(config_filename)
+training_id = args.identification
 
 # Parsing configuration file
 with config_filename.open() as config_file:

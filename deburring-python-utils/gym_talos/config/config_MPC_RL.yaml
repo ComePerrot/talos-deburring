@@ -1,8 +1,8 @@
 training:
-  name: "3joints_unlimited"
-  total_timesteps: 150000 # Total number of training timesteps
-  log_interval: 500 # Number of episodes between logging events
-  check_freq: 5000 # Number of timesteps between saving checkpoints
+  name: "default_training"
+  total_timesteps: 200 # Total number of training timesteps
+  log_interval: 10 # Number of episodes between logging events
+  check_freq: 100 # Number of timesteps between saving checkpoints
   number_eval: 100
 
 SAC:
@@ -10,7 +10,7 @@ SAC:
     policy: "MlpPolicy"
     tensorboard_log: "logs/"
     device: "cpu"
-    verbose: 0
+    verbose: 1
 
 environment:
   nb_environments: 1 # Number of environments used to collect data
@@ -49,7 +49,7 @@ environment:
 
 robot:
   designer:
-    urdf_type: "private_pal_limited" # custom, example_robot_data, private_pal, public_pal
+    urdf_type: "public_pal" # custom, example_robot_data, public_pal
     controlled_joints_names: [
         root_joint,
         leg_left_1_joint,
