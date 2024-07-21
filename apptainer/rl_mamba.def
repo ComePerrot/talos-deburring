@@ -23,5 +23,8 @@ From: mambaorg/micromamba
 %apprun training_mpc
     exec micromamba run -n talos-rl python -m gym_talos.training_MPC -config /config/config_MPC_RL.yaml
 
+%apprun default_training_mpc
+    exec micromamba run -n talos-rl python -m gym_talos.training_MPC
+
 %apprun benchmark
     exec micromamba run -n talos-rl python -m deburring_benchmark
