@@ -100,7 +100,7 @@
     <passive_joint name="gripper_right_fingertip_3_joint" />
     <passive_joint name="gripper_right_motor_single_joint" />
 
-    <group_state name="half_sitting" group="all">
+    <!-- <group_state name="half_sitting" group="all">
         <joint name="root_joint" value="0. 0. 1.01927 0. 0. 0. 1." />
         <joint name="arm_left_1_joint" value="0.25847" />
         <joint name="arm_left_2_joint" value="0.173046" />
@@ -132,7 +132,43 @@
         <joint name="leg_right_6_joint" value="-0.001708" />
         <joint name="torso_1_joint" value="0" />
         <joint name="torso_2_joint" value="0.006761" />
+    </group_state> -->
+
+    <!-- Default posture for the deburring experiments -->
+    <group_state name="half_sitting" group="all">
+        <joint name="root_joint" value="0. 0. 1.01927 0. 0. 0. 1." />
+        <joint name="arm_left_1_joint" value="0.40" />
+        <joint name="arm_left_2_joint" value="0.24" />
+        <joint name="arm_left_3_joint" value="-0.6" />
+        <joint name="arm_left_4_joint" value="-1.45" />
+        <joint name="arm_left_5_joint" value="0" />
+        <joint name="arm_left_6_joint" value="0" />
+        <joint name="arm_left_7_joint" value="0" />
+        <joint name="arm_right_1_joint" value="-0.4" />
+        <joint name="arm_right_2_joint" value="-0.24" />
+        <joint name="arm_right_3_joint" value="0.6" />
+        <joint name="arm_right_4_joint" value="-1.45" />
+        <joint name="arm_right_5_joint" value="0" />
+        <joint name="arm_right_6_joint" value="0" />
+        <joint name="arm_right_7_joint" value="0" />
+        <joint name="head_1_joint" value="0" />
+        <joint name="head_2_joint" value="0.05" />
+        <joint name="leg_left_1_joint" value="0.0" />
+        <joint name="leg_left_2_joint" value="0.0" />
+        <joint name="leg_left_3_joint" value="-0.4" />
+        <joint name="leg_left_4_joint" value="0.8" />
+        <joint name="leg_left_5_joint" value="-0.4" />
+        <joint name="leg_left_6_joint" value="0" />
+        <joint name="leg_right_1_joint" value="0.0" />
+        <joint name="leg_right_2_joint" value="0.0" />
+        <joint name="leg_right_3_joint" value="-0.4" />
+        <joint name="leg_right_4_joint" value="0.8" />
+        <joint name="leg_right_5_joint" value="-0.4" />
+        <joint name="leg_right_6_joint" value="0" />
+        <joint name="torso_1_joint" value="0" />
+        <joint name="torso_2_joint" value="0" />
     </group_state>
+
 
     <rotor_params>
         <joint name="arm_left_1_joint" mass="1e-5" gear_ratio="100."  />
