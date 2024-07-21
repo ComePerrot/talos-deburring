@@ -25,7 +25,7 @@ class LowpassFilter:
         self.num_channels = num_channels
         self.prev_output = np.zeros(num_channels)
 
-    def filter(self, input_data):
+    def apply_filter(self, input_data):
         """
         Apply the low pass filter to the input data.
 

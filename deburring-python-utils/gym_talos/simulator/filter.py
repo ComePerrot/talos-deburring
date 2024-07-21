@@ -9,7 +9,7 @@ class LowpassFilter:
         self.num_channels = num_channels
         self.prev_output = np.zeros(num_channels)
 
-    def filter(self, input_data):
+    def apply_filter(self, input_data):
         # Check input format
         if input_data.shape[0] != self.num_channels:
             msg = f"Invalid number of channels: {input_data.shape[0]} when {self.num_channels} is expected."

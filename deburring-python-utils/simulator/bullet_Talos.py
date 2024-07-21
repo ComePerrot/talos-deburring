@@ -2,7 +2,7 @@ import numpy as np
 import pybullet as p  # PyBullet simulator
 import pybullet_data
 
-from simulator.bullet_visuals import VisualHandler, PostureVisualizer
+from simulator.bullet_visuals import PostureVisualizer, VisualHandler
 from simulator.filter import LowpassFilter
 from simulator.pd_controller import PDController
 
@@ -243,7 +243,7 @@ class TalosDeburringSimulator:
         if self.enable_GUI > 0:
             self.visual_handler.update_visuals(oMtool)
         if self.is_torque_filtered:
-            filtered_torques = self.torque_filter.filter(torques)
+            filtered_torques = self.torque_filter.apply_filter(torques)
         else:
             filtered_torques = torques
         self._apply_torques(filtered_torques)

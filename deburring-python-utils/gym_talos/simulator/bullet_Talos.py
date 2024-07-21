@@ -1,7 +1,7 @@
 import numpy as np
+import pinocchio as pin
 import pybullet as p  # PyBullet simulator
 import pybullet_data
-import pinocchio as pin
 
 from gym_talos.simulator.filter import LowpassFilter
 
@@ -360,7 +360,7 @@ class TalosDeburringSimulator:
     def step(self, torques, oMtool=None, base_pose=None):
         """Do one step of simulation"""
         self._updateVisuals(oMtool, base_pose)
-        filtered_torques = self.torque_filter.filter(torques)
+        filtered_torques = self.torque_filter.apply_filter(torques)
         self._applyTorques(filtered_torques)
         p.stepSimulation()
         self.baseRobot = np.array(
@@ -427,7 +427,6 @@ class TalosDeburringSimulator:
 
     def _reset_robot_joints(self):
         for i in range(len(self.initial_joint_positions)):
-            scale = 0.05
             if (
                 self.bulletJointsIdInPinOrder[i] in self.bullet_controlledJoints
                 and self.random_init
