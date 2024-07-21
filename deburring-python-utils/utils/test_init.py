@@ -1,11 +1,11 @@
+from pathlib import Path
+
 import numpy as np
 import yaml
-
 from deburring_mpc import RobotDesigner
 
-from gym_talos.utils.create_target import TargetGoal
-
 from controllers.MPC import MPController
+from gym_talos.utils.create_target import TargetGoal
 
 
 def check_node_limits(pinWrapper, x, torques):
@@ -16,35 +16,38 @@ def check_node_limits(pinWrapper, x, torques):
         x[: pinWrapper.get_rmodel().nq] < pinWrapper.get_rmodel().lowerPositionLimit
     ).any()
     limit_speed = (
-        np.abs(x[-pinWrapper.get_rmodel().nv :])
-        > pinWrapper.get_rmodel().velocityLimit
+        np.abs(x[-pinWrapper.get_rmodel().nv :]) > pinWrapper.get_rmodel().velocityLimit
     ).any()
     limit_command = (np.abs(torques) > pinWrapper.get_rmodel().effortLimit[6:]).any()
     return (limit_position, limit_speed, limit_command)
+
 
 def check_horizon_limits(solver, pinWrapper):
     us_list = solver.us.tolist()
     xs_list = solver.xs.tolist()
 
     for i in range(len(us_list)):
-            xs = xs_list[i]
-            us = us_list[i]
-            limit_position, limit_speed, limit_command = check_node_limits(
-                pinWrapper, xs, us
-            )
-            if limit_position:
-                return(0, i)
-            if limit_position:
-                return(1, i)
-            if limit_command:
-                return(2, i)
+        xs = xs_list[i]
+        us = us_list[i]
+        limit_position, limit_speed, limit_command = check_node_limits(
+            pinWrapper,
+            xs,
+            us,
+        )
+        if limit_position:
+            return (0, i)
+        if limit_position:
+            return (1, i)
+        if limit_command:
+            return (2, i)
     else:
-        return(None)
+        return None
+
 
 def main():
     # PARAMETERS
     filename = "config/config.yaml"
-    with open(filename, "r") as paramFile:
+    with Path.open(filename, "r") as paramFile:
         params = yaml.safe_load(paramFile)
 
     target_handler = TargetGoal(params["target"])
@@ -54,7 +57,7 @@ def main():
     # Robot handler
     pinWrapper = RobotDesigner()
     params["robot"]["end_effector_position"] = np.array(
-        params["robot"]["end_effector_position"]
+        params["robot"]["end_effector_position"],
     )
     pinWrapper.initialize(params["robot"])
 
@@ -71,7 +74,7 @@ def main():
         MPC.change_target(pinWrapper.get_x0(), target)
 
         for i in range(200):
-            limits_exceeded = check_horizon_limits(MPC.crocoWrapper.solver,pinWrapper)
+            limits_exceeded = check_horizon_limits(MPC.crocoWrapper.solver, pinWrapper)
             if limits_exceeded is not None:
                 limit_type, node = limits_exceeded
                 print("Limits broken:")

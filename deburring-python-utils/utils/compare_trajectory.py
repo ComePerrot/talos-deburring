@@ -1,13 +1,13 @@
 import pickle as pkl
-import numpy as np
+from pathlib import Path
 
-with open("bench_data.pkl", "rb") as file:
+with Path.open("bench_data.pkl", "rb") as file:
     data_bench = pkl.load(file)
     x_list_bench = data_bench[0]
     u_list_bench = data_bench[1]
     xref_list_bench = data_bench[2]
 
-with open("gym_data.pkl", "rb") as file:
+with Path.open("gym_data.pkl", "rb") as file:
     data_gym = pkl.load(file)
     x_list_gym = data_gym[0]
     u_list_gym = data_gym[1]

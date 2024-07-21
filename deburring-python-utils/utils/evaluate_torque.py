@@ -1,23 +1,25 @@
-import pinocchio as pin
-import numpy as np
-import yaml
 import pickle as pkl
-import matplotlib.pyplot as plt
+from pathlib import Path
 
+import matplotlib.pyplot as plt
+import numpy as np
+import pinocchio as pin
+import yaml
 from deburring_mpc import RobotDesigner
+
 
 def main():
     # PARAMETERS
     add_weight = True
 
     filename = "config/config.yaml"
-    with open(filename, "r") as paramFile:
+    with Path.open(filename, "r") as paramFile:
         params = yaml.safe_load(paramFile)
 
     # Robot handler
     pinWrapper = RobotDesigner()
     params["robot"]["end_effector_position"] = np.array(
-        params["robot"]["end_effector_position"]
+        params["robot"]["end_effector_position"],
     )
     pinWrapper.initialize(params["robot"])
 
@@ -45,7 +47,9 @@ def main():
     ]
 
     rmodel_arm = pin.buildReducedModel(
-        pinWrapper.get_rmodel(), joints_to_lock, pinWrapper.get_q0()
+        pinWrapper.get_rmodel(),
+        joints_to_lock,
+        pinWrapper.get_q0(),
     )
 
     if add_weight:
@@ -57,7 +61,7 @@ def main():
     rdata_arm_full = rmodel_arm.createData()
     rdata_arm_reduced = rmodel_arm.createData()
 
-    with open("arm_state.pkl", "rb") as file:
+    with Path.open("arm_state.pkl", "rb") as file:
         q_lists = pkl.load(file)
         q_arm_list = q_lists[0]
         q_dot_arm_list = q_lists[1]
@@ -123,11 +127,12 @@ def main():
     plt.subplot(212)
     plt.plot(
         np.linalg.norm((torque_full_list - torque_reduced_list), axis=1)
-        / torque_reduced_norm_list
+        / torque_reduced_norm_list,
     )
     plt.ylabel("Torque difference (%)")
 
     plt.show()
+
 
 if __name__ == "__main__":
     main()

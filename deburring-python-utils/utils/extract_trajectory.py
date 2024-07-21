@@ -1,21 +1,21 @@
-import pinocchio as pin
-import numpy as np
-import yaml
 import pickle as pkl
+from pathlib import Path
 
+import numpy as np
+import pinocchio as pin
+import yaml
 from deburring_mpc import RobotDesigner
 
-from gym_talos.utils.create_target import TargetGoal
-
-from simulator.bullet_Talos import TalosDeburringSimulator
 from controllers.MPC import MPController
 from controllers.Riccati import RiccatiController
+from gym_talos.utils.create_target import TargetGoal
+from simulator.bullet_Talos import TalosDeburringSimulator
 
 
 def main():
     # PARAMETERS
     filename = "config/config.yaml"
-    with open(filename, "r") as paramFile:
+    with Path.open(filename, "r") as paramFile:
         params = yaml.safe_load(paramFile)
 
     target_handler = TargetGoal(params["target"])
@@ -33,7 +33,7 @@ def main():
     # Robot handler
     pinWrapper = RobotDesigner()
     params["robot"]["end_effector_position"] = np.array(
-        params["robot"]["end_effector_position"]
+        params["robot"]["end_effector_position"],
     )
     pinWrapper.initialize(params["robot"])
 
@@ -63,7 +63,7 @@ def main():
     max_time = 4000
     # Timings
     num_simulation_step = int(
-        float(params["OCP"]["time_step"]) / float(params["timeStepSimulation"])
+        float(params["OCP"]["time_step"]) / float(params["timeStepSimulation"]),
     )
 
     q_arm_list = np.zeros((int(max_time / num_simulation_step), 7))
@@ -71,10 +71,10 @@ def main():
 
     q_list = np.zeros((int(max_time / num_simulation_step), pinWrapper.get_rmodel().nq))
     q_dot_list = np.zeros(
-        (int(max_time / num_simulation_step), pinWrapper.get_rmodel().nv)
+        (int(max_time / num_simulation_step), pinWrapper.get_rmodel().nv),
     )
     torque_list = np.zeros(
-        (int(max_time / num_simulation_step), pinWrapper.get_rmodel().nq - 7)
+        (int(max_time / num_simulation_step), pinWrapper.get_rmodel().nq - 7),
     )
 
     # Control loop
@@ -103,11 +103,11 @@ def main():
 
         Time += 1
 
-    simulator.end
+    simulator.end()
     # with open("arm_state.pkl", "wb") as file:
     #     pkl.dump([q_arm_list, q_dot_arm_list], file)
 
-    with open("reach_movement.pkl", "wb") as file:
+    with Path.open("reach_movement.pkl", "wb") as file:
         pkl.dump([q_list, q_dot_list, torque_list], file)
 
 

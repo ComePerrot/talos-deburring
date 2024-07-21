@@ -1,24 +1,24 @@
+import pickle as pkl
+from pathlib import Path
+
 import numpy as np
 import yaml
-import pickle as pkl
+from deburring_mpc import RobotDesigner
 from stable_baselines3 import SAC
 
-from deburring_mpc import RobotDesigner
-
-from gym_talos.utils.create_target import TargetGoal
-from gym_talos.envs.env_talos_mpc_deburring import EnvTalosMPC
-
-from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
+from deburring_benchmark.factory.benchmark_MPC import bench_MPC
 
 # from simulator.bullet_Talos import TalosDeburringSimulator
-from factory.benchmark_MPRL import bench_MPRL
-from factory.benchmark_MPC import bench_MPC
-
+from deburring_benchmark.factory.benchmark_MPRL import bench_MPRL
+from gym_talos.envs.env_talos_mpc_deburring import EnvTalosMPC
+from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
+from gym_talos.utils.create_target import TargetGoal
 
 target = [0.5, 0.3, 1.05]
-test_type = "gym" # "gym" or "bench" or "bench with gym"
+test_type = "gym"  # "gym" or "bench" or "bench with gym"
 
 print(test_type)
+
 
 def run_gym(target):
     obs, infos = envDisplay.reset(options={"target": target})
@@ -50,7 +50,7 @@ def run_gym(target):
 if test_type == "gym":
     model_path = "config/best_model.zip"
     filename_gym = "config/config_gym.yaml"
-    with open(filename_gym, "r") as parameter_file:
+    with Path.open(filename_gym, "r") as parameter_file:
         params_gym = yaml.safe_load(parameter_file)
 
     envDisplay = EnvTalosMPC(
@@ -60,23 +60,23 @@ if test_type == "gym":
     )
 
     model = SAC.load(model_path, env=envDisplay)
-    
+
     run_gym(target)
 
-    with open("gym_data.pkl", "wb") as file:
+    with Path.open("gym_data.pkl", "wb") as file:
         pkl.dump([envDisplay.x_list, envDisplay.u_list, envDisplay.xref_list], file)
 
 elif test_type == "bench":
     filename_bench = "config/config.yaml"
-    with open(filename_bench, "r") as parameter_file:
+    with Path.open(filename_bench, "r") as parameter_file:
         params_bench = yaml.safe_load(parameter_file)
-    
+
     target_handler = TargetGoal(params_bench["target"])
     target_handler.create_target()
 
     pinWrapper = RobotDesigner()
     params_bench["robot"]["end_effector_position"] = np.array(
-        params_bench["robot"]["end_effector_position"]
+        params_bench["robot"]["end_effector_position"],
     )
     pinWrapper.initialize(params_bench["robot"])
 
@@ -106,14 +106,14 @@ elif test_type == "bench":
     else:
         print(reach_time, error_placement_tool)
 
-    with open("bench_data.pkl", "wb") as file:
+    with Path.open("bench_data.pkl", "wb") as file:
         pkl.dump([MPRL.x_list, MPRL.u_list, MPRL.xref_list], file)
 
 elif test_type == "bench with gym":
     filename_bench = "config/config.yaml"
-    
+
     filename_gym = "config/config_gym.yaml"
-    with open(filename_gym, "r") as parameter_file:
+    with Path.open(filename_gym, "r") as parameter_file:
         params_gym = yaml.safe_load(parameter_file)
 
     envDisplay = EnvTalosMPC(
