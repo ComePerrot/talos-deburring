@@ -16,7 +16,7 @@ class LimitChecker:
                 will be returned when a limit is broken. Defaults to False.
     """
 
-    def __init__(self, rmodel, verbose=False):
+    def __init__(self, rmodel, extra_limits=True, verbose=False):
         """Defines the Limit Checker class
 
         The limits are copied from the Pinocchio model (i.e. extracted from the URDF).
