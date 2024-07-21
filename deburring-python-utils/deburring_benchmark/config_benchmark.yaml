@@ -1,4 +1,4 @@
-numberTargets: [3, 3, 3]
+numberTargets: [2, 2, 2]
 maxTime: 4
 timeStepSimulation: 1e-3
 toleranceError: 0.005
@@ -57,7 +57,7 @@ RL_posture:
       # torso_2_joint,
       arm_left_1_joint,
       arm_left_2_joint,
-      arm_left_3_joint,
+      # arm_left_3_joint,
       arm_left_4_joint,
     ]
   actionScale: 1

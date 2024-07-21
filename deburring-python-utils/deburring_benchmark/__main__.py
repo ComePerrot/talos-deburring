@@ -101,7 +101,7 @@ if __name__ == "__main__":
     test_MPC_variablePosture = True
     test_MPC_noRiccati = False
     rl_model_paths = [
-        # "/home/cperrot/ws_bench/logs/2024-03-20_3joints_2/best_model",
+        "example_policy",
     ]
 
     # Loading parameters from YAML file
@@ -128,7 +128,8 @@ if __name__ == "__main__":
     if rl_model_paths is not None:
         MPRL_list = []
         for path in rl_model_paths:
-            MPRL = bench_MPRL(params, path, target_handler, pinWrapper, simulator)
+            policy_full_path = filepath / path
+            MPRL = bench_MPRL(params, policy_full_path, target_handler, pinWrapper, simulator)
             MPRL_list.append(MPRL)
         trial_list.extend(MPRL_list)
 
