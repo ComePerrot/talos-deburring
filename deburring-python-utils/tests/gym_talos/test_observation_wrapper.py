@@ -2,7 +2,7 @@ import numpy as np
 import pinocchio as pin
 import unittest
 
-from gym_talos.tests.factory import RobotModelFactory
+from factory import RobotModelFactory
 from gym_talos.utils.observation_wrapper import observation_wrapper
 
 

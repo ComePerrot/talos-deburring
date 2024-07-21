@@ -1,7 +1,8 @@
-import numpy as np
 import unittest
 
-from gym_talos.tests.factory import RobotModelFactory
+import numpy as np
+from factory import RobotModelFactory
+
 from gym_talos.utils.action_wrapper import ActionWrapper
 
 
