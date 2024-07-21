@@ -1,9 +1,5 @@
 .vscode
-pyRL
-envRL
-envMPRL
-logs*
-archives*
 __pycache__
-*.sif*
 build
+*.sif*
+logs*
