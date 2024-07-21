@@ -1,6 +1,6 @@
 import numpy as np
 
-from factory.benchmark_MPC import bench_MPC
+from deburring_benchmark.factory.benchmark_MPC import bench_MPC
 
 
 class bench_MPC_variablePosture(bench_MPC):

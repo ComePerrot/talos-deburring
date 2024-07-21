@@ -1,7 +1,8 @@
-from factory.benchmark_base import bench_base
 from controllers.MPC import MPController
 from controllers.Riccati import RiccatiController
 from controllers.RL_posture import RLPostureController
+
+from deburring_benchmark.factory.benchmark_base import bench_base
 
 
 class bench_MPRL(bench_base):

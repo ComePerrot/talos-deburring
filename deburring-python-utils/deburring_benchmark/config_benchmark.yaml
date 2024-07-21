@@ -1,0 +1,112 @@
+numberTargets: [3, 3, 3]
+maxTime: 4
+timeStepSimulation: 1e-3
+toleranceError: 0.005
+MPC_delay: 1
+robot_cutoff_frequency: 0
+GUI: 0 # 0 : no GUI - 1 : GUI - 2 : GUI and posture visualization
+verbose: False
+extra_limits: False
+
+target:
+  targetType: "box"
+  targetPosition: [0.7, 0.3, 1]
+  targetSizeLow: [-0.2, -0.3, -0.3]
+  targetSizeHigh: [0.2, 0.3, 0.3]
+
+robot:
+  urdf_type: "public_pal" # example_robot_data, public_pal
+  robot_description: ""
+  left_foot_name: "right_sole_link"
+  right_foot_name: "left_sole_link"
+  controlled_joints_names: [
+      root_joint,
+      leg_left_1_joint,
+      leg_left_2_joint,
+      leg_left_3_joint,
+      leg_left_4_joint,
+      leg_left_5_joint,
+      leg_left_6_joint,
+      leg_right_1_joint,
+      leg_right_2_joint,
+      leg_right_3_joint,
+      leg_right_4_joint,
+      leg_right_5_joint,
+      leg_right_6_joint,
+      torso_1_joint,
+      torso_2_joint,
+      arm_left_1_joint,
+      arm_left_2_joint,
+      arm_left_3_joint,
+      arm_left_4_joint,
+      # arm_left_5_joint,
+      # arm_left_6_joint,
+      # arm_left_7_joint,
+      arm_right_1_joint,
+      arm_right_2_joint,
+      arm_right_3_joint,
+      arm_right_4_joint,
+    ]
+  end_effector_position: [0, -0.02, -0.0825]
+
+RL_posture:
+  model_path: "/home/cperrot/ws_bench/logs/2024-03-18_3joints_4/best_model"
+  numOCPSteps: 5
+  controlled_joints_names: [
+      # torso_1_joint,
+      # torso_2_joint,
+      arm_left_1_joint,
+      arm_left_2_joint,
+      arm_left_3_joint,
+      arm_left_4_joint,
+    ]
+  actionScale: 1
+  actionType: "full_range" # full_range / differential
+  normalizeObs: False
+  historyObs: 0
+  predictionSize: 3
+
+OCP:
+  horizon_length: 30
+  time_step: 0.02
+  w_state_reg: 0.02
+  w_control_reg: 0.001
+  w_state_limits: 1000
+  w_control_limit: 500
+  w_com_pos: 500
+  w_gripper_pos: 5
+  w_gripper_rot: 1
+  w_gripper_vel: 2
+  limit_scale: 0.95
+  limit_speed: true
+  base:
+    position: [500, 500, 500]
+    orientation: [1000, 1000, 1000]
+    linear_velocity: [1, 1, 1]
+    angular_velocity: [1, 1, 1]
+  joints:
+    leg_left_1_joint: [500, 1, 1]
+    leg_left_2_joint: [500, 1, 1]
+    leg_left_3_joint: [500, 1, 1]
+    leg_left_4_joint: [500, 1, 1]
+    leg_left_5_joint: [1000, 1, 1]
+    leg_left_6_joint: [1000, 1, 1]
+    leg_right_1_joint: [500, 1, 1]
+    leg_right_2_joint: [500, 1, 1]
+    leg_right_3_joint: [500, 1, 1]
+    leg_right_4_joint: [500, 1, 1]
+    leg_right_5_joint: [1000, 1, 1]
+    leg_right_6_joint: [1000, 1, 1]
+    torso_1_joint: [100, 10, 1]
+    torso_2_joint: [200, 10, 1]
+    arm_left_1_joint: [100, 10, 1]
+    arm_left_2_joint: [100, 10, 1]
+    arm_left_3_joint: [100, 10, 1]
+    arm_left_4_joint: [100, 10, 1]
+    arm_left_5_joint: [1, 10, 1]
+    arm_left_6_joint: [1, 10, 1]
+    arm_left_7_joint: [1, 10, 1]
+    arm_right_1_joint: [500, 10, 1]
+    arm_right_2_joint: [500, 10, 1]
+    arm_right_3_joint: [500, 10, 1]
+    arm_right_4_joint: [500, 10, 1]
