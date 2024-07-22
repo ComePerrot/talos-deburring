@@ -6,11 +6,3 @@
 ## Dependencies
 
 * [deburring-mpc](../deburring-mpc/README.md)
-
-## Copyrights and License
-
-This package is distributed under a [BSD-2-Clause Licence](./LICENSE).
-
-Authored by:
-
-* Côme Perrot
