@@ -1,10 +1,10 @@
-import numpy as np
-import pinocchio as pin
 import unittest
 
-from robot_description.path_getter import urdf_path, srdf_path
+import numpy as np
+import pinocchio as pin
 
 from limit_checker_talos.limit_checker import LimitChecker
+from robot_description.path_getter import srdf_path, urdf_path
 
 
 class ModelFactory:

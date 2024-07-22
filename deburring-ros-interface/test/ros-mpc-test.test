@@ -4,7 +4,7 @@
     <!-- <test test-name="controlled_joints_nonempty" pkg="rostest" type="paramtest" name="paramtest_nonempty">
         <param name="param_name_target" value="/controlled_joints" />
     </test> -->
-    <test test-name="ROSInterfaceBasic" 
+    <test test-name="ROSInterfaceBasic"
         pkg="deburring_ros_interface"
         type="test_mpc_interface.py"
         time-limit="30.0"

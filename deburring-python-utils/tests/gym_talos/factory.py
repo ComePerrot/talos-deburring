@@ -1,6 +1,7 @@
+import pathlib
+
 import example_robot_data
 import pinocchio as pin
-import pathlib
 import yaml
 
 from deburring_mpc import RobotDesigner

@@ -10,12 +10,14 @@ authors = ["Côme Perrot <come.perrot@laas.fr>"]
 description = "Python utils for deburring with Talos"
 license = "BSD-2-Clause"
 name = "deburring-python-utils"
-packages = [{include = "controllers"},
-            {include = "deburring_benchmark"},
-            {include = "gym_talos"},
-            {include = "limit_checker_talos"},
-            {include = "robot_description"},
-            {include = "simulator"},]
+packages = [
+  {include = "controllers"},
+  {include = "deburring_benchmark"},
+  {include = "gym_talos"},
+  {include = "limit_checker_talos"},
+  {include = "robot_description"},
+  {include = "simulator"}
+]
 readme = "README.md"
 version = "0.1.0"
 

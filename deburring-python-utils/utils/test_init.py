@@ -2,9 +2,9 @@ from pathlib import Path
 
 import numpy as np
 import yaml
-from deburring_mpc import RobotDesigner
 
 from controllers.MPC import MPController
+from deburring_mpc import RobotDesigner
 from gym_talos.utils.create_target import TargetGoal
 
 

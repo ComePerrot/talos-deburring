@@ -61,7 +61,8 @@ void MPC::iterate(const VectorXd &x0, const SE3 &toolMtarget) {
   K0_ = OCP_.get_gain();
 }
 
-void MPC::iterate(const VectorXd &x0, const VectorXd &xref, const SE3 &toolMtarget) {
+void MPC::iterate(const VectorXd &x0, const VectorXd &xref,
+                  const SE3 &toolMtarget) {
   x0_ = x0;
 
   designer_.updateReducedModel(x0_);

@@ -1,11 +1,13 @@
+import collections
 from typing import Dict, Tuple
+
 import gymnasium as gym
 import numpy as np
-import collections
+
 from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
 
-from ..utils.modelLoader import TalosDesigner
 from ..utils.create_target import TargetGoal
+from ..utils.modelLoader import TalosDesigner
 
 
 class EnvTalosDeburringHer(gym.Env):

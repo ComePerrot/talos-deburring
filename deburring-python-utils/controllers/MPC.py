@@ -1,6 +1,7 @@
+import queue
+
 import numpy as np
 import pinocchio as pin
-import queue
 
 from deburring_mpc import OCP
 

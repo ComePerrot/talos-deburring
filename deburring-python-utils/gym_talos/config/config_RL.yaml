@@ -40,7 +40,7 @@ environment:
   numSimulationSteps: 10 # Number of simulation steps between each action
   timeStepSimulation: 1e-3 # Time step of the simulation
   normalizeObs: True # Normalize the observation
-  randomInit: True # Choose to randomize the position of controlled joint arount the initial position 
+  randomInit: True # Choose to randomize the position of controlled joint arount the initial position
   limitPosScale: 1 # Scale the position of the robot
   limitVelScale: 1 # Scale the velocity of the robot
   torqueScaleCoeff: 1 # Scale the torque applied to the robot
@@ -56,7 +56,7 @@ environment:
   targetSizeLow: [-0.1, -0.1, -0.1]  # Lower size of the target if box around position
   targetSizeHigh: [0.1, 0.1, 0.1] # Higher size of the target if box around position
   targetRadius: 0.1 # Radius of the target if sphere around position
-  
+
   rewardType: "mix" # "sparse", "dense" or "mix" if want to mix both
   w_target_reached: 1 # Coeff of boolean reward : 1 if target reached, 0 otherwise times w_target_reached
   w_target_pos: 20 # Coeff of distance reward : - distance to target times w_target_pos

@@ -1,20 +1,18 @@
+import datetime
 import shutil
 import time
-import datetime
-import gymnasium as gym
-import numpy as np
-
-from stable_baselines3.common.env_util import SubprocVecEnv
-from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.callbacks import EvalCallback
-
 from collections import deque
-from stable_baselines3.common.utils import safe_mean
 from typing import Optional, Union
 
+import gymnasium as gym
+import numpy as np
+from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
+from stable_baselines3.common.env_util import SubprocVecEnv
+from stable_baselines3.common.utils import safe_mean
 from stable_baselines3.common.vec_env import VecEnv
 
 from gym_talos.utils.loader_and_saver import saver
+
 from .create_target import TargetGoal
 
 

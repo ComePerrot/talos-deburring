@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
+import numpy as np
+import onnxruntime as ort
 import rospy
 from std_msgs.msg import Float64MultiArray
-import onnxruntime as ort
-import numpy as np
+
 
 def onnx_publisher():
     rospy.init_node("test_node")
@@ -16,7 +17,7 @@ def onnx_publisher():
     rate = rospy.Rate(20)  # 10 Hz
     while not rospy.is_shutdown():
         msg = Float64MultiArray()
-        msg.data = list(observation*np.random.random())
+        msg.data = list(observation * np.random.random())
         pub.publish(msg)
 
         rate.sleep()

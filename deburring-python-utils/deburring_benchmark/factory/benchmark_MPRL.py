@@ -1,7 +1,6 @@
 from controllers.MPC import MPController
 from controllers.Riccati import RiccatiController
 from controllers.RL_posture import RLPostureController
-
 from deburring_benchmark.factory.benchmark_base import bench_base
 
 
@@ -27,7 +26,7 @@ class bench_MPRL(bench_base):
             "normalize_obs": self.params["RL_posture"]["normalizeObs"],
             "rmodel": self.pinWrapper.get_rmodel(),
             "target_handler": self.target_handler,
-            "history_size":  self.params["RL_posture"]["historyObs"],
+            "history_size": self.params["RL_posture"]["historyObs"],
             "prediction_size": self.params["RL_posture"]["predictionSize"],
         }
         self.posture_controller = RLPostureController(

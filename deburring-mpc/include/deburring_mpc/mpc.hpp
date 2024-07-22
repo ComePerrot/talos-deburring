@@ -186,7 +186,8 @@ class MPC {
    * @param v_current Joint velocity (including state of the base)
    * @param toolMtarget Position of the target wrt the tool frame
    */
-  // void iterate(const ConstVectorRef &q_current, const ConstVectorRef &v_current,
+  // void iterate(const ConstVectorRef &q_current, const ConstVectorRef
+  // &v_current,
   //              const SE3 &toolMtarget);
 
   /**

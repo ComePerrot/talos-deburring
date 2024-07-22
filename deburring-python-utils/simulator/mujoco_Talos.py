@@ -62,8 +62,7 @@ class TalosMujoco:
         self.state[3:6] = self.data.qpos[4:7]
         # Base velocity (linear and angular)
         self.state[
-            len(self.controlled_joints_names)
-            + 7 : len(self.controlled_joints_names)
+            len(self.controlled_joints_names) + 7 : len(self.controlled_joints_names)
             + 7
             + 6
         ] = self.data.qvel[:6]

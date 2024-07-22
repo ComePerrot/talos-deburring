@@ -1,19 +1,19 @@
 import argparse
 import datetime
 from pathlib import Path
+
 import torch
 import yaml
-
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CallbackList
 
 from gym_talos.envs.env_talos_mpc_deburring import EnvTalosMPC
-from gym_talos.utils.loader_and_saver import setup_env, setup_model
 from gym_talos.utils.custom_callbacks import (
+    EvalOnTrainingCallback,
     LoggerCallback,
     SaveFilesCallback,
-    EvalOnTrainingCallback,
 )
+from gym_talos.utils.loader_and_saver import setup_env, setup_model
 
 ################
 #  PARAMETERS  #
@@ -37,7 +37,7 @@ parser.add_argument(
 parser.add_argument(
     "-config",
     "--configurationFile",
-    default= (Path(__file__).resolve().parent / "config/config_MPC_RL.yaml"),
+    default=(Path(__file__).resolve().parent / "config/config_MPC_RL.yaml"),
     required=False,
     help="Path to file containg the configuration of the training",
 )
@@ -82,7 +82,7 @@ env_training = setup_env(
     env_class=env_class,
     env_params=params_env,
     designer_params=params_robot,
-    GUI = False,
+    GUI=False,
 )
 
 # Agent

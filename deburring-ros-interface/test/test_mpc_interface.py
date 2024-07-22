@@ -2,13 +2,14 @@
 
 # import sys
 import unittest
-import rospy
-import numpy as np
-from std_msgs.msg import Header
-from linear_feedback_controller_msgs.msg import Sensor, Control
-from geometry_msgs.msg import Pose, Twist, Point, Quaternion, Vector3
-from sensor_msgs.msg import JointState
 from time import sleep
+
+import numpy as np
+import rospy
+from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
+from linear_feedback_controller_msgs.msg import Control, Sensor
+from sensor_msgs.msg import JointState
+from std_msgs.msg import Header
 
 PKG = "deburring_ros_interface"
 NAME = "MPC_Interface_test"
@@ -21,13 +22,17 @@ class TestMPCInterface(unittest.TestCase):
         self.sensorMsg = self._define_sensor_msg()
 
         print("Publishing message")
-        pub = rospy.Publisher("/linear_feedback_controller/sensor_state", Sensor, queue_size=10)
+        pub = rospy.Publisher(
+            "/linear_feedback_controller/sensor_state", Sensor, queue_size=10
+        )
         for _ in range(5):
             pub.publish(self.sensorMsg)
             sleep(1)
 
         print("Waiting for answer")
-        msg = rospy.wait_for_message("/linear_feedback_controller/desired_control", Control, timeout=30)
+        msg = rospy.wait_for_message(
+            "/linear_feedback_controller/desired_control", Control, timeout=30
+        )
         self.assertEquals(
             msg.initial_state.base_pose,
             self.sensorMsg.base_pose,

@@ -1,19 +1,19 @@
 from pathlib import Path
+
 import numpy as np
 import yaml
 
-from deburring_mpc import RobotDesigner
-
-from gym_talos.utils.create_target import TargetGoal
-
-from robot_description.path_getter import urdf_path, srdf_path
-
-from simulator.bullet_Talos import TalosDeburringSimulator
-from deburring_benchmark.factory.benchmark_MPRL import bench_MPRL
 from deburring_benchmark.factory.benchmark_MPC import bench_MPC
-from deburring_benchmark.factory.benchmark_MPC_variablePosture import bench_MPC_variablePosture
 from deburring_benchmark.factory.benchmark_MPC_noRiccati import bench_MPC_noRiccati
+from deburring_benchmark.factory.benchmark_MPC_variablePosture import (
+    bench_MPC_variablePosture,
+)
+from deburring_benchmark.factory.benchmark_MPRL import bench_MPRL
 from deburring_benchmark.factory.benchmark_results import BenchmarkResult
+from deburring_mpc import RobotDesigner
+from gym_talos.utils.create_target import TargetGoal
+from robot_description.path_getter import srdf_path, urdf_path
+from simulator.bullet_Talos import TalosDeburringSimulator
 
 
 def setup_benchmark(parameter_file):
@@ -129,7 +129,9 @@ if __name__ == "__main__":
         MPRL_list = []
         for path in rl_model_paths:
             policy_full_path = filepath / path
-            MPRL = bench_MPRL(params, policy_full_path, target_handler, pinWrapper, simulator)
+            MPRL = bench_MPRL(
+                params, policy_full_path, target_handler, pinWrapper, simulator
+            )
             MPRL_list.append(MPRL)
         trial_list.extend(MPRL_list)
 

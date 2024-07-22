@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 
 # Project properties
-SET(PROJECT_NAMESPACE ComePerrot)
-SET(PROJECT_NAME deburring_mpc)
-SET(PROJECT_DESCRIPTION "Manipulation for Talos")
-SET(PROJECT_URL https://github.com/${PROJECT_NAMESPACE}/talos-manipulation)
+set(PROJECT_NAMESPACE ComePerrot)
+set(PROJECT_NAME deburring_mpc)
+set(PROJECT_DESCRIPTION "Manipulation for Talos")
+set(PROJECT_URL https://github.com/${PROJECT_NAMESPACE}/talos-manipulation)
 
 # Project options
 option(BUILD_PYTHON_INTERFACE "Build the python binding" ON)
@@ -56,15 +56,12 @@ endif()
 
 include("${JRL_CMAKE_MODULES}/python.cmake")
 
-SET(${PROJECT_NAME}_HEADERS
-    include/${PROJECT_NAME}/robot_designer.hpp
-    include/${PROJECT_NAME}/fwd.hpp
-    include/${PROJECT_NAME}/python_fwd.hpp
-    include/${PROJECT_NAME}/ocp.hpp
-    include/${PROJECT_NAME}/mpc.hpp
-)
+set(${PROJECT_NAME}_HEADERS
+    include/${PROJECT_NAME}/robot_designer.hpp include/${PROJECT_NAME}/fwd.hpp
+    include/${PROJECT_NAME}/python_fwd.hpp include/${PROJECT_NAME}/ocp.hpp
+    include/${PROJECT_NAME}/mpc.hpp)
 
-SET(${PROJECT_NAME}_SOURCES
+set(${PROJECT_NAME}_SOURCES
     src/robot_designer.cpp
     src/ocp.cpp
     src/ocp_cost_library.cpp
@@ -76,14 +73,12 @@ SET(${PROJECT_NAME}_SOURCES
     src/mpc_debug.cpp
     src/mpc_params.cpp
     src/mpc_state_machine.cpp
-    src/mpc_variable_posture.cpp
-)
+    src/mpc_variable_posture.cpp)
 
 add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SOURCES}
                                    ${${PROJECT_NAME}_HEADERS})
 target_include_directories(${PROJECT_NAME} PUBLIC $<INSTALL_INTERFACE:include>)
-target_link_libraries(${PROJECT_NAME} PUBLIC crocoddyl::crocoddyl
-                                             yaml-cpp)
+target_link_libraries(${PROJECT_NAME} PUBLIC crocoddyl::crocoddyl yaml-cpp)
 if(BUILD_WITH_MULTITHREADS)
   target_link_libraries(${PROJECT_NAME} PUBLIC OpenMP::OpenMP_CXX)
 endif()

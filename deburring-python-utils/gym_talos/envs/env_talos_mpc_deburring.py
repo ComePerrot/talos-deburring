@@ -2,16 +2,15 @@ import gymnasium as gym
 import numpy as np
 import pinocchio as pin
 
-from deburring_mpc import RobotDesigner
 from controllers.MPC import MPController
 from controllers.Riccati import RiccatiController
-from limit_checker_talos.limit_checker import LimitChecker
-from robot_description.path_getter import urdf_path, srdf_path
-from simulator.bullet_Talos import TalosDeburringSimulator
-
+from deburring_mpc import RobotDesigner
+from gym_talos.utils.action_wrapper import ActionWrapper
 from gym_talos.utils.create_target import TargetGoal
 from gym_talos.utils.observation_wrapper import observation_wrapper
-from gym_talos.utils.action_wrapper import ActionWrapper
+from limit_checker_talos.limit_checker import LimitChecker
+from robot_description.path_getter import srdf_path, urdf_path
+from simulator.bullet_Talos import TalosDeburringSimulator
 
 
 class EnvTalosMPC(gym.Env):

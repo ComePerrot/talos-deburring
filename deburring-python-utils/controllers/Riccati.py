@@ -1,5 +1,5 @@
 class RiccatiController:
-    def __init__(self, state,torque, xref, riccati):
+    def __init__(self, state, torque, xref, riccati):
         self.state = state
         self.update_references(torque, xref, riccati)
 

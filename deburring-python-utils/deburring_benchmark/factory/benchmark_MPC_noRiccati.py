@@ -1,6 +1,6 @@
 from controllers.MPC import MPController
-
 from deburring_benchmark.factory.benchmark_base import bench_base
+
 
 class bench_MPC_noRiccati(bench_base):
     def _define_controller(self):

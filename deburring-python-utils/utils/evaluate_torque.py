@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pinocchio as pin
 import yaml
+
 from deburring_mpc import RobotDesigner
 
 

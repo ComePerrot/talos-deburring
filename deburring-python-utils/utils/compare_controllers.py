@@ -3,13 +3,13 @@ from pathlib import Path
 
 import numpy as np
 import yaml
-from deburring_mpc import RobotDesigner
 from stable_baselines3 import SAC
 
 from deburring_benchmark.factory.benchmark_MPC import bench_MPC
 
 # from simulator.bullet_Talos import TalosDeburringSimulator
 from deburring_benchmark.factory.benchmark_MPRL import bench_MPRL
+from deburring_mpc import RobotDesigner
 from gym_talos.envs.env_talos_mpc_deburring import EnvTalosMPC
 from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
 from gym_talos.utils.create_target import TargetGoal

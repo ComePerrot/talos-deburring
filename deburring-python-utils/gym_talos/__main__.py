@@ -3,18 +3,17 @@ import datetime
 import pathlib
 
 import yaml
-from stable_baselines3 import HerReplayBuffer, SAC
+from stable_baselines3 import SAC, HerReplayBuffer
+from stable_baselines3.common.callbacks import CallbackList
 
 from .envs.env_talos_deburring_her import EnvTalosDeburringHer
-
 from .utils.custom_callbacks import (
+    ActivateJudgmentCallback,
+    EvalOnTrainingCallback,
     LoggerCallback,
     SaveFilesCallback,
-    EvalOnTrainingCallback,
-    ActivateJudgmentCallback,
 )
-from stable_baselines3.common.callbacks import CallbackList
-from .utils.loader_and_saver import setup_model, setup_env
+from .utils.loader_and_saver import setup_env, setup_model
 
 ################
 #  PARAMETERS  #

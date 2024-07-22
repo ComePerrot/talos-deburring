@@ -4,10 +4,10 @@ from pathlib import Path
 import numpy as np
 import pinocchio as pin
 import yaml
-from deburring_mpc import RobotDesigner
 
 from controllers.MPC import MPController
 from controllers.Riccati import RiccatiController
+from deburring_mpc import RobotDesigner
 from gym_talos.utils.create_target import TargetGoal
 from simulator.bullet_Talos import TalosDeburringSimulator
 

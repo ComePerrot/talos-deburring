@@ -1,9 +1,9 @@
 import unittest
+
 from simulator.pd_controller import PDController
 
 
 class TestPDController(unittest.TestCase):
-
     def setUp(self):
         self.controller = PDController()
 

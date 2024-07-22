@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
-import onnxruntime as ort
 import numpy as np
+import onnxruntime as ort
 import rospkg
 import rospy
-
 from std_msgs.msg import Float64MultiArray
 
 

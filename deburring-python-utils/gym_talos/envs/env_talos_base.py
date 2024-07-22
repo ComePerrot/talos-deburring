@@ -1,8 +1,8 @@
 import gymnasium as gym
 import numpy as np
 import pinocchio as pin
-from deburring_mpc import RobotDesigner
 
+from deburring_mpc import RobotDesigner
 from gym_talos.simulator.bullet_Talos import TalosDeburringSimulator
 
 

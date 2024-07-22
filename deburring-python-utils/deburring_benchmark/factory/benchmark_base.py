@@ -1,5 +1,5 @@
-import pinocchio as pin
 import numpy as np
+import pinocchio as pin
 
 from limit_checker_talos.limit_checker import LimitChecker
 
