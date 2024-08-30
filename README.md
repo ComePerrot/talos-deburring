@@ -14,7 +14,7 @@ This repo is built around several packages:
 The Apptainer is designed to provide a solution for running trainings of the RL policy or benchmarks.
 It is not intended for use when conducting experiments on the robot, thus it does not contain the `deburring_ros_interface`.
 
-Build apptainer:
+Build Apptainer:
 
 ```bash
 apptainer build rl.sif apptainer/rl_mamba.def
@@ -33,7 +33,7 @@ apptainer run --app default_training_mpc rl.sif
 - training:
 
 Training with custom parameters.
-This training requires a configuration file to be mount in the apptainer:
+This training requires a configuration file to be mounted in the Apptainer:
 
 ```bash
 apptainer run --app training_mpc \
@@ -59,4 +59,7 @@ This repo was initially a fork of [sobec](https://github.com/MeMory-of-MOtion/so
 
 Authored by:
 
+- Alexis Delgorgue
 - Côme Perrot
+- Guilhem Saurel
+- Olivier Stasse
