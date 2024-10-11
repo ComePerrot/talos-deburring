@@ -130,7 +130,11 @@ if __name__ == "__main__":
         for path in rl_model_paths:
             policy_full_path = filepath / path
             MPRL = bench_MPRL(
-                params, policy_full_path, target_handler, pinWrapper, simulator
+                params,
+                policy_full_path,
+                target_handler,
+                pinWrapper,
+                simulator,
             )
             MPRL_list.append(MPRL)
         trial_list.extend(MPRL_list)
