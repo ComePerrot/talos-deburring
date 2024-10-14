@@ -5,10 +5,18 @@ from deburring_benchmark.factory.benchmark_base import bench_base
 
 
 class bench_MPRL(bench_base):
-    def __init__(self, filename, model_path, target_handler, pinWrapper, simulator):
+    def __init__(
+        self,
+        filename,
+        model_path,
+        target_handler,
+        pinWrapper,
+        simulator,
+        logging=False,
+    ):
         self.target_handler = target_handler
         self.model_path = model_path
-        super().__init__(filename, pinWrapper, simulator)
+        super().__init__(filename, pinWrapper, simulator, logging=logging)
 
     def _define_controller(self):
         #   RL Posture controller

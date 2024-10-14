@@ -5,7 +5,7 @@ from limit_checker_talos.limit_checker import LimitChecker
 
 
 class bench_base:
-    def __init__(self, params, pinWrapper, simulator):
+    def __init__(self, params, pinWrapper, simulator, logging=False):
         # PARAMETERS
         self.params = params
 
@@ -30,6 +30,21 @@ class bench_base:
 
         self._define_controller()
 
+        # Logging
+        self.logging = logging
+        if self.logging:
+            logging_frequency = params["logging_frequency"]
+
+            self.logging_steps = int(
+                1 / (logging_frequency * self.time_step_simulation),
+            )
+            self.x_log = np.zeros(
+                (
+                    self.maxTime // self.logging_steps + 1,
+                    self.pinWrapper.get_rmodel().nq,
+                ),
+            )
+
     def reset(self, target_position):
         for i in range(3):
             self.oMtarget.translation[i] = target_position[i]
@@ -50,6 +65,11 @@ class bench_base:
         # Control loop
         while Time < self.maxTime:
             x_measured = self.simulator.getRobotState()
+
+            if self.logging and (Time % self.logging_steps == 0):
+                self.x_log[Time // self.logging_steps, :] = x_measured[
+                    : self.pinWrapper.get_rmodel().nq
+                ]
 
             torques = self._run_controller(Time, x_measured)
 
