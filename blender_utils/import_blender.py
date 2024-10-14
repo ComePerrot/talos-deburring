@@ -1,8 +1,8 @@
 import pickle
 from pathlib import Path
 
-import bpy
-import mathutils
+import bpy  # type: ignore
+import mathutils  # type: ignore
 
 joint_mapping = {
     "leg_left_1_joint": 2,
@@ -89,7 +89,9 @@ def load_joint_data(file_path):
 
 # Example usage
 file_path = Path(
-    "/home/cperrot/talos-deburring/blender_utils/trajectories/trajectory_MPC.pkl"
+    "/home/cperrot/talos-deburring/blender_utils/trajectories/trajectory_MPC.pkl",
+    # "/home/cperrot/talos-deburring/blender_utils/trajectories/trajectory_varPostMPC.pkl",
+    # "/home/cperrot/talos-deburring/blender_utils/trajectories/trajectory_MPRL.pkl",
 )
 x_list = load_joint_data(file_path)
 

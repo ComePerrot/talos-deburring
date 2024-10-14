@@ -4,6 +4,11 @@ from pathlib import Path
 import numpy as np
 import yaml
 from deburring_benchmark.factory.benchmark_MPC import bench_MPC
+from deburring_benchmark.factory.benchmark_MPC_variablePosture import (
+    bench_MPC_variablePosture,
+)
+from deburring_benchmark.factory.benchmark_MPRL import bench_MPRL
+from gym_talos.utils.create_target import TargetGoal
 from robot_description.path_getter import srdf_path, urdf_path
 from simulator.bullet_Talos import TalosDeburringSimulator
 
@@ -53,9 +58,51 @@ if __name__ == "__main__":
         cutoff_frequency=params["robot_cutoff_frequency"],
     )
 
-    # Baseline trajectory (Vanilla MPC)
-    bench_MPC = bench_MPC(params, pinWrapper, simulator, logging=True)
-    bench_MPC.run(target)
-
     filepath = Path(__file__).resolve().parent
-    export_joint_data(filepath / "trajectories/trajectory_MPC.pkl", bench_MPC.x_log)
+
+    # Baseline trajectory (Vanilla MPC)
+    print("Running MPC benchmark")
+    benchmark_MPC = bench_MPC(params, pinWrapper, simulator, logging=True)
+    _, error_placement_tool, _ = benchmark_MPC.run(target)
+    print(f"Placement error: {error_placement_tool * 1000:.1f} mm")
+
+    # Variable posture MPC
+    print("Running variable posture MPC benchmark")
+    benchmark_variablePosture = bench_MPC_variablePosture(
+        params,
+        pinWrapper,
+        simulator,
+        logging=True,
+    )
+    _, error_placement_tool, _ = benchmark_variablePosture.run(target)
+    print(f"Placement error: {error_placement_tool * 1000:.1f} mm")
+
+    # MP/RL
+    print("Running MPC/RL benchmark")
+    target_handler = TargetGoal(params["target"])
+    target_handler.create_target()
+    policy_full_path = (
+        filepath / "../deburring-python-utils/deburring_benchmark/example_policy"
+    )
+    benchmark_MPRL = bench_MPRL(
+        params,
+        policy_full_path,
+        target_handler,
+        pinWrapper,
+        simulator,
+        logging=True,
+    )
+    _, error_placement_tool, _ = benchmark_MPRL.run(target)
+    print(f"Placement error: {error_placement_tool * 1000:.1f} mm")
+
+    print("Exporting trajectories")
+    export_joint_data(filepath / "trajectories/trajectory_MPC.pkl", benchmark_MPC.x_log)
+    export_joint_data(
+        filepath / "trajectories/trajectory_varPostMPC.pkl",
+        benchmark_variablePosture.x_log,
+    )
+    export_joint_data(
+        filepath / "trajectories/trajectory_MPRL.pkl",
+        benchmark_MPRL.x_log,
+    )
+    print("Done")
