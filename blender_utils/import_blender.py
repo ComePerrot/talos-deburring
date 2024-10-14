@@ -1,41 +1,8 @@
 import pickle
+from pathlib import Path
 
 import bpy
 import mathutils
-
-base_position = [0.0, 0.0, 1.02927]
-
-base_quat = [
-    0.0,
-    0.0,
-    0.0,
-    1.0,
-]
-
-q = [
-    0.0,
-    0.0,
-    -0.4,
-    0.8,
-    -0.4,
-    0.0,
-    0.0,
-    0.0,
-    -0.4,
-    0.8,
-    -0.4,
-    0.0,
-    0.0,
-    0.0,
-    0.4,
-    0.24,
-    -0.6,
-    -1.45,
-    -0.4,
-    -0.24,
-    0.6,
-    -1.45,
-]
 
 joint_mapping = {
     "leg_left_1_joint": 2,
@@ -116,13 +83,14 @@ class BlenderPoseHandler:
 
 
 def load_joint_data(file_path):
-    with open(file_path, "rb") as file:
-        x_list = pickle.load(file)
-    return x_list
+    with Path.open(file_path, "rb") as file:
+        return pickle.load(file)
 
 
 # Example usage
-file_path = "D:/Côme/Documents/Thèse/talos-blender/trajectory_test.pkl"
+file_path = Path(
+    "/home/cperrot/talos-deburring/blender_utils/trajectories/trajectory_MPC.pkl"
+)
 x_list = load_joint_data(file_path)
 
 pose_handler = BlenderPoseHandler(joint_mapping)
