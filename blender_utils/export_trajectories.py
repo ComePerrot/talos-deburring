@@ -42,7 +42,7 @@ if __name__ == "__main__":
     # Parameters
     params = setup_parameters()
     params["logging_frequency"] = 60  # Hz
-    target = [0.9 , 0.15, 1.15]
+    target = [0.9 , 0.15, 1.145]
 
     # Robot handler
     pinWrapper = RobotDesigner()
