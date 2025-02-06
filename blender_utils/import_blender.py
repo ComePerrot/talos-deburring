@@ -86,8 +86,10 @@ def load_joint_data(file_path):
     with Path.open(file_path, "rb") as file:
         return pickle.load(file)
 
+
 def find_zero_vectors(x_list):
     return [i for i, x in enumerate(x_list) if all(component == 0 for component in x)]
+
 
 def clean_trajectory(x_list):
     indexes_zero = find_zero_vectors(x_list)
@@ -97,6 +99,7 @@ def clean_trajectory(x_list):
 
         for i in indexes_zero:
             x_list[i] = x_list[last_non_zero_index]
+
 
 # Example usage
 file_path = Path(
