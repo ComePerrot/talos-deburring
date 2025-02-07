@@ -1,0 +1,103 @@
+training:
+  name: "default_training"
+  total_timesteps: 200 # Total number of training timesteps
+  log_interval: 10 # Number of episodes between logging events
+  check_freq: 100 # Number of timesteps between saving checkpoints
+  number_eval: 100
+
+SAC:
+  model_param:
+    policy: "MlpPolicy"
+    tensorboard_log: "logs/"
+    device: "cpu"
+    verbose: 1
+
+environment:
+  time_step_simulation: 0.001
+  action:
+    action_type: "differential" # full_range / differential
+    action_scale: 0.1
+    clip_action: False
+  observation:
+    normalize_obs: False
+    history_obs: 0
+  # Stop conditions
+  max_time: 4 # Maximum epoch time in seconds
+  min_height: 0.8 # if 0 no check is performed on the height of the robot
+  # Target
+  target:
+    targetType: "box"
+    targetPosition: [0.7, 0.3, 1]
+    targetSizeLow: [-0.2, -0.3, -0.3]
+    targetSizeHigh: [0.2, 0.3, 0.3]
+  # Reward parameters
+  reward:
+    distance_threshold: 0.005
+    w_success: 10
+    w_distance: 5
+    w_penalization_truncation: 500
+    w_penalization_torque: 0.001
+  # Parameter to activate extra Pal's limits
+  extra_limits: False
+
+robot:
+  designer:
+    urdf_type: "public_pal" # custom, example_robot_data, public_pal
+    controlled_joints_names: [
+        root_joint,
+        leg_left_1_joint,
+        leg_left_2_joint,
+        leg_left_3_joint,
+        leg_left_4_joint,
+        leg_left_5_joint,
+        leg_left_6_joint,
+        leg_right_1_joint,
+        leg_right_2_joint,
+        leg_right_3_joint,
+        leg_right_4_joint,
+        leg_right_5_joint,
+        leg_right_6_joint,
+        torso_1_joint,
+        torso_2_joint,
+        arm_left_1_joint,
+        arm_left_2_joint,
+        arm_left_3_joint,
+        arm_left_4_joint,
+        # arm_left_5_joint,
+        # arm_left_6_joint,
+        # arm_left_7_joint,
+        arm_right_1_joint,
+        arm_right_2_joint,
+        arm_right_3_joint,
+        arm_right_4_joint,
+      ]
+    robot_description: ""
+    left_foot_name: "left_sole_link"
+    right_foot_name: "right_sole_link"
+    end_effector_position: [0, -0.02, -0.0825]
+
+  pd_controller:
+    time_step_controller: 0.01
+    gains:
+      leg_left_1_joint: {"kp": 800, "kd": 35}
+      leg_left_2_joint: {"kp": 800, "kd": 35}
+      leg_left_3_joint: {"kp": 800, "kd": 35}
+      leg_left_4_joint: {"kp": 800, "kd": 35}
+      leg_left_5_joint: {"kp": 800, "kd": 35}
+      leg_left_6_joint: {"kp": 800, "kd": 35}
+      leg_right_1_joint: {"kp": 800, "kd": 35}
+      leg_right_2_joint: {"kp": 800, "kd": 35}
+      leg_right_3_joint: {"kp": 800, "kd": 35}
+      leg_right_4_joint: {"kp": 800, "kd": 35}
+      leg_right_5_joint: {"kp": 800, "kd": 35}
+      leg_right_6_joint: {"kp": 800, "kd": 35}
+      torso_1_joint: {"kp": 500, "kd": 20}
+      torso_2_joint: {"kp": 500, "kd": 20}
+      arm_left_1_joint: {"kp": 100, "kd": 8}
+      arm_left_2_joint: {"kp": 100, "kd": 8}
+      arm_left_3_joint: {"kp": 100, "kd": 8}
+      arm_left_4_joint: {"kp": 100, "kd": 8}
+      arm_right_1_joint: {"kp": 100, "kd": 8}
+      arm_right_2_joint: {"kp": 100, "kd": 8}
+      arm_right_3_joint: {"kp": 100, "kd": 8}
+      arm_right_4_joint: {"kp": 100, "kd": 8}

@@ -37,7 +37,7 @@ class EnvTalosPosition(gym.Env):
             rmodel_complete=self.pinWrapper.get_rmodel_complete(),
             controlled_joints_ids=self.pinWrapper.get_controlled_joints_ids(),
             enable_GUI=GUI,
-            dt=params_env["timeStepSimulation"],
+            dt=params_env["time_step_simulation"],
         )
 
         # PD controller
@@ -52,10 +52,10 @@ class EnvTalosPosition(gym.Env):
 
         # Observation handler
         self.observation_handler = observation_wrapper(
-            self.normalizeObs,
+            self.normalize_obs,
             self.pinWrapper.get_rmodel(),
             self.target_handler,
-            params_env["historyObs"],
+            params_env["observation"]["history_obs"],
             0,
         )
 
@@ -64,9 +64,9 @@ class EnvTalosPosition(gym.Env):
             self.pinWrapper.get_rmodel(),
             self.pinWrapper.get_rmodel().names[2:],
             initial_state=self.pinWrapper.get_x0().copy(),
-            scaling_factor=params_env["actionScale"],
-            scaling_mode=params_env["actionType"],
-            clip_action=params_env["clipAction"],
+            scaling_factor=params_env["action"]["action_scale"],
+            scaling_mode=params_env["action"]["action_type"],
+            clip_action=params_env["action"]["clip_action"],
         )
 
         self._init_env_variables(
@@ -78,18 +78,18 @@ class EnvTalosPosition(gym.Env):
         self.n_joints = len(params_robot["designer"]["controlled_joints_names"]) - 1
         self.num_sim_steps = int(
             params_robot["pd_controller"]["time_step_controller"]
-            / params_env["timeStepSimulation"],
+            / params_env["time_step_simulation"],
         )
         self.max_step = int(
-            params_env["maxTime"]
-            / (self.num_sim_steps * params_env["timeStepSimulation"]),
+            params_env["max_time"]
+            / (self.num_sim_steps * params_env["time_step_simulation"]),
         )
-        self.min_height = params_env["minHeight"]
+        self.min_height = params_env["min_height"]
 
-        self.normalizeObs = params_env["normalizeObs"]
+        self.normalize_obs = params_env["observation"]["normalize_obs"]
 
         #  Reward parameters
-        self.distanceThreshold = params_env["reward"]["distanceThreshold"]
+        self.distance_threshold = params_env["reward"]["distance_threshold"]
         self.weight_success = params_env["reward"]["w_success"]
         self.weight_distance = params_env["reward"]["w_distance"]
         self.weight_truncation = params_env["reward"]["w_penalization_truncation"]
@@ -105,7 +105,7 @@ class EnvTalosPosition(gym.Env):
             dtype=np.float32,
         )
 
-        if self.normalizeObs:
+        if self.normalize_obs:
             self.observation_space = gym.spaces.Box(
                 low=-1,
                 high=1,
@@ -203,7 +203,7 @@ class EnvTalosPosition(gym.Env):
         reward_distance = -self.distance_tool_target + 1
 
         # Success evaluation
-        if self.distance_tool_target < self.distanceThreshold:
+        if self.distance_tool_target < self.distance_threshold:
             if self.reach_time is None:
                 self.reach_time = self.timer
 
@@ -269,4 +269,4 @@ class PDController:
     def compute_torques(self, measured_pos, measured_vel):
         d_pos = measured_pos - self.reference_pos
         d_vel = measured_vel - self.reference_vel
-        return self.Kp * d_pos + self.Kd * d_vel
+        return -self.Kp * d_pos - self.Kd * d_vel
