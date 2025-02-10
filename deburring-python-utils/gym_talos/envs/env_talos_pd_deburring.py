@@ -169,6 +169,9 @@ class EnvTalosPosition(gym.Env):
 
             torque_norm_sum += np.linalg.norm(torques)
 
+            if self._is_truncated(measured_state, torques):
+                break
+
         self.pinWrapper.update_reduced_model(measured_state)
 
         torque_norm_avg = torque_norm_sum / self.num_sim_steps
@@ -180,7 +183,7 @@ class EnvTalosPosition(gym.Env):
             None,
         )
         reward = self._get_reward(torque_norm_avg, terminated)
-        infos = {}
+        infos = {"torque_norm_avg": torque_norm_avg}
 
         return observation, reward, terminated, truncated, infos
 
@@ -243,6 +246,121 @@ class EnvTalosPosition(gym.Env):
 
         # Explicitly casting from numpy.bool_ to bool
         return bool(truncation_balance or truncation_limits)
+
+
+class EnvTalosPositionHER(EnvTalosPosition):
+    def _init_env_variables(self, action_dimension, observation_dimension):
+        self.timer = 0
+
+        self.action_space = gym.spaces.Box(
+            low=-1,
+            high=1,
+            shape=(action_dimension,),
+            dtype=np.float32,
+        )
+
+        if self.normalize_obs:
+            limit = 1
+        else:
+            limit = 5
+
+        self.observation_space = gym.spaces.Dict()
+        self.observation_space.spaces["observation"] = gym.spaces.Box(
+            low=-limit,
+            high=limit,
+            shape=(observation_dimension,),
+            dtype=np.float64,
+        )
+        self.observation_space.spaces["achieved_goal"] = gym.spaces.Box(
+            low=-limit,
+            high=limit,
+            shape=(3,),
+            dtype=np.float64,
+        )
+        self.observation_space.spaces["desired_goal"] = gym.spaces.Box(
+            low=-limit,
+            high=limit,
+            shape=(3,),
+            dtype=np.float64,
+        )
+
+        self.distance_tool_target = None
+        self.reach_time = None
+
+    def reset(self, *, seed=None, options=None):
+        observation, infos = super().reset()
+
+        return (self.get_observation_HER(observation), infos)
+
+    def step(self, action):
+        observation, _, terminated, truncated, infos = super().step(action)
+
+        observation_HER = self.get_observation_HER(observation)
+
+        reward_HER = self.computed_reward(
+            observation_HER["achieved_goal"],
+            observation_HER["desired_goal"],
+            {"truncated": truncated, "torque_norm_avg": infos["torque_norm_avg"]},
+        )
+
+        return (
+            self.get_observation_HER(observation),
+            reward_HER,
+            terminated,
+            truncated,
+            infos,
+        )
+
+    def get_observation_HER(self, observation):
+        if self.normalize_obs:
+            achieved_goal = self.observation_handler.normalize_target(
+                self.pinWrapper.get_end_effector_frame().translation,
+            )
+            desired_goal = self.observation_handler.normalize_target(
+                self.target_handler.position_target,
+            )
+        else:
+            achieved_goal = self.pinWrapper.get_end_effector_frame().translation
+            desired_goal = self.target_handler.position_target
+
+        return {
+            "observation": observation,
+            "achieved_goal": achieved_goal,
+            "desired_goal": desired_goal,
+        }
+
+    def computed_reward(self, achieved_goal, desired_goal, info):
+        if info["truncated"]:
+            reward_dead = -1
+        else:
+            reward_dead = 0
+
+        # penalization of expanded energy
+        reward_torque = -info["torque_norm_avg"]
+
+        self.distance_tool_target = np.linalg.norm(
+            achieved_goal - desired_goal,
+        )
+
+        reward_distance = -self.distance_tool_target + 1
+
+        # Success evaluation
+        if self.distance_tool_target < self.distance_threshold:
+            if self.reach_time is None:
+                self.reach_time = self.timer
+
+            reward_success = 1
+        else:
+            self.reach_time = None
+
+            reward_success = 0
+
+        return (
+            self.weight_success * reward_success
+            + self.weight_distance * reward_distance
+            + self.weight_truncation * reward_dead
+            + self.weight_energy * reward_torque
+        )
 
 
 class PDController:

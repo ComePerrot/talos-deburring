@@ -1,18 +1,26 @@
 training:
-  name: "default_training"
-  total_timesteps: 200 # Total number of training timesteps
-  log_interval: 10 # Number of episodes between logging events
-  check_freq: 100 # Number of timesteps between saving checkpoints
+  name: "test"
+  total_timesteps: 10000 # Total number of training timesteps
+  log_interval: 100 # Number of episodes between logging events
+  check_freq: 1000 # Number of timesteps between saving checkpoints
   number_eval: 100
 
 SAC:
   model_param:
-    policy: "MlpPolicy"
+    policy: "MultiInputPolicy"
     tensorboard_log: "logs/"
     device: "cpu"
     verbose: 1
+  HerReplayBuffer_param: # Added the HER replay buffer if wanted
+    replay_buffer_kwargs:
+      {
+        copy_info_dict: True,
+        n_sampled_goal: 1,
+        goal_selection_strategy: "future",
+      }
 
 environment:
+  nb_environments: 1
   time_step_simulation: 0.001
   action:
     action_type: "differential" # full_range / differential
