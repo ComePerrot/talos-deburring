@@ -182,26 +182,27 @@ class EnvTalosPosition(gym.Env):
             measured_state,
             None,
         )
-        reward = self._get_reward(torque_norm_avg, terminated)
-        infos = {"torque_norm_avg": torque_norm_avg}
+        infos = {"is_truncated": truncated, "torque_norm_avg": torque_norm_avg}
+        reward = self._get_reward(
+            self.pinWrapper.get_end_effector_frame().translation,
+            self.target_handler.position_target,
+            infos,
+        )
 
         return observation, reward, terminated, truncated, infos
 
-    def _get_reward(self, avg_torque_norm, truncated):
+    def _get_reward(self, achieved_goal, desired_goal, info):
         # Penalization of failure
-        if truncated:
+        if info["is_truncated"]:
             reward_dead = -1
         else:
             reward_dead = 0
 
         # penalization of expanded energy
-        reward_torque = -avg_torque_norm
+        reward_torque = -info["torque_norm_avg"]
 
         # distance to target
-        self.distance_tool_target = np.linalg.norm(
-            self.pinWrapper.get_end_effector_frame().translation
-            - self.target_handler.position_target,
-        )
+        self.distance_tool_target = np.linalg.norm(achieved_goal - desired_goal)
 
         reward_distance = -self.distance_tool_target + 1
 
@@ -297,10 +298,10 @@ class EnvTalosPositionHER(EnvTalosPosition):
 
         observation_HER = self.get_observation_HER(observation)
 
-        reward_HER = self.computed_reward(
+        reward_HER = self.compute_reward(
             observation_HER["achieved_goal"],
             observation_HER["desired_goal"],
-            {"truncated": truncated, "torque_norm_avg": infos["torque_norm_avg"]},
+            infos,
         )
 
         return (
@@ -329,38 +330,26 @@ class EnvTalosPositionHER(EnvTalosPosition):
             "desired_goal": desired_goal,
         }
 
-    def computed_reward(self, achieved_goal, desired_goal, info):
-        if info["truncated"]:
-            reward_dead = -1
+    def compute_reward(self, achieved_goal, desired_goal, info):
+        if len(achieved_goal.shape) == 2:
+            rewards = []
+            for i in range(len(achieved_goal)):
+                rewards.append(
+                    self._get_reward(
+                        achieved_goal[i],
+                        desired_goal[i],
+                        info[i],
+                    ),
+                )
+            rewards = np.array(rewards)
         else:
-            reward_dead = 0
+            rewards = self._get_reward(
+                achieved_goal,
+                desired_goal,
+                info,
+            )
 
-        # penalization of expanded energy
-        reward_torque = -info["torque_norm_avg"]
-
-        self.distance_tool_target = np.linalg.norm(
-            achieved_goal - desired_goal,
-        )
-
-        reward_distance = -self.distance_tool_target + 1
-
-        # Success evaluation
-        if self.distance_tool_target < self.distance_threshold:
-            if self.reach_time is None:
-                self.reach_time = self.timer
-
-            reward_success = 1
-        else:
-            self.reach_time = None
-
-            reward_success = 0
-
-        return (
-            self.weight_success * reward_success
-            + self.weight_distance * reward_distance
-            + self.weight_truncation * reward_dead
-            + self.weight_energy * reward_torque
-        )
+        return rewards
 
 
 class PDController:
